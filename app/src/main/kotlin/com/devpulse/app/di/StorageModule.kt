@@ -42,7 +42,7 @@ object StorageModule {
             context,
             AppDatabase::class.java,
             "devpulse.db",
-        ).fallbackToDestructiveMigration().build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
     }
 
     @Provides

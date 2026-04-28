@@ -12,9 +12,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class MainUiState(
-    val title: String = "DevPulse MVP",
     val environment: String = "",
     val baseUrl: String = "",
+    val isBootstrapping: Boolean = true,
     val hasCachedSession: Boolean = false,
 )
 
@@ -32,9 +32,22 @@ class MainViewModel @Inject constructor(
                 state.copy(
                     environment = bootstrap.environment,
                     baseUrl = bootstrap.baseUrl,
+                    isBootstrapping = false,
                     hasCachedSession = bootstrap.hasCachedSession,
                 )
             }
+        }
+    }
+
+    fun onLoginSucceeded() {
+        _uiState.update { state ->
+            state.copy(hasCachedSession = true)
+        }
+    }
+
+    fun onLogout() {
+        _uiState.update { state ->
+            state.copy(hasCachedSession = false)
         }
     }
 }
