@@ -2,9 +2,7 @@ package com.devpulse.app.data.remote.dto
 
 import com.devpulse.app.domain.model.TrackedLink
 import com.squareup.moshi.Json
-import com.squareup.moshi.JsonClass
 
-@JsonClass(generateAdapter = true)
 data class LinkResponseDto(
     @field:Json(name = "id")
     val id: Long,
