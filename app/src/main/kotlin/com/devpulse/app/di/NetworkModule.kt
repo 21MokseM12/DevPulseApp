@@ -3,6 +3,7 @@ package com.devpulse.app.di
 import com.devpulse.app.BuildConfig
 import com.devpulse.app.data.remote.DevPulseApi
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -39,7 +40,9 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideMoshi(): Moshi = Moshi.Builder().build()
+    fun provideMoshi(): Moshi = Moshi.Builder()
+        .addLast(KotlinJsonAdapterFactory())
+        .build()
 
     @Provides
     @Singleton
