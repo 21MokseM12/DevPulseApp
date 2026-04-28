@@ -73,6 +73,8 @@ android {
     lint {
         baseline = file("lint-baseline.xml")
         abortOnError = true
+        // Temporary workaround: AGP/Lint crashes on unit tests with this Compose detector.
+        disable += "StateFlowValueCalledInComposition"
     }
 }
 
