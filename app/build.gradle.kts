@@ -1,3 +1,7 @@
+import org.gradle.api.tasks.testing.Test
+import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +9,7 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
     id("org.jlleitschuh.gradle.ktlint")
+    id("jacoco")
 }
 
 android {
@@ -77,6 +82,17 @@ ktlint {
     outputToConsole.set(true)
 }
 
+jacoco {
+    toolVersion = "0.8.13"
+}
+
+tasks.withType<Test>().configureEach {
+    extensions.configure(JacocoTaskExtension::class) {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
+    }
+}
+
 tasks.named("check").configure {
     dependsOn("ktlintCheck", "lintDebug")
 }
@@ -88,13 +104,61 @@ tasks.register("qualityCheck") {
 }
 
 tasks.named("build").configure {
-    dependsOn("qualityCheck")
+    dependsOn("qualityCheck", "jacocoTestReport")
 }
 
 tasks.register("codeStyleFormat") {
     group = "formatting"
     description = "Auto-formats Kotlin sources using ktlint."
     dependsOn("ktlintFormat")
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    group = "verification"
+    description = "Generates unit test coverage report for debug build."
+    dependsOn("testDebugUnitTest")
+
+    val excludes =
+        listOf(
+            "**/R.class",
+            "**/R$*.class",
+            "**/BuildConfig.*",
+            "**/Manifest*.*",
+            "**/*Test*.*",
+            "android/**/*.*",
+            "**/*\$Lambda\$*.*",
+            "**/*\$inlined\$*.*",
+            "**/*_Factory*.*",
+            "**/*_MembersInjector*.*",
+            "**/*_HiltModules*.*",
+            "**/Hilt_*.*",
+            "**/*ComposableSingletons*.*",
+        )
+
+    classDirectories.setFrom(
+        fileTree("${layout.buildDirectory.get()}/tmp/kotlin-classes/debug") {
+            exclude(excludes)
+        },
+        fileTree("${layout.buildDirectory.get()}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+            exclude(excludes)
+        },
+    )
+
+    sourceDirectories.setFrom(files("src/main/java", "src/main/kotlin"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include(
+                "jacoco/testDebugUnitTest.exec",
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+            )
+        },
+    )
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
 }
 
 dependencies {

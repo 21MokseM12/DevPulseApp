@@ -24,8 +24,5 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Run code style and static checks
-        run: ./gradlew :app:qualityCheck
-
-      - name: Build app
+      - name: Build app (includes code style and coverage)
         run: ./gradlew :app:build
