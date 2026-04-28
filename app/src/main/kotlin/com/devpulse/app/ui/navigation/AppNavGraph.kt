@@ -36,11 +36,12 @@ fun AppNavGraph(
                 SplashScreen()
                 LaunchedEffect(uiState.isBootstrapping, uiState.hasCachedSession) {
                     if (!uiState.isBootstrapping) {
-                        val target = if (uiState.hasCachedSession) {
-                            AppRoute.Subscriptions.route
-                        } else {
-                            AppRoute.Auth.route
-                        }
+                        val target =
+                            if (uiState.hasCachedSession) {
+                                AppRoute.Subscriptions.route
+                            } else {
+                                AppRoute.Auth.route
+                            }
                         navController.navigate(target) {
                             popUpTo(AppRoute.Splash.route) { inclusive = true }
                             launchSingleTop = true
@@ -177,9 +178,7 @@ private fun SettingsScreen(
 }
 
 @Composable
-private fun CenteredScreenContent(
-    content: @Composable () -> Unit,
-) {
+private fun CenteredScreenContent(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
