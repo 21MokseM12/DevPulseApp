@@ -13,7 +13,5 @@ import javax.inject.Singleton
 abstract class RepositoryModule {
     @Binds
     @Singleton
-    abstract fun bindAppBootstrapRepository(
-        implementation: DefaultAppBootstrapRepository,
-    ): AppBootstrapRepository
+    abstract fun bindAppBootstrapRepository(implementation: DefaultAppBootstrapRepository): AppBootstrapRepository
 }

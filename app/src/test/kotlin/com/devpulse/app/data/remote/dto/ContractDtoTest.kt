@@ -7,9 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ContractDtoTest {
-    private val moshi: Moshi = Moshi.Builder()
-        .addLast(KotlinJsonAdapterFactory())
-        .build()
+    private val moshi: Moshi =
+        Moshi.Builder()
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
 
     @Test
     fun clientCredentialsRequest_serializesExpectedFields() {
@@ -24,11 +25,12 @@ class ContractDtoTest {
     @Test
     fun addLinkRequest_serializesWithTagsAndFilters() {
         val adapter = moshi.adapter(AddLinkRequestDto::class.java)
-        val dto = AddLinkRequestDto(
-            link = "https://github.com",
-            tags = listOf("dev", "news"),
-            filters = listOf("contains:kotlin"),
-        )
+        val dto =
+            AddLinkRequestDto(
+                link = "https://github.com",
+                tags = listOf("dev", "news"),
+                filters = listOf("contains:kotlin"),
+            )
 
         val json = adapter.toJson(dto)
 
@@ -40,7 +42,8 @@ class ContractDtoTest {
     @Test
     fun apiErrorResponse_deserializesNullableFields() {
         val adapter = moshi.adapter(ApiErrorResponseDto::class.java)
-        val json = """
+        val json =
+            """
             {
               "description": "invalid request",
               "code": "400",
@@ -48,7 +51,7 @@ class ContractDtoTest {
               "exceptionMessage": "field link is required",
               "stacktrace": ["line1", "line2"]
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val dto = requireNotNull(adapter.fromJson(json))
 
@@ -61,19 +64,21 @@ class ContractDtoTest {
 
     @Test
     fun mappers_convertDtoToDomainModels() {
-        val linkDomain = LinkResponseDto(
-            id = 42L,
-            url = "https://example.com",
-            tags = null,
-            filters = listOf("contains:java"),
-        ).toDomain()
-        val errorDomain = ApiErrorResponseDto(
-            description = "unauthorized",
-            code = "401",
-            exceptionName = null,
-            exceptionMessage = null,
-            stacktrace = null,
-        ).toDomain()
+        val linkDomain =
+            LinkResponseDto(
+                id = 42L,
+                url = "https://example.com",
+                tags = null,
+                filters = listOf("contains:java"),
+            ).toDomain()
+        val errorDomain =
+            ApiErrorResponseDto(
+                description = "unauthorized",
+                code = "401",
+                exceptionName = null,
+                exceptionMessage = null,
+                stacktrace = null,
+            ).toDomain()
 
         assertEquals(42L, linkDomain.id)
         assertEquals("https://example.com", linkDomain.url)

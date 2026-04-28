@@ -8,11 +8,13 @@ data class EnvironmentConfig(
     val baseUrl: String,
 )
 
-class EnvironmentConfigProvider @Inject constructor() {
-    fun get(): EnvironmentConfig {
-        return EnvironmentConfig(
-            name = BuildConfig.ENVIRONMENT,
-            baseUrl = BuildConfig.BASE_URL,
-        )
+class EnvironmentConfigProvider
+    @Inject
+    constructor() {
+        fun get(): EnvironmentConfig {
+            return EnvironmentConfig(
+                name = BuildConfig.ENVIRONMENT,
+                baseUrl = BuildConfig.BASE_URL,
+            )
+        }
     }
-}

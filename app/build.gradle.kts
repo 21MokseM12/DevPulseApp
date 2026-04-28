@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 android {
@@ -63,6 +64,37 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    lint {
+        baseline = file("lint-baseline.xml")
+        abortOnError = true
+    }
+}
+
+ktlint {
+    android.set(true)
+    ignoreFailures.set(false)
+    outputToConsole.set(true)
+}
+
+tasks.named("check").configure {
+    dependsOn("ktlintCheck", "lintDebug")
+}
+
+tasks.register("qualityCheck") {
+    group = "verification"
+    description = "Runs code style and static analysis checks."
+    dependsOn("ktlintCheck", "lintDebug")
+}
+
+tasks.named("build").configure {
+    dependsOn("qualityCheck")
+}
+
+tasks.register("codeStyleFormat") {
+    group = "formatting"
+    description = "Auto-formats Kotlin sources using ktlint."
+    dependsOn("ktlintFormat")
 }
 
 dependencies {

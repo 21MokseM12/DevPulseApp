@@ -10,20 +10,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class UserSessionPreferences @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
-) {
-    val clientLogin: Flow<String?> = dataStore.data.map { preferences ->
-        preferences[CLIENT_LOGIN_KEY]
-    }
+class UserSessionPreferences
+    @Inject
+    constructor(
+        private val dataStore: DataStore<Preferences>,
+    ) {
+        val clientLogin: Flow<String?> =
+            dataStore.data.map { preferences ->
+                preferences[CLIENT_LOGIN_KEY]
+            }
 
-    suspend fun saveClientLogin(value: String) {
-        dataStore.edit { preferences ->
-            preferences[CLIENT_LOGIN_KEY] = value
+        suspend fun saveClientLogin(value: String) {
+            dataStore.edit { preferences ->
+                preferences[CLIENT_LOGIN_KEY] = value
+            }
+        }
+
+        companion object {
+            private val CLIENT_LOGIN_KEY = stringPreferencesKey("client_login")
         }
     }
-
-    companion object {
-        private val CLIENT_LOGIN_KEY = stringPreferencesKey("client_login")
-    }
-}
