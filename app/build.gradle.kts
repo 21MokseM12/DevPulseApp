@@ -12,19 +12,33 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"debug\"")
+        }
+
+        create("staging") {
+            initWith(getByName("debug"))
+            matchingFallbacks += listOf("debug")
+            buildConfigField("String", "BASE_URL", "\"https://staging-api.devpulse.example/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"staging\"")
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            buildConfigField("String", "BASE_URL", "\"https://api.devpulse.example/\"")
+            buildConfigField("String", "ENVIRONMENT", "\"release\"")
         }
     }
 
@@ -39,6 +53,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
