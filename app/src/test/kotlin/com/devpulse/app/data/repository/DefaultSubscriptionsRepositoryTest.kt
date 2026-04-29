@@ -70,6 +70,61 @@ class DefaultSubscriptionsRepositoryTest {
         }
     }
 
+    @Test
+    fun getSubscriptions_mapsNullableTagsAndFiltersToEmptyLists() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult =
+                        RemoteCallResult.Success(
+                            data =
+                                listOf(
+                                    LinkResponseDto(
+                                        id = 11L,
+                                        url = "https://example.net",
+                                        tags = null,
+                                        filters = null,
+                                    ),
+                                ),
+                            statusCode = 200,
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result = repository.getSubscriptions()
+
+            assertTrue(result is SubscriptionsResult.Success)
+            val link = (result as SubscriptionsResult.Success).links.first()
+            assertTrue(link.tags.isEmpty())
+            assertTrue(link.filters.isEmpty())
+        }
+    }
+
+    @Test
+    fun getSubscriptions_propagatesNetworkFailureAsFailure() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult =
+                        RemoteCallResult.NetworkFailure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.Network,
+                                    userMessage = "Ошибка сети",
+                                ),
+                            throwable = IllegalStateException("network"),
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result = repository.getSubscriptions()
+
+            assertTrue(result is SubscriptionsResult.Failure)
+            assertEquals(ApiErrorKind.Network, (result as SubscriptionsResult.Failure).error.kind)
+            assertEquals("Ошибка сети", result.error.userMessage)
+        }
+    }
+
     private class FakeRemoteDataSource(
         private val linksResult: RemoteCallResult<List<LinkResponseDto>>,
     ) : DevPulseRemoteDataSource {
