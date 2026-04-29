@@ -165,6 +165,48 @@ class SubscriptionsViewModelTest {
         }
     }
 
+    @Test
+    fun retry_afterError_loadsContent() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results =
+                        ArrayDeque(
+                            listOf(
+                                SubscriptionsResult.Failure(
+                                    error =
+                                        ApiError(
+                                            kind = ApiErrorKind.Network,
+                                            userMessage = "Ошибка сети",
+                                        ),
+                                ),
+                                SubscriptionsResult.Success(
+                                    links =
+                                        listOf(
+                                            TrackedLink(
+                                                id = 5L,
+                                                url = "https://example.dev",
+                                                tags = listOf("dev"),
+                                                filters = emptyList(),
+                                            ),
+                                        ),
+                                ),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            assertEquals("Ошибка сети", viewModel.uiState.value.errorMessage)
+            viewModel.retry()
+            advanceUntilIdle()
+
+            assertEquals(null, viewModel.uiState.value.errorMessage)
+            assertEquals(1, viewModel.uiState.value.links.size)
+            assertEquals(5L, viewModel.uiState.value.links.first().id)
+        }
+    }
+
     private class FakeSubscriptionsRepository(
         private val results: ArrayDeque<SubscriptionsResult>,
         private val gate: CompletableDeferred<Unit>? = null,

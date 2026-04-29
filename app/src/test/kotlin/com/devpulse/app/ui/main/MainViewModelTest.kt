@@ -66,6 +66,26 @@ class MainViewModelTest {
     }
 
     @Test
+    fun init_withoutSession_routesToAuth() {
+        runTest {
+            val repository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val viewModel = MainViewModel(repository, FakeSessionStore())
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+        }
+    }
+
+    @Test
     fun onLoginSucceeded_setsHasCachedSessionToTrue() {
         runTest {
             val repository =

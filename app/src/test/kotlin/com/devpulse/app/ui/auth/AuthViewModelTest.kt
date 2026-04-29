@@ -104,6 +104,50 @@ class AuthViewModelTest {
         }
     }
 
+    @Test
+    fun submit_withNetworkError_exposesUserMessage() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    result =
+                        RemoteCallResult.NetworkFailure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.NetworkTimeout,
+                                    userMessage = "Превышено время ожидания сети",
+                                ),
+                            throwable = IllegalStateException("timeout"),
+                        ),
+                )
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            viewModel.submit()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isAuthorized)
+            assertEquals("Превышено время ожидания сети", viewModel.uiState.value.errorMessage)
+        }
+    }
+
+    @Test
+    fun onAuthorizationHandled_resetsAuthorizationFlagAndPassword() {
+        runTest {
+            val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            viewModel.submit()
+            advanceUntilIdle()
+            viewModel.onAuthorizationHandled()
+
+            assertFalse(viewModel.uiState.value.isAuthorized)
+            assertEquals("", viewModel.uiState.value.password)
+        }
+    }
+
     private class FakeRemoteDataSource(
         private val result: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),
         private val gate: CompletableDeferred<Unit>? = null,
