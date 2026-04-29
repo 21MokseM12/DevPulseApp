@@ -207,17 +207,108 @@ class SubscriptionsViewModelTest {
         }
     }
 
+    @Test
+    fun addSubscription_withInvalidUrl_showsValidationError() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("not-url")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals("Введите корректный URL (http/https).", viewModel.uiState.value.addErrorMessage)
+            assertEquals(0, repository.addCalls)
+        }
+    }
+
+    @Test
+    fun addSubscription_successfullyAddsItemWithoutManualReload() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult =
+                        SubscriptionsResult.Success(
+                            listOf(
+                                TrackedLink(
+                                    id = 42L,
+                                    url = "https://example.com/new",
+                                    tags = listOf("dev"),
+                                    filters = listOf("contains:kotlin"),
+                                ),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://example.com/new")
+            viewModel.onAddTagsInputChanged("dev")
+            viewModel.onAddFiltersInputChanged("contains:kotlin")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.addCalls)
+            assertEquals(42L, viewModel.uiState.value.links.first().id)
+            assertEquals("", viewModel.uiState.value.addLinkInput)
+        }
+    }
+
+    @Test
+    fun addSubscription_backendErrorShownNearForm() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult =
+                        SubscriptionsResult.Failure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.BadRequest,
+                                    userMessage = "Подписка уже существует",
+                                ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://example.com/existing")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals("Подписка уже существует", viewModel.uiState.value.addErrorMessage)
+            assertTrue(viewModel.uiState.value.links.isEmpty())
+        }
+    }
+
     private class FakeSubscriptionsRepository(
         private val results: ArrayDeque<SubscriptionsResult>,
         private val gate: CompletableDeferred<Unit>? = null,
+        private val addResult: SubscriptionsResult = SubscriptionsResult.Success(emptyList()),
     ) : SubscriptionsRepository {
         var calls: Int = 0
+            private set
+        var addCalls: Int = 0
             private set
 
         override suspend fun getSubscriptions(): SubscriptionsResult {
             calls += 1
             gate?.await()
             return results.removeFirstOrNull() ?: SubscriptionsResult.Success(links = emptyList())
+        }
+
+        override suspend fun addSubscription(
+            link: String,
+            tags: List<String>,
+            filters: List<String>,
+        ): SubscriptionsResult {
+            addCalls += 1
+            return addResult
         }
     }
 }

@@ -125,8 +125,81 @@ class DefaultSubscriptionsRepositoryTest {
         }
     }
 
+    @Test
+    fun addSubscription_returnsAddedLink() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult = RemoteCallResult.Success(data = emptyList(), statusCode = 200),
+                    addResult =
+                        RemoteCallResult.Success(
+                            data =
+                                LinkResponseDto(
+                                    id = 77L,
+                                    url = "https://example.com/new",
+                                    tags = listOf("dev"),
+                                    filters = listOf("contains:kotlin"),
+                                ),
+                            statusCode = 200,
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result =
+                repository.addSubscription(
+                    link = "https://example.com/new",
+                    tags = listOf("dev"),
+                    filters = listOf("contains:kotlin"),
+                )
+
+            assertTrue(result is SubscriptionsResult.Success)
+            assertEquals(77L, (result as SubscriptionsResult.Success).links.first().id)
+        }
+    }
+
+    @Test
+    fun addSubscription_propagatesApiFailure() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult = RemoteCallResult.Success(data = emptyList(), statusCode = 200),
+                    addResult =
+                        RemoteCallResult.ApiFailure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.BadRequest,
+                                    userMessage = "Подписка уже существует",
+                                ),
+                            statusCode = 400,
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result =
+                repository.addSubscription(
+                    link = "https://example.com/new",
+                    tags = emptyList(),
+                    filters = emptyList(),
+                )
+
+            assertTrue(result is SubscriptionsResult.Failure)
+            assertEquals("Подписка уже существует", (result as SubscriptionsResult.Failure).error.userMessage)
+        }
+    }
+
     private class FakeRemoteDataSource(
         private val linksResult: RemoteCallResult<List<LinkResponseDto>>,
+        private val addResult: RemoteCallResult<LinkResponseDto> =
+            RemoteCallResult.Success(
+                data =
+                    LinkResponseDto(
+                        id = 0L,
+                        url = "https://example.com",
+                        tags = emptyList(),
+                        filters = emptyList(),
+                    ),
+                statusCode = 200,
+            ),
     ) : DevPulseRemoteDataSource {
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             throw UnsupportedOperationException()
@@ -138,9 +211,7 @@ class DefaultSubscriptionsRepositoryTest {
 
         override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> = linksResult
 
-        override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> {
-            throw UnsupportedOperationException()
-        }
+        override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> = addResult
 
         override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> {
             throw UnsupportedOperationException()

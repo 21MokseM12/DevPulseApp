@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -38,6 +39,10 @@ fun SubscriptionsRoute(
         onLogout = onLogout,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
+        onAddLinkInputChange = viewModel::onAddLinkInputChanged,
+        onAddTagsInputChange = viewModel::onAddTagsInputChanged,
+        onAddFiltersInputChange = viewModel::onAddFiltersInputChanged,
+        onAddSubscription = viewModel::addSubscription,
     )
 }
 
@@ -50,6 +55,10 @@ private fun SubscriptionsScreen(
     onLogout: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    onAddLinkInputChange: (String) -> Unit,
+    onAddTagsInputChange: (String) -> Unit,
+    onAddFiltersInputChange: (String) -> Unit,
+    onAddSubscription: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -63,6 +72,13 @@ private fun SubscriptionsScreen(
             onGoToUpdates = onGoToUpdates,
             onGoToSettings = onGoToSettings,
             onLogout = onLogout,
+        )
+        AddSubscriptionForm(
+            uiState = uiState,
+            onAddLinkInputChange = onAddLinkInputChange,
+            onAddTagsInputChange = onAddTagsInputChange,
+            onAddFiltersInputChange = onAddFiltersInputChange,
+            onAddSubscription = onAddSubscription,
         )
 
         if (uiState.isLoading) {
@@ -97,6 +113,65 @@ private fun SubscriptionsScreen(
                 else -> {
                     LinksContent(links = uiState.links)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddSubscriptionForm(
+    uiState: SubscriptionsUiState,
+    onAddLinkInputChange: (String) -> Unit,
+    onAddTagsInputChange: (String) -> Unit,
+    onAddFiltersInputChange: (String) -> Unit,
+    onAddSubscription: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = uiState.addLinkInput,
+            onValueChange = onAddLinkInputChange,
+            label = { Text(text = "URL") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isAdding,
+        )
+        OutlinedTextField(
+            value = uiState.addTagsInput,
+            onValueChange = onAddTagsInputChange,
+            label = { Text(text = "Tags (через запятую)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isAdding,
+        )
+        OutlinedTextField(
+            value = uiState.addFiltersInput,
+            onValueChange = onAddFiltersInputChange,
+            label = { Text(text = "Filters (через запятую)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isAdding,
+        )
+        if (uiState.addErrorMessage != null) {
+            Text(
+                text = uiState.addErrorMessage,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        Button(
+            onClick = onAddSubscription,
+            enabled = !uiState.isAdding,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            if (uiState.isAdding) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.padding(vertical = 2.dp),
+                )
+            } else {
+                Text(text = "Добавить ссылку")
             }
         }
     }
