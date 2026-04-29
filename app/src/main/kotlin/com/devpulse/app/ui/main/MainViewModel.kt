@@ -43,9 +43,9 @@ class MainViewModel
             }
         }
 
-        fun onLoginSucceeded() {
+        fun onLoginSucceeded(login: String) {
             viewModelScope.launch {
-                sessionStore.saveSession(login = "demo-user")
+                sessionStore.saveSession(login = login)
                 _uiState.update { state ->
                     state.copy(hasCachedSession = true)
                 }

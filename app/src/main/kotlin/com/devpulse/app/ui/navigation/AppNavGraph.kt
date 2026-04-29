@@ -17,12 +17,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
 
 @Composable
 fun AppNavGraph(
     uiState: MainUiState,
-    onLoginClick: () -> Unit,
+    onLoginClick: (String) -> Unit,
     onLogoutClick: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -51,9 +52,9 @@ fun AppNavGraph(
             }
 
             composable(AppRoute.Auth.route) {
-                AuthScreen(
-                    onLogin = {
-                        onLoginClick()
+                AuthRoute(
+                    onAuthorized = { login ->
+                        onLoginClick(login)
                         navController.navigateToMainAfterLogin()
                     },
                 )
@@ -122,16 +123,6 @@ private fun SplashScreen() {
     CenteredScreenContent {
         CircularProgressIndicator()
         Text(text = "Инициализация...")
-    }
-}
-
-@Composable
-private fun AuthScreen(onLogin: () -> Unit) {
-    CenteredScreenContent {
-        Text(text = "Auth")
-        Button(onClick = onLogin) {
-            Text(text = "Войти")
-        }
     }
 }
 

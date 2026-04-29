@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.devpulse.app.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +24,8 @@ class DevPulseAppTest {
     @Test
     fun loginAndLogout_navigatesWithoutDuplicateScreens() {
         composeRule.waitUntilNodeWithTextExists("Войти")
+        composeRule.onNodeWithText("Логин").performTextInput("moksem")
+        composeRule.onNodeWithText("Пароль").performTextInput("secret")
         composeRule.onNodeWithText("Войти").performClick()
         composeRule.waitUntilNodeWithTextExists("Subscriptions")
         composeRule.onNodeWithText("Subscriptions").assertIsDisplayed()

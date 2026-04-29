@@ -68,11 +68,11 @@ class MainViewModelTest {
             val sessionStore = FakeSessionStore()
             val viewModel = MainViewModel(repository, sessionStore)
             advanceUntilIdle()
-            viewModel.onLoginSucceeded()
+            viewModel.onLoginSucceeded(login = "moksem")
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.hasCachedSession)
-            assertEquals("demo-user", sessionStore.getSession()?.login)
+            assertEquals("moksem", sessionStore.getSession()?.login)
         }
     }
 
