@@ -1,6 +1,7 @@
 package com.devpulse.app.di
 
 import com.devpulse.app.BuildConfig
+import com.devpulse.app.data.remote.ClientLoginHeaderInterceptor
 import com.devpulse.app.data.remote.DevPulseApi
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -31,8 +32,12 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
+    fun provideOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+        clientLoginHeaderInterceptor: ClientLoginHeaderInterceptor,
+    ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(clientLoginHeaderInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()
     }
