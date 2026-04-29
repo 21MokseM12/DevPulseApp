@@ -4,6 +4,7 @@ import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.domain.repository.AppBootstrapInfo
 import com.devpulse.app.domain.repository.AppBootstrapRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -41,7 +42,18 @@ class MainViewModelTest {
                         ),
                 )
 
-            val viewModel = MainViewModel(repository, FakeSessionStore())
+            val viewModel =
+                MainViewModel(
+                    repository,
+                    FakeSessionStore(
+                        initialSession =
+                            StoredSession(
+                                login = "demo-user",
+                                isRegistered = true,
+                                updatedAtEpochMs = 1_000L,
+                            ),
+                    ),
+                )
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -49,6 +61,7 @@ class MainViewModelTest {
             assertEquals("https://api.example.com/", state.baseUrl)
             assertFalse(state.isBootstrapping)
             assertTrue(state.hasCachedSession)
+            assertEquals(StartupDestination.Subscriptions, state.startupDestination)
         }
     }
 
@@ -73,6 +86,7 @@ class MainViewModelTest {
 
             assertTrue(viewModel.uiState.value.hasCachedSession)
             assertEquals("moksem", sessionStore.getSession()?.login)
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
         }
     }
 
@@ -105,13 +119,55 @@ class MainViewModelTest {
 
             assertFalse(viewModel.uiState.value.hasCachedSession)
             assertEquals(null, sessionStore.getSession())
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+        }
+    }
+
+    @Test
+    fun logoutDuringBootstrap_keepsAuthRouteAfterBootstrapFinishes() {
+        runTest {
+            val bootstrapGate = CompletableDeferred<Unit>()
+            val repository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = true,
+                        ),
+                    gate = bootstrapGate,
+                )
+            val sessionStore =
+                FakeSessionStore(
+                    initialSession =
+                        StoredSession(
+                            login = "demo-user",
+                            isRegistered = true,
+                            updatedAtEpochMs = 1_000L,
+                        ),
+                )
+            val viewModel = MainViewModel(repository, sessionStore)
+            advanceUntilIdle()
+
+            viewModel.onLogout()
+            advanceUntilIdle()
+            bootstrapGate.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.hasCachedSession)
+            assertFalse(viewModel.uiState.value.isBootstrapping)
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
         }
     }
 
     private class FakeAppBootstrapRepository(
         private val info: AppBootstrapInfo,
+        private val gate: CompletableDeferred<Unit>? = null,
     ) : AppBootstrapRepository {
-        override suspend fun loadBootstrapInfo(): AppBootstrapInfo = info
+        override suspend fun loadBootstrapInfo(): AppBootstrapInfo {
+            gate?.await()
+            return info
+        }
     }
 
     private class FakeSessionStore(

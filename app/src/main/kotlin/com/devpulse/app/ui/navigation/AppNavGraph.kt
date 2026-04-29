@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
+import com.devpulse.app.ui.main.StartupDestination
 
 @Composable
 fun AppNavGraph(
@@ -27,6 +28,21 @@ fun AppNavGraph(
     onLogoutClick: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
+    LaunchedEffect(uiState.startupDestination) {
+        val target =
+            when (uiState.startupDestination) {
+                StartupDestination.Loading -> null
+                StartupDestination.Auth -> AppRoute.Auth.route
+                StartupDestination.Subscriptions -> AppRoute.Subscriptions.route
+            }
+        if (target != null) {
+            navController.navigate(target) {
+                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    }
+
     Scaffold { innerPadding ->
         NavHost(
             navController = navController,
@@ -35,27 +51,12 @@ fun AppNavGraph(
         ) {
             composable(AppRoute.Splash.route) {
                 SplashScreen()
-                LaunchedEffect(uiState.isBootstrapping, uiState.hasCachedSession) {
-                    if (!uiState.isBootstrapping) {
-                        val target =
-                            if (uiState.hasCachedSession) {
-                                AppRoute.Subscriptions.route
-                            } else {
-                                AppRoute.Auth.route
-                            }
-                        navController.navigate(target) {
-                            popUpTo(AppRoute.Splash.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                }
             }
 
             composable(AppRoute.Auth.route) {
                 AuthRoute(
                     onAuthorized = { login ->
                         onLoginClick(login)
-                        navController.navigateToMainAfterLogin()
                     },
                 )
             }
@@ -66,7 +67,6 @@ fun AppNavGraph(
                     onGoToSettings = { navController.navigateToTopLevel(AppRoute.Settings.route) },
                     onLogout = {
                         onLogoutClick()
-                        navController.navigateToAuthAfterLogout()
                     },
                 )
             }
@@ -77,7 +77,6 @@ fun AppNavGraph(
                     onGoToSettings = { navController.navigateToTopLevel(AppRoute.Settings.route) },
                     onLogout = {
                         onLogoutClick()
-                        navController.navigateToAuthAfterLogout()
                     },
                 )
             }
@@ -88,25 +87,10 @@ fun AppNavGraph(
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
                     onLogout = {
                         onLogoutClick()
-                        navController.navigateToAuthAfterLogout()
                     },
                 )
             }
         }
-    }
-}
-
-private fun NavHostController.navigateToMainAfterLogin() {
-    navigate(AppRoute.Subscriptions.route) {
-        popUpTo(graph.findStartDestination().id) { inclusive = true }
-        launchSingleTop = true
-    }
-}
-
-private fun NavHostController.navigateToAuthAfterLogout() {
-    navigate(AppRoute.Auth.route) {
-        popUpTo(graph.findStartDestination().id) { inclusive = true }
-        launchSingleTop = true
     }
 }
 
