@@ -2,6 +2,7 @@ package com.devpulse.app.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.domain.repository.AppBootstrapRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ class MainViewModel
     @Inject
     constructor(
         private val appBootstrapRepository: AppBootstrapRepository,
+        private val sessionStore: SessionStore,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MainUiState())
         val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -42,14 +44,20 @@ class MainViewModel
         }
 
         fun onLoginSucceeded() {
-            _uiState.update { state ->
-                state.copy(hasCachedSession = true)
+            viewModelScope.launch {
+                sessionStore.saveSession(login = "demo-user")
+                _uiState.update { state ->
+                    state.copy(hasCachedSession = true)
+                }
             }
         }
 
         fun onLogout() {
-            _uiState.update { state ->
-                state.copy(hasCachedSession = false)
+            viewModelScope.launch {
+                sessionStore.clearSession()
+                _uiState.update { state ->
+                    state.copy(hasCachedSession = false)
+                }
             }
         }
     }

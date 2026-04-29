@@ -1,15 +1,12 @@
 package com.devpulse.app.data.repository
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.emptyPreferences
 import com.devpulse.app.BuildConfig
 import com.devpulse.app.config.EnvironmentConfigProvider
-import com.devpulse.app.data.local.db.CachedSessionEntity
-import com.devpulse.app.data.local.db.SessionDao
-import com.devpulse.app.data.local.preferences.UserSessionPreferences
+import com.devpulse.app.data.local.preferences.SessionStore
+import com.devpulse.app.data.local.preferences.StoredSession
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,15 +15,13 @@ import org.junit.Test
 
 class DefaultAppBootstrapRepositoryTest {
     @Test
-    fun loadBootstrapInfo_returnsNoCachedSession_whenDbAndPrefsAreEmpty() =
+    fun loadBootstrapInfo_returnsNoCachedSession_whenSessionIsEmpty() {
         runTest {
-            val sessionDao = FakeSessionDao(initialSession = null)
-            val userSessionPreferences = UserSessionPreferences(FakePreferencesDataStore())
+            val sessionStore = FakeSessionStore(initialSession = null)
             val repository =
                 DefaultAppBootstrapRepository(
                     configProvider = EnvironmentConfigProvider(),
-                    sessionDao = sessionDao,
-                    userSessionPreferences = userSessionPreferences,
+                    sessionStore = sessionStore,
                 )
 
             val info = repository.loadBootstrapInfo()
@@ -35,92 +30,80 @@ class DefaultAppBootstrapRepositoryTest {
             assertEquals(BuildConfig.BASE_URL, info.baseUrl)
             assertFalse(info.hasCachedSession)
         }
+    }
 
     @Test
-    fun loadBootstrapInfo_returnsCachedSession_whenDbSessionExists() =
+    fun loadBootstrapInfo_returnsCachedSession_whenSessionExists() {
         runTest {
-            val sessionDao =
-                FakeSessionDao(
+            val sessionStore =
+                FakeSessionStore(
                     initialSession =
-                        CachedSessionEntity(
-                            clientLogin = "moksem",
+                        StoredSession(
+                            login = "moksem",
+                            isRegistered = true,
                             updatedAtEpochMs = 1_000L,
                         ),
                 )
-            val userSessionPreferences = UserSessionPreferences(FakePreferencesDataStore())
             val repository =
                 DefaultAppBootstrapRepository(
                     configProvider = EnvironmentConfigProvider(),
-                    sessionDao = sessionDao,
-                    userSessionPreferences = userSessionPreferences,
+                    sessionStore = sessionStore,
                 )
 
             val info = repository.loadBootstrapInfo()
 
             assertTrue(info.hasCachedSession)
         }
+    }
 
     @Test
-    fun loadBootstrapInfo_returnsCachedSession_whenPreferenceLoginExists() =
+    fun loadBootstrapInfo_returnsNoCachedSession_afterClearSession() {
         runTest {
-            val dataStore = FakePreferencesDataStore()
-            val userSessionPreferences = UserSessionPreferences(dataStore)
-            userSessionPreferences.saveClientLogin("moksem")
-            val repository =
-                DefaultAppBootstrapRepository(
-                    configProvider = EnvironmentConfigProvider(),
-                    sessionDao = FakeSessionDao(initialSession = null),
-                    userSessionPreferences = userSessionPreferences,
+            val sessionStore =
+                FakeSessionStore(
+                    initialSession =
+                        StoredSession(
+                            login = "moksem",
+                            isRegistered = true,
+                            updatedAtEpochMs = 1_000L,
+                        ),
                 )
-
-            val info = repository.loadBootstrapInfo()
-
-            assertTrue(info.hasCachedSession)
-        }
-
-    @Test
-    fun loadBootstrapInfo_returnsNoCachedSession_whenPreferenceLoginIsBlank() =
-        runTest {
-            val dataStore = FakePreferencesDataStore()
-            val userSessionPreferences = UserSessionPreferences(dataStore)
-            userSessionPreferences.saveClientLogin("")
+            sessionStore.clearSession()
             val repository =
                 DefaultAppBootstrapRepository(
                     configProvider = EnvironmentConfigProvider(),
-                    sessionDao = FakeSessionDao(initialSession = null),
-                    userSessionPreferences = userSessionPreferences,
+                    sessionStore = sessionStore,
                 )
 
             val info = repository.loadBootstrapInfo()
 
             assertFalse(info.hasCachedSession)
         }
-
-    private class FakeSessionDao(
-        initialSession: CachedSessionEntity?,
-    ) : SessionDao {
-        private var cachedSession: CachedSessionEntity? = initialSession
-
-        override suspend fun getSession(): CachedSessionEntity? = cachedSession
-
-        override suspend fun upsert(session: CachedSessionEntity) {
-            cachedSession = session
-        }
     }
 
-    private class FakePreferencesDataStore : DataStore<Preferences> {
-        private var current: Preferences = emptyPreferences()
+    private class FakeSessionStore(initialSession: StoredSession?) : SessionStore {
+        private val state = MutableStateFlow(initialSession)
 
-        override val data: Flow<Preferences>
-            get() =
-                flow {
-                    emit(current)
-                }
+        override fun observeSession(): Flow<StoredSession?> = state
 
-        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
-            val updated = transform(current)
-            current = updated
-            return updated
+        override fun observeClientLogin(): Flow<String?> = state.map { session -> session?.login }
+
+        override suspend fun getSession(): StoredSession? = state.value
+
+        override suspend fun saveSession(
+            login: String,
+            isRegistered: Boolean,
+        ) {
+            state.value =
+                StoredSession(
+                    login = login,
+                    isRegistered = isRegistered,
+                    updatedAtEpochMs = 1_000L,
+                )
+        }
+
+        override suspend fun clearSession() {
+            state.value = null
         }
     }
 }
