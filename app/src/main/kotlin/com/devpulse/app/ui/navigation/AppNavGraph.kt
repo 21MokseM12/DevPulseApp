@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
+import com.devpulse.app.ui.subscriptions.SubscriptionsRoute
 
 @Composable
 fun AppNavGraph(
@@ -62,7 +63,7 @@ fun AppNavGraph(
             }
 
             composable(AppRoute.Subscriptions.route) {
-                SubscriptionsScreen(
+                SubscriptionsRoute(
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
                     onGoToSettings = { navController.navigateToTopLevel(AppRoute.Settings.route) },
                     onLogout = {
@@ -107,20 +108,6 @@ private fun SplashScreen() {
     CenteredScreenContent {
         CircularProgressIndicator()
         Text(text = "Инициализация...")
-    }
-}
-
-@Composable
-private fun SubscriptionsScreen(
-    onGoToUpdates: () -> Unit,
-    onGoToSettings: () -> Unit,
-    onLogout: () -> Unit,
-) {
-    CenteredScreenContent {
-        Text(text = "Subscriptions")
-        Button(onClick = onGoToUpdates) { Text(text = "Открыть Updates") }
-        Button(onClick = onGoToSettings) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout) { Text(text = "Выйти") }
     }
 }
 
