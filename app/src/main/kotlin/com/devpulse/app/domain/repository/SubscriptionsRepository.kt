@@ -15,4 +15,10 @@ sealed interface SubscriptionsResult {
 
 interface SubscriptionsRepository {
     suspend fun getSubscriptions(): SubscriptionsResult
+
+    suspend fun addSubscription(
+        link: String,
+        tags: List<String>,
+        filters: List<String>,
+    ): SubscriptionsResult
 }

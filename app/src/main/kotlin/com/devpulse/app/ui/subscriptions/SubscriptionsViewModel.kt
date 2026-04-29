@@ -11,13 +11,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.URI
 import javax.inject.Inject
 
 data class SubscriptionsUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
+    val isAdding: Boolean = false,
     val links: List<TrackedLink> = emptyList(),
     val errorMessage: String? = null,
+    val addLinkInput: String = "",
+    val addTagsInput: String = "",
+    val addFiltersInput: String = "",
+    val addErrorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -39,6 +45,81 @@ class SubscriptionsViewModel
 
         fun refresh() {
             load(isRefresh = true)
+        }
+
+        fun onAddLinkInputChanged(value: String) {
+            _uiState.update { state ->
+                state.copy(addLinkInput = value, addErrorMessage = null)
+            }
+        }
+
+        fun onAddTagsInputChanged(value: String) {
+            _uiState.update { state ->
+                state.copy(addTagsInput = value, addErrorMessage = null)
+            }
+        }
+
+        fun onAddFiltersInputChanged(value: String) {
+            _uiState.update { state ->
+                state.copy(addFiltersInput = value, addErrorMessage = null)
+            }
+        }
+
+        fun addSubscription() {
+            val current = _uiState.value
+            if (current.isAdding || current.isLoading || current.isRefreshing) return
+
+            val link = current.addLinkInput.trim()
+            val tags = parseCsv(current.addTagsInput)
+            val filters = parseCsv(current.addFiltersInput)
+
+            if (!isValidHttpUri(link)) {
+                _uiState.update { state ->
+                    state.copy(addErrorMessage = "Введите корректный URL (http/https).")
+                }
+                return
+            }
+
+            _uiState.update { state ->
+                state.copy(
+                    isAdding = true,
+                    addErrorMessage = null,
+                )
+            }
+
+            viewModelScope.launch {
+                when (
+                    val result =
+                        subscriptionsRepository.addSubscription(
+                            link = link,
+                            tags = tags,
+                            filters = filters,
+                        )
+                ) {
+                    is SubscriptionsResult.Success -> {
+                        val added = result.links.firstOrNull()
+                        _uiState.update { state ->
+                            state.copy(
+                                isAdding = false,
+                                links = if (added != null) listOf(added) + state.links else state.links,
+                                addLinkInput = "",
+                                addTagsInput = "",
+                                addFiltersInput = "",
+                                addErrorMessage = null,
+                            )
+                        }
+                    }
+
+                    is SubscriptionsResult.Failure -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isAdding = false,
+                                addErrorMessage = result.error.userMessage,
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         private fun load(isRefresh: Boolean) {
@@ -71,12 +152,26 @@ class SubscriptionsViewModel
                             state.copy(
                                 isLoading = false,
                                 isRefreshing = false,
-                                links = emptyList(),
                                 errorMessage = result.error.userMessage,
                             )
                         }
                     }
                 }
             }
+        }
+
+        private fun parseCsv(input: String): List<String> {
+            return input
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+        }
+
+        private fun isValidHttpUri(value: String): Boolean {
+            return runCatching { URI(value) }
+                .map { uri ->
+                    val scheme = uri.scheme?.lowercase()
+                    (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+                }.getOrDefault(false)
         }
     }
