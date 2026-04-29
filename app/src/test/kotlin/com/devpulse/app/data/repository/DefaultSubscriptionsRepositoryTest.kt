@@ -187,9 +187,72 @@ class DefaultSubscriptionsRepositoryTest {
         }
     }
 
+    @Test
+    fun removeSubscription_returnsRemovedLink() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult = RemoteCallResult.Success(data = emptyList(), statusCode = 200),
+                    removeResult =
+                        RemoteCallResult.Success(
+                            data =
+                                LinkResponseDto(
+                                    id = 55L,
+                                    url = "https://example.com/remove",
+                                    tags = emptyList(),
+                                    filters = emptyList(),
+                                ),
+                            statusCode = 200,
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result = repository.removeSubscription("https://example.com/remove")
+
+            assertTrue(result is SubscriptionsResult.Success)
+            assertEquals(55L, (result as SubscriptionsResult.Success).links.first().id)
+        }
+    }
+
+    @Test
+    fun removeSubscription_propagatesFailure() {
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    linksResult = RemoteCallResult.Success(data = emptyList(), statusCode = 200),
+                    removeResult =
+                        RemoteCallResult.NetworkFailure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.Network,
+                                    userMessage = "Сеть недоступна",
+                                ),
+                            throwable = IllegalStateException("network"),
+                        ),
+                )
+            val repository = DefaultSubscriptionsRepository(remote)
+
+            val result = repository.removeSubscription("https://example.com/remove")
+
+            assertTrue(result is SubscriptionsResult.Failure)
+            assertEquals("Сеть недоступна", (result as SubscriptionsResult.Failure).error.userMessage)
+        }
+    }
+
     private class FakeRemoteDataSource(
         private val linksResult: RemoteCallResult<List<LinkResponseDto>>,
         private val addResult: RemoteCallResult<LinkResponseDto> =
+            RemoteCallResult.Success(
+                data =
+                    LinkResponseDto(
+                        id = 0L,
+                        url = "https://example.com",
+                        tags = emptyList(),
+                        filters = emptyList(),
+                    ),
+                statusCode = 200,
+            ),
+        private val removeResult: RemoteCallResult<LinkResponseDto> =
             RemoteCallResult.Success(
                 data =
                     LinkResponseDto(
@@ -213,8 +276,6 @@ class DefaultSubscriptionsRepositoryTest {
 
         override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> = addResult
 
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> {
-            throw UnsupportedOperationException()
-        }
+        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> = removeResult
     }
 }

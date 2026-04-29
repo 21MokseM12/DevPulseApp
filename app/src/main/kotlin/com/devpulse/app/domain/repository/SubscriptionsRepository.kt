@@ -21,4 +21,6 @@ interface SubscriptionsRepository {
         tags: List<String>,
         filters: List<String>,
     ): SubscriptionsResult
+
+    suspend fun removeSubscription(link: String): SubscriptionsResult
 }
