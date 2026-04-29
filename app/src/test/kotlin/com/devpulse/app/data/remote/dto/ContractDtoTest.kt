@@ -1,5 +1,6 @@
 package com.devpulse.app.data.remote.dto
 
+import com.devpulse.app.domain.model.ApiErrorKind
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import org.junit.Assert.assertEquals
@@ -85,8 +86,9 @@ class ContractDtoTest {
         assertEquals(emptyList<String>(), linkDomain.tags)
         assertEquals(listOf("contains:java"), linkDomain.filters)
 
-        assertEquals("unauthorized", errorDomain.description)
+        assertEquals(ApiErrorKind.Unknown, errorDomain.kind)
+        assertEquals("unauthorized", errorDomain.userMessage)
         assertEquals("401", errorDomain.code)
-        assertEquals(emptyList<String>(), errorDomain.stacktrace)
+        assertEquals(null, errorDomain.statusCode)
     }
 }

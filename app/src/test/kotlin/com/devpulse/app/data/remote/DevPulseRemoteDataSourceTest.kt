@@ -4,6 +4,7 @@ import com.devpulse.app.data.remote.dto.AddLinkRequestDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
+import com.devpulse.app.domain.model.ApiErrorKind
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.test.runTest
@@ -20,6 +21,7 @@ import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
 class DevPulseRemoteDataSourceTest {
+    private val apiErrorMapper = ApiErrorMapper()
     private val moshi: Moshi =
         Moshi.Builder()
             .addLast(KotlinJsonAdapterFactory())
@@ -85,8 +87,9 @@ class DevPulseRemoteDataSourceTest {
                 assertTrue(result is RemoteCallResult.ApiFailure)
                 val failure = result as RemoteCallResult.ApiFailure
                 assertEquals(400, failure.statusCode)
-                assertEquals("invalid request", failure.error?.description)
-                assertEquals("ValidationException", failure.error?.exceptionName)
+                assertEquals(ApiErrorKind.BadRequest, failure.error.kind)
+                assertEquals("invalid request", failure.error.userMessage)
+                assertEquals("400", failure.error.code)
             }
         }
 
@@ -112,6 +115,7 @@ class DevPulseRemoteDataSourceTest {
                 DefaultDevPulseRemoteDataSource(
                     api = cancellableApi,
                     moshi = moshi,
+                    apiErrorMapper = apiErrorMapper,
                 )
 
             try {
@@ -138,6 +142,7 @@ class DevPulseRemoteDataSourceTest {
             assertTrue(result is RemoteCallResult.NetworkFailure)
             val failure = result as RemoteCallResult.NetworkFailure
             assertTrue(failure.throwable is IOException)
+            assertEquals(ApiErrorKind.Network, failure.error.kind)
         }
 
     @Test
@@ -156,7 +161,8 @@ class DevPulseRemoteDataSourceTest {
                 assertTrue(result is RemoteCallResult.ApiFailure)
                 val failure = result as RemoteCallResult.ApiFailure
                 assertEquals(500, failure.statusCode)
-                assertEquals(null, failure.error)
+                assertEquals(ApiErrorKind.Unknown, failure.error.kind)
+                assertEquals("Произошла ошибка сервера. Попробуйте позже.", failure.error.userMessage)
             }
         }
 
@@ -179,6 +185,7 @@ class DevPulseRemoteDataSourceTest {
             assertTrue(result is RemoteCallResult.NetworkFailure)
             val failure = result as RemoteCallResult.NetworkFailure
             assertTrue(failure.throwable is IllegalStateException)
+            assertEquals(ApiErrorKind.Unknown, failure.error.kind)
         }
 
     @Test
@@ -197,6 +204,7 @@ class DevPulseRemoteDataSourceTest {
             assertTrue(result is RemoteCallResult.NetworkFailure)
             val failure = result as RemoteCallResult.NetworkFailure
             assertTrue(failure.throwable is IllegalArgumentException)
+            assertEquals(ApiErrorKind.Unknown, failure.error.kind)
         }
 
     private fun createDataSource(server: MockWebServer): DefaultDevPulseRemoteDataSource {
@@ -206,11 +214,11 @@ class DevPulseRemoteDataSourceTest {
                 .addConverterFactory(MoshiConverterFactory.create(moshi))
                 .build()
         val api = retrofit.create(DevPulseApi::class.java)
-        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi)
+        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi, apiErrorMapper = apiErrorMapper)
     }
 
     private fun createDataSource(api: DevPulseApi): DefaultDevPulseRemoteDataSource {
-        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi)
+        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi, apiErrorMapper = apiErrorMapper)
     }
 
     private class FakeDevPulseApi(

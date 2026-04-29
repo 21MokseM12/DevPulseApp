@@ -1,9 +1,17 @@
 package com.devpulse.app.domain.model
 
+enum class ApiErrorKind {
+    BadRequest,
+    NotFound,
+    NetworkTimeout,
+    Network,
+    Unknown,
+}
+
 data class ApiError(
-    val description: String,
-    val code: String,
-    val exceptionName: String?,
-    val exceptionMessage: String?,
-    val stacktrace: List<String>,
+    val kind: ApiErrorKind,
+    val userMessage: String,
+    val statusCode: Int? = null,
+    val code: String? = null,
+    val technicalDescription: String? = null,
 )

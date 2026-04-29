@@ -9,11 +9,12 @@ sealed interface RemoteCallResult<out T> {
     ) : RemoteCallResult<T>
 
     data class ApiFailure(
-        val error: ApiError?,
+        val error: ApiError,
         val statusCode: Int,
     ) : RemoteCallResult<Nothing>
 
     data class NetworkFailure(
+        val error: ApiError,
         val throwable: Throwable,
     ) : RemoteCallResult<Nothing>
 }

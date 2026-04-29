@@ -1,6 +1,7 @@
 package com.devpulse.app.di
 
 import com.devpulse.app.BuildConfig
+import com.devpulse.app.data.remote.ApiErrorMapper
 import com.devpulse.app.data.remote.ClientLoginHeaderInterceptor
 import com.devpulse.app.data.remote.DevPulseApi
 import com.squareup.moshi.Moshi
@@ -41,6 +42,10 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .build()
     }
+
+    @Provides
+    @Singleton
+    fun provideApiErrorMapper(): ApiErrorMapper = ApiErrorMapper()
 
     @Provides
     @Singleton
