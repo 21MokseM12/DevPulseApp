@@ -1,6 +1,7 @@
 package com.devpulse.app.data.remote.dto
 
 import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
 import com.squareup.moshi.Json
 
 data class ApiErrorResponseDto(
@@ -18,10 +19,10 @@ data class ApiErrorResponseDto(
 
 fun ApiErrorResponseDto.toDomain(): ApiError {
     return ApiError(
-        description = description,
+        kind = ApiErrorKind.Unknown,
+        userMessage = description,
+        statusCode = null,
         code = code,
-        exceptionName = exceptionName,
-        exceptionMessage = exceptionMessage,
-        stacktrace = stacktrace.orEmpty(),
+        technicalDescription = exceptionMessage ?: exceptionName,
     )
 }

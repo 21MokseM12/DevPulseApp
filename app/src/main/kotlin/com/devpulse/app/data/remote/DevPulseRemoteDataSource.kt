@@ -5,7 +5,6 @@ import com.devpulse.app.data.remote.dto.ApiErrorResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
-import com.devpulse.app.data.remote.dto.toDomain
 import com.squareup.moshi.Moshi
 import retrofit2.Response
 import java.io.IOException
@@ -31,6 +30,7 @@ class DefaultDevPulseRemoteDataSource
     constructor(
         private val api: DevPulseApi,
         moshi: Moshi,
+        private val apiErrorMapper: ApiErrorMapper,
     ) : DevPulseRemoteDataSource {
         private val apiErrorAdapter = moshi.adapter(ApiErrorResponseDto::class.java)
 
@@ -65,22 +65,31 @@ class DefaultDevPulseRemoteDataSource
                             statusCode = response.code(),
                         )
                     } else {
+                        val exception = IllegalStateException("Response body is null for code ${response.code()}")
                         RemoteCallResult.NetworkFailure(
-                            throwable = IllegalStateException("Response body is null for code ${response.code()}"),
+                            error = apiErrorMapper.mapNetworkError(exception),
+                            throwable = exception,
                         )
                     }
                 } else {
+                    val statusCode = response.code()
                     RemoteCallResult.ApiFailure(
-                        error = parseApiError(response),
-                        statusCode = response.code(),
+                        error = apiErrorMapper.mapApiError(statusCode = statusCode, rawError = parseApiError(response)),
+                        statusCode = statusCode,
                     )
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (ioException: IOException) {
-                RemoteCallResult.NetworkFailure(throwable = ioException)
+                RemoteCallResult.NetworkFailure(
+                    error = apiErrorMapper.mapNetworkError(ioException),
+                    throwable = ioException,
+                )
             } catch (exception: Exception) {
-                RemoteCallResult.NetworkFailure(throwable = exception)
+                RemoteCallResult.NetworkFailure(
+                    error = apiErrorMapper.mapNetworkError(exception),
+                    throwable = exception,
+                )
             }
         }
 
@@ -93,24 +102,31 @@ class DefaultDevPulseRemoteDataSource
                         statusCode = response.code(),
                     )
                 } else {
+                    val statusCode = response.code()
                     RemoteCallResult.ApiFailure(
-                        error = parseApiError(response),
-                        statusCode = response.code(),
+                        error = apiErrorMapper.mapApiError(statusCode = statusCode, rawError = parseApiError(response)),
+                        statusCode = statusCode,
                     )
                 }
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (ioException: IOException) {
-                RemoteCallResult.NetworkFailure(throwable = ioException)
+                RemoteCallResult.NetworkFailure(
+                    error = apiErrorMapper.mapNetworkError(ioException),
+                    throwable = ioException,
+                )
             } catch (exception: Exception) {
-                RemoteCallResult.NetworkFailure(throwable = exception)
+                RemoteCallResult.NetworkFailure(
+                    error = apiErrorMapper.mapNetworkError(exception),
+                    throwable = exception,
+                )
             }
         }
 
-        private fun parseApiError(response: Response<*>): com.devpulse.app.domain.model.ApiError? {
+        private fun parseApiError(response: Response<*>): ApiErrorResponseDto? {
             val errorBody = response.errorBody() ?: return null
             return runCatching {
-                apiErrorAdapter.fromJson(errorBody.string())?.toDomain()
+                apiErrorAdapter.fromJson(errorBody.string())
             }.getOrNull()
         }
     }
