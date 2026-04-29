@@ -18,12 +18,15 @@ data class SubscriptionsUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val isAdding: Boolean = false,
+    val isRemoving: Boolean = false,
     val links: List<TrackedLink> = emptyList(),
     val errorMessage: String? = null,
+    val removeErrorMessage: String? = null,
     val addLinkInput: String = "",
     val addTagsInput: String = "",
     val addFiltersInput: String = "",
     val addErrorMessage: String? = null,
+    val pendingRemoval: TrackedLink? = null,
 )
 
 @HiltViewModel
@@ -65,6 +68,66 @@ class SubscriptionsViewModel
             }
         }
 
+        fun onRemoveRequested(link: TrackedLink) {
+            _uiState.update { state ->
+                state.copy(
+                    pendingRemoval = link,
+                    removeErrorMessage = null,
+                )
+            }
+        }
+
+        fun onRemoveDismissed() {
+            _uiState.update { state ->
+                state.copy(pendingRemoval = null)
+            }
+        }
+
+        fun confirmRemove() {
+            val current = _uiState.value
+            val target = current.pendingRemoval ?: return
+            if (current.isRemoving || current.isLoading || current.isRefreshing || current.isAdding) return
+
+            val oldLinks = current.links
+            val index = oldLinks.indexOfFirst { it.id == target.id }
+            if (index == -1) {
+                _uiState.update { state -> state.copy(pendingRemoval = null) }
+                return
+            }
+            val optimisticLinks = oldLinks.filterNot { it.id == target.id }
+            _uiState.update { state ->
+                state.copy(
+                    isRemoving = true,
+                    links = optimisticLinks,
+                    pendingRemoval = null,
+                    removeErrorMessage = null,
+                )
+            }
+
+            viewModelScope.launch {
+                when (val result = subscriptionsRepository.removeSubscription(link = target.url)) {
+                    is SubscriptionsResult.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isRemoving = false,
+                            )
+                        }
+                    }
+
+                    is SubscriptionsResult.Failure -> {
+                        _uiState.update { state ->
+                            val rollbackLinks = state.links.toMutableList().apply { add(index, target) }
+                            state.copy(
+                                isRemoving = false,
+                                links = rollbackLinks,
+                                removeErrorMessage = result.error.userMessage,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         fun addSubscription() {
             val current = _uiState.value
             if (current.isAdding || current.isLoading || current.isRefreshing) return
@@ -84,6 +147,7 @@ class SubscriptionsViewModel
                 state.copy(
                     isAdding = true,
                     addErrorMessage = null,
+                    removeErrorMessage = null,
                 )
             }
 
@@ -131,6 +195,7 @@ class SubscriptionsViewModel
                     isLoading = !isRefresh,
                     isRefreshing = isRefresh,
                     errorMessage = null,
+                    removeErrorMessage = null,
                 )
             }
 

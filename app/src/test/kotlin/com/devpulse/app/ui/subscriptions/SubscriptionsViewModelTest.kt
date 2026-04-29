@@ -286,14 +286,114 @@ class SubscriptionsViewModelTest {
         }
     }
 
+    @Test
+    fun confirmRemove_successfullyRemovesItem() {
+        runTest {
+            val existing =
+                TrackedLink(
+                    id = 11L,
+                    url = "https://example.com/one",
+                    tags = listOf("one"),
+                    filters = emptyList(),
+                )
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(listOf(existing)))),
+                    removeResult = SubscriptionsResult.Success(emptyList()),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onRemoveRequested(existing)
+            viewModel.confirmRemove()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.removeCalls)
+            assertTrue(viewModel.uiState.value.links.isEmpty())
+            assertEquals(null, viewModel.uiState.value.removeErrorMessage)
+        }
+    }
+
+    @Test
+    fun confirmRemove_failureRestoresItemAndShowsError() {
+        runTest {
+            val existing =
+                TrackedLink(
+                    id = 12L,
+                    url = "https://example.com/two",
+                    tags = emptyList(),
+                    filters = listOf("contains:kotlin"),
+                )
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(listOf(existing)))),
+                    removeResult =
+                        SubscriptionsResult.Failure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.Network,
+                                    userMessage = "Сеть недоступна",
+                                ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onRemoveRequested(existing)
+            viewModel.confirmRemove()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(1, repository.removeCalls)
+            assertEquals(1, state.links.size)
+            assertEquals(existing.id, state.links.first().id)
+            assertEquals("Сеть недоступна", state.removeErrorMessage)
+        }
+    }
+
+    @Test
+    fun confirmRemove_whileRemoving_ignoresDuplicateRequest() {
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val existing =
+                TrackedLink(
+                    id = 13L,
+                    url = "https://example.com/slow",
+                    tags = emptyList(),
+                    filters = emptyList(),
+                )
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(listOf(existing)))),
+                    removeResult = SubscriptionsResult.Success(emptyList()),
+                    removeGate = gate,
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onRemoveRequested(existing)
+            viewModel.confirmRemove()
+            runCurrent()
+            viewModel.confirmRemove()
+
+            assertEquals(1, repository.removeCalls)
+            gate.complete(Unit)
+            advanceUntilIdle()
+        }
+    }
+
     private class FakeSubscriptionsRepository(
         private val results: ArrayDeque<SubscriptionsResult>,
         private val gate: CompletableDeferred<Unit>? = null,
         private val addResult: SubscriptionsResult = SubscriptionsResult.Success(emptyList()),
+        private val removeResult: SubscriptionsResult = SubscriptionsResult.Success(emptyList()),
+        private val removeGate: CompletableDeferred<Unit>? = null,
     ) : SubscriptionsRepository {
         var calls: Int = 0
             private set
         var addCalls: Int = 0
+            private set
+        var removeCalls: Int = 0
             private set
 
         override suspend fun getSubscriptions(): SubscriptionsResult {
@@ -309,6 +409,12 @@ class SubscriptionsViewModelTest {
         ): SubscriptionsResult {
             addCalls += 1
             return addResult
+        }
+
+        override suspend fun removeSubscription(link: String): SubscriptionsResult {
+            removeCalls += 1
+            removeGate?.await()
+            return removeResult
         }
     }
 }

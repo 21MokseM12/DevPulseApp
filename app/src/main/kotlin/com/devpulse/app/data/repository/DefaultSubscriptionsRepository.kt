@@ -3,6 +3,7 @@ package com.devpulse.app.data.repository
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
+import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.toDomain
 import com.devpulse.app.domain.repository.SubscriptionsRepository
 import com.devpulse.app.domain.repository.SubscriptionsResult
@@ -46,6 +47,22 @@ class DefaultSubscriptionsRepository
                         ),
                     )
             ) {
+                is RemoteCallResult.Success -> {
+                    SubscriptionsResult.Success(links = listOf(result.data.toDomain()))
+                }
+
+                is RemoteCallResult.ApiFailure -> {
+                    SubscriptionsResult.Failure(error = result.error)
+                }
+
+                is RemoteCallResult.NetworkFailure -> {
+                    SubscriptionsResult.Failure(error = result.error)
+                }
+            }
+        }
+
+        override suspend fun removeSubscription(link: String): SubscriptionsResult {
+            return when (val result = remoteDataSource.removeLink(RemoveLinkRequestDto(link = link))) {
                 is RemoteCallResult.Success -> {
                     SubscriptionsResult.Success(links = listOf(result.data.toDomain()))
                 }
