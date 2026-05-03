@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
+import com.devpulse.app.ui.settings.SettingsRoute
 import com.devpulse.app.ui.subscriptions.SubscriptionsRoute
 
 @Composable
@@ -90,7 +91,7 @@ fun AppNavGraph(
             }
 
             composable(AppRoute.Settings.route) {
-                SettingsScreen(
+                SettingsRoute(
                     onGoToSubscriptions = { navController.navigateToTopLevel(AppRoute.Subscriptions.route) },
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
                     onLogout = {
@@ -128,20 +129,6 @@ private fun UpdatesScreen(
         Text(text = "Updates")
         Button(onClick = onGoToSubscriptions) { Text(text = "Открыть Subscriptions") }
         Button(onClick = onGoToSettings) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout) { Text(text = "Выйти") }
-    }
-}
-
-@Composable
-private fun SettingsScreen(
-    onGoToSubscriptions: () -> Unit,
-    onGoToUpdates: () -> Unit,
-    onLogout: () -> Unit,
-) {
-    CenteredScreenContent {
-        Text(text = "Settings")
-        Button(onClick = onGoToSubscriptions) { Text(text = "Открыть Subscriptions") }
-        Button(onClick = onGoToUpdates) { Text(text = "Открыть Updates") }
         Button(onClick = onLogout) { Text(text = "Выйти") }
     }
 }
