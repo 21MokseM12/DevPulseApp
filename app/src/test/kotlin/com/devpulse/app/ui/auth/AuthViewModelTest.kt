@@ -40,6 +40,37 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun onLoginChanged_clearsPreviousError() {
+        runTest {
+            val viewModel = AuthViewModel(FakeRemoteDataSource())
+
+            viewModel.submit()
+            assertEquals("Заполните логин и пароль.", viewModel.uiState.value.errorMessage)
+
+            viewModel.onLoginChanged("moksem")
+
+            assertEquals(null, viewModel.uiState.value.errorMessage)
+        }
+    }
+
+    @Test
+    fun submit_trimsLoginBeforeSendingRequest() {
+        runTest {
+            val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("  moksem  ")
+            viewModel.onPasswordChanged("  secret  ")
+
+            viewModel.submit()
+            advanceUntilIdle()
+
+            assertEquals("moksem", remote.lastRegisterLogin)
+            assertEquals("moksem", viewModel.uiState.value.login)
+            assertTrue(viewModel.uiState.value.isAuthorized)
+        }
+    }
+
+    @Test
     fun submit_withSuccess_setsAuthorizedState() {
         runTest {
             val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
