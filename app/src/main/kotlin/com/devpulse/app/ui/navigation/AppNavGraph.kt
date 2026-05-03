@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,6 +21,7 @@ import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
 import com.devpulse.app.ui.settings.SettingsRoute
 import com.devpulse.app.ui.subscriptions.SubscriptionsRoute
+import com.devpulse.app.ui.updates.UpdatesRoute
 
 @Composable
 fun AppNavGraph(
@@ -81,7 +81,7 @@ fun AppNavGraph(
             }
 
             composable(AppRoute.Updates.route) {
-                UpdatesScreen(
+                UpdatesRoute(
                     onGoToSubscriptions = { navController.navigateToTopLevel(AppRoute.Subscriptions.route) },
                     onGoToSettings = { navController.navigateToTopLevel(AppRoute.Settings.route) },
                     onLogout = {
@@ -116,20 +116,6 @@ private fun SplashScreen() {
     CenteredScreenContent {
         CircularProgressIndicator()
         Text(text = "Инициализация...")
-    }
-}
-
-@Composable
-private fun UpdatesScreen(
-    onGoToSubscriptions: () -> Unit,
-    onGoToSettings: () -> Unit,
-    onLogout: () -> Unit,
-) {
-    CenteredScreenContent {
-        Text(text = "Updates")
-        Button(onClick = onGoToSubscriptions) { Text(text = "Открыть Subscriptions") }
-        Button(onClick = onGoToSettings) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout) { Text(text = "Выйти") }
     }
 }
 

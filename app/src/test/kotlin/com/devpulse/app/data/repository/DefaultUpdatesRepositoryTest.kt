@@ -91,12 +91,41 @@ class DefaultUpdatesRepositoryTest {
         }
     }
 
+    @Test
+    fun markAsRead_whenDaoUpdatesRow_returnsTrue() {
+        runTest {
+            val dao = FakePushUpdatesDao(insertResult = 1L, markAsReadResult = 1)
+            val repository = DefaultUpdatesRepository(pushUpdatesDao = dao)
+
+            val result = repository.markAsRead(updateId = 7L)
+
+            assertTrue(result)
+            assertEquals(7L, dao.lastMarkedUpdateId)
+        }
+    }
+
+    @Test
+    fun markAsRead_whenDaoUpdatesNothing_returnsFalse() {
+        runTest {
+            val dao = FakePushUpdatesDao(insertResult = 1L, markAsReadResult = 0)
+            val repository = DefaultUpdatesRepository(pushUpdatesDao = dao)
+
+            val result = repository.markAsRead(updateId = 77L)
+
+            assertFalse(result)
+            assertEquals(77L, dao.lastMarkedUpdateId)
+        }
+    }
+
     private class FakePushUpdatesDao(
         private val insertResult: Long,
+        private val markAsReadResult: Int = 1,
         initial: List<PushUpdateEntity> = emptyList(),
     ) : PushUpdatesDao {
         private val data = MutableStateFlow(initial)
         var lastInserted: PushUpdateEntity? = null
+            private set
+        var lastMarkedUpdateId: Long? = null
             private set
 
         override fun observeAll(): Flow<List<PushUpdateEntity>> = data
@@ -107,6 +136,17 @@ class DefaultUpdatesRepositoryTest {
                 data.value = listOf(update.copy(id = insertResult)) + data.value
             }
             return insertResult
+        }
+
+        override suspend fun markAsRead(updateId: Long): Int {
+            lastMarkedUpdateId = updateId
+            if (markAsReadResult > 0) {
+                data.value =
+                    data.value.map { entity ->
+                        if (entity.id == updateId) entity.copy(isRead = true) else entity
+                    }
+            }
+            return markAsReadResult
         }
     }
 }

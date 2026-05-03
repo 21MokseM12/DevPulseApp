@@ -84,5 +84,7 @@ class PushMessageHandlerTest {
             lastReceivedAt = receivedAtEpochMs
             return saveResult
         }
+
+        override suspend fun markAsRead(updateId: Long): Boolean = false
     }
 }

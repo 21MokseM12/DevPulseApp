@@ -13,4 +13,7 @@ interface PushUpdatesDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(update: PushUpdateEntity): Long
+
+    @Query("UPDATE updates_history SET isRead = 1 WHERE id = :updateId")
+    suspend fun markAsRead(updateId: Long): Int
 }

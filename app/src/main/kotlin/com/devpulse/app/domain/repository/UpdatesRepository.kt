@@ -11,4 +11,6 @@ interface UpdatesRepository {
         update: ParsedPushUpdate,
         receivedAtEpochMs: Long,
     ): Boolean
+
+    suspend fun markAsRead(updateId: Long): Boolean
 }
