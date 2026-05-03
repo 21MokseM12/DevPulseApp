@@ -20,3 +20,14 @@
 - Для физического устройства используйте reverse-проброс порта:
   - `adb reverse tcp:8080 tcp:8080`
   - после этого `debug` сборка будет обращаться к локальному API через USB.
+
+## Debug-поток для тестовых push (FCM)
+
+- Добавьте в проект `app/google-services.json` из Firebase Console (проект для debug-среды).
+- Убедитесь, что устройство подключено к интернету, а приложение было запущено хотя бы один раз.
+- Найдите token в `logcat` по тегам `PushInitializer` или `DevPulseFcmService`.
+- Отправьте тестовое сообщение через Firebase Console (`Cloud Messaging`) на этот token.
+- Проверка для E-1:
+  - сообщение фиксируется в `logcat` (`Получен push...`);
+  - канал `devpulse_updates` создан в системных настройках уведомлений приложения;
+  - token сохраняется в локальном `DataStore` (`push_token`), доступен через `PushTokenStore`.
