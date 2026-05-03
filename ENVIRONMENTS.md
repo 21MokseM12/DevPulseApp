@@ -31,3 +31,9 @@
   - сообщение фиксируется в `logcat` (`Получен push...`);
   - канал `devpulse_updates` создан в системных настройках уведомлений приложения;
   - token сохраняется в локальном `DataStore` (`push_token`), доступен через `PushTokenStore`.
+
+## Внутренний beta релиз
+
+- Для внутреннего релиза используйте `staging` сборку: `./gradlew :app:assembleStaging`.
+- Готовый APK: `app/build/outputs/apk/staging/app-staging.apk`.
+- Release notes и smoke checklist: `BETA_INTERNAL_RELEASE.md`.
