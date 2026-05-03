@@ -16,6 +16,9 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var pushTokenStore: PushTokenStore
 
+    @Inject
+    lateinit var pushMessageHandler: PushMessageHandler
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -27,11 +30,20 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        // Full payload parsing and user-facing notification will be implemented in E-2/E-3.
-        Log.d(
-            LOG_TAG,
-            "Получен push: messageId=${message.messageId}, dataKeys=${message.data.keys}",
-        )
+        scope.launch {
+            val result =
+                pushMessageHandler.handle(
+                    payload = message.data,
+                    notificationTitle = message.notification?.title,
+                    notificationBody = message.notification?.body,
+                    messageId = message.messageId,
+                    receivedAtEpochMs = System.currentTimeMillis(),
+                )
+            Log.d(
+                LOG_TAG,
+                "Получен push: messageId=${message.messageId}, result=$result, dataKeys=${message.data.keys}",
+            )
+        }
     }
 
     private companion object {

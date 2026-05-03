@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.devpulse.app.data.local.db.AppDatabase
+import com.devpulse.app.data.local.db.PushUpdatesDao
 import com.devpulse.app.data.local.db.SessionDao
 import dagger.Module
 import dagger.Provides
@@ -48,4 +49,8 @@ object StorageModule {
     @Provides
     @Singleton
     fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
+
+    @Provides
+    @Singleton
+    fun providePushUpdatesDao(database: AppDatabase): PushUpdatesDao = database.pushUpdatesDao()
 }

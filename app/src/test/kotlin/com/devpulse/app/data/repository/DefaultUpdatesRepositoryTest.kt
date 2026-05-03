@@ -1,0 +1,112 @@
+package com.devpulse.app.data.repository
+
+import com.devpulse.app.data.local.db.PushUpdateEntity
+import com.devpulse.app.data.local.db.PushUpdatesDao
+import com.devpulse.app.push.ParsedPushUpdate
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class DefaultUpdatesRepositoryTest {
+    @Test
+    fun saveIncomingUpdate_whenInsertSuccess_returnsTrue() {
+        runTest {
+            val dao = FakePushUpdatesDao(insertResult = 10L)
+            val repository = DefaultUpdatesRepository(pushUpdatesDao = dao)
+
+            val saved =
+                repository.saveIncomingUpdate(
+                    update =
+                        ParsedPushUpdate(
+                            remoteEventId = "evt-1",
+                            linkUrl = "https://example.com/post",
+                            title = "Title",
+                            content = "Body",
+                        ),
+                    receivedAtEpochMs = 5000L,
+                )
+
+            assertTrue(saved)
+            val inserted = requireNotNull(dao.lastInserted)
+            assertEquals("evt-1", inserted.remoteEventId)
+            assertEquals(5000L, inserted.receivedAtEpochMs)
+            assertFalse(inserted.isRead)
+        }
+    }
+
+    @Test
+    fun saveIncomingUpdate_whenDuplicateInsertIgnored_returnsFalse() {
+        runTest {
+            val dao = FakePushUpdatesDao(insertResult = -1L)
+            val repository = DefaultUpdatesRepository(pushUpdatesDao = dao)
+
+            val saved =
+                repository.saveIncomingUpdate(
+                    update =
+                        ParsedPushUpdate(
+                            remoteEventId = "evt-dup",
+                            linkUrl = "https://example.com/post",
+                            title = "Title",
+                            content = "Body",
+                        ),
+                    receivedAtEpochMs = 9000L,
+                )
+
+            assertFalse(saved)
+        }
+    }
+
+    @Test
+    fun observeUpdates_mapsEntitiesToDomain() {
+        runTest {
+            val dao =
+                FakePushUpdatesDao(
+                    insertResult = 1L,
+                    initial =
+                        listOf(
+                            PushUpdateEntity(
+                                id = 7L,
+                                remoteEventId = "evt-7",
+                                linkUrl = "https://example.com/x",
+                                title = "Hello",
+                                content = "Payload body",
+                                receivedAtEpochMs = 77L,
+                                isRead = true,
+                            ),
+                        ),
+                )
+            val repository = DefaultUpdatesRepository(pushUpdatesDao = dao)
+
+            val updates = repository.observeUpdates().first()
+
+            assertEquals(1, updates.size)
+            assertEquals(7L, updates.first().id)
+            assertEquals("evt-7", updates.first().remoteEventId)
+            assertTrue(updates.first().isRead)
+        }
+    }
+
+    private class FakePushUpdatesDao(
+        private val insertResult: Long,
+        initial: List<PushUpdateEntity> = emptyList(),
+    ) : PushUpdatesDao {
+        private val data = MutableStateFlow(initial)
+        var lastInserted: PushUpdateEntity? = null
+            private set
+
+        override fun observeAll(): Flow<List<PushUpdateEntity>> = data
+
+        override suspend fun insert(update: PushUpdateEntity): Long {
+            lastInserted = update
+            if (insertResult != -1L) {
+                data.value = listOf(update.copy(id = insertResult)) + data.value
+            }
+            return insertResult
+        }
+    }
+}
