@@ -19,6 +19,9 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var pushMessageHandler: PushMessageHandler
 
+    @Inject
+    lateinit var pushNotificationManager: PushNotificationManager
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -31,7 +34,7 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         scope.launch {
-            val result =
+            val outcome =
                 pushMessageHandler.handle(
                     payload = message.data,
                     notificationTitle = message.notification?.title,
@@ -39,9 +42,12 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
                     messageId = message.messageId,
                     receivedAtEpochMs = System.currentTimeMillis(),
                 )
+            if (outcome.result == PushHandleResult.Saved && outcome.update != null) {
+                pushNotificationManager.showUpdateNotification(outcome.update)
+            }
             Log.d(
                 LOG_TAG,
-                "Получен push: messageId=${message.messageId}, result=$result, dataKeys=${message.data.keys}",
+                "Получен push: messageId=${message.messageId}, result=${outcome.result}, dataKeys=${message.data.keys}",
             )
         }
     }

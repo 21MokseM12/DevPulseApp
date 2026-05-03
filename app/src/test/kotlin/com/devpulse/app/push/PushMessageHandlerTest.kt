@@ -33,7 +33,8 @@ class PushMessageHandlerTest {
                     receivedAtEpochMs = 1234L,
                 )
 
-            assertEquals(PushHandleResult.Saved, result)
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertNotNull(result.update)
             assertEquals(1, repository.saveCalls)
             assertNotNull(repository.lastUpdate)
             assertEquals(1234L, repository.lastReceivedAt)
@@ -55,7 +56,8 @@ class PushMessageHandlerTest {
                     receivedAtEpochMs = 100L,
                 )
 
-            assertEquals(PushHandleResult.IgnoredInvalidPayload, result)
+            assertEquals(PushHandleResult.IgnoredInvalidPayload, result.result)
+            assertNull(result.update)
             assertEquals(0, repository.saveCalls)
             assertNull(repository.lastUpdate)
         }

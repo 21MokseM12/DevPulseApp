@@ -27,19 +27,26 @@ fun AppNavGraph(
     uiState: MainUiState,
     onLoginClick: (String) -> Unit,
     onLogoutClick: () -> Unit,
+    openUpdatesRequest: Boolean,
+    onOpenUpdatesHandled: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
-    LaunchedEffect(uiState.startupDestination) {
+    LaunchedEffect(uiState.startupDestination, openUpdatesRequest) {
         val target =
             when (uiState.startupDestination) {
                 StartupDestination.Loading -> null
                 StartupDestination.Auth -> AppRoute.Auth.route
-                StartupDestination.Subscriptions -> AppRoute.Subscriptions.route
+                StartupDestination.Subscriptions -> {
+                    if (openUpdatesRequest) AppRoute.Updates.route else AppRoute.Subscriptions.route
+                }
             }
         if (target != null) {
             navController.navigate(target) {
                 popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
                 launchSingleTop = true
+            }
+            if (target == AppRoute.Updates.route) {
+                onOpenUpdatesHandled()
             }
         }
     }

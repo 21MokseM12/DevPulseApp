@@ -10,6 +10,11 @@ enum class PushHandleResult {
     IgnoredDuplicate,
 }
 
+data class PushHandleOutcome(
+    val result: PushHandleResult,
+    val update: ParsedPushUpdate? = null,
+)
+
 @Singleton
 class PushMessageHandler
     @Inject
@@ -23,20 +28,30 @@ class PushMessageHandler
             notificationBody: String?,
             messageId: String?,
             receivedAtEpochMs: Long,
-        ): PushHandleResult {
+        ): PushHandleOutcome {
             val parsed =
                 payloadParser.parse(
                     payload = payload,
                     notificationTitle = notificationTitle,
                     notificationBody = notificationBody,
                     fallbackMessageId = messageId,
-                ) ?: return PushHandleResult.IgnoredInvalidPayload
+                ) ?: return PushHandleOutcome(result = PushHandleResult.IgnoredInvalidPayload)
 
             val wasSaved =
                 updatesRepository.saveIncomingUpdate(
                     update = parsed,
                     receivedAtEpochMs = receivedAtEpochMs,
                 )
-            return if (wasSaved) PushHandleResult.Saved else PushHandleResult.IgnoredDuplicate
+            return if (wasSaved) {
+                PushHandleOutcome(
+                    result = PushHandleResult.Saved,
+                    update = parsed,
+                )
+            } else {
+                PushHandleOutcome(
+                    result = PushHandleResult.IgnoredDuplicate,
+                    update = parsed,
+                )
+            }
         }
     }

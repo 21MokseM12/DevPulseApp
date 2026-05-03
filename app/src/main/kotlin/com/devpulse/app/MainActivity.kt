@@ -1,17 +1,38 @@
 package com.devpulse.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
+import com.devpulse.app.push.PushNotificationNavigation
 import com.devpulse.app.ui.DevPulseApp
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val openUpdatesRequest = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        updateOpenUpdatesFlag(intent)
         setContent {
-            DevPulseApp()
+            DevPulseApp(
+                openUpdatesRequest = openUpdatesRequest.value,
+                onOpenUpdatesHandled = { openUpdatesRequest.value = false },
+            )
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        updateOpenUpdatesFlag(intent)
+    }
+
+    private fun updateOpenUpdatesFlag(intent: Intent?) {
+        if (intent?.getBooleanExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, false) == true) {
+            openUpdatesRequest.value = true
         }
     }
 }

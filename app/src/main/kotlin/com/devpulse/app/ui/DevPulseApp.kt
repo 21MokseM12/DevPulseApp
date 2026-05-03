@@ -13,7 +13,11 @@ import com.devpulse.app.ui.navigation.AppNavGraph
 import com.devpulse.app.ui.theme.DevPulseTheme
 
 @Composable
-fun DevPulseApp(viewModel: MainViewModel = hiltViewModel()) {
+fun DevPulseApp(
+    openUpdatesRequest: Boolean = false,
+    onOpenUpdatesHandled: () -> Unit = {},
+    viewModel: MainViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     DevPulseTheme {
@@ -25,6 +29,8 @@ fun DevPulseApp(viewModel: MainViewModel = hiltViewModel()) {
                 uiState = uiState,
                 onLoginClick = viewModel::onLoginSucceeded,
                 onLogoutClick = viewModel::onLogout,
+                openUpdatesRequest = openUpdatesRequest,
+                onOpenUpdatesHandled = onOpenUpdatesHandled,
             )
         }
     }
