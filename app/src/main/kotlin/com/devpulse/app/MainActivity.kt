@@ -31,8 +31,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun updateOpenUpdatesFlag(intent: Intent?) {
-        if (intent?.getBooleanExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, false) == true) {
-            openUpdatesRequest.value = true
-        }
+        openUpdatesRequest.value =
+            mergeOpenUpdatesRequest(
+                current = openUpdatesRequest.value,
+                hasOpenUpdatesExtra = intent?.hasOpenUpdatesExtra() == true,
+            )
     }
+}
+
+internal fun mergeOpenUpdatesRequest(
+    current: Boolean,
+    hasOpenUpdatesExtra: Boolean,
+): Boolean {
+    return current || hasOpenUpdatesExtra
+}
+
+internal fun Intent.hasOpenUpdatesExtra(): Boolean {
+    return getBooleanExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, false)
 }

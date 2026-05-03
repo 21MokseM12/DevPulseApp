@@ -29,7 +29,7 @@ class PushNotificationManager
         fun showUpdateNotification(update: ParsedPushUpdate) {
             if (!canPostNotifications()) return
 
-            val notificationId = notificationId(update)
+            val notificationId = notificationIdForUpdate(update)
             val contentIntent = buildOpenUpdatesPendingIntent()
             val notification =
                 NotificationCompat
@@ -85,17 +85,20 @@ class PushNotificationManager
         }
 
         private fun notificationId(update: ParsedPushUpdate): Int {
-            val seed = update.remoteEventId ?: "${update.linkUrl}:${update.content}"
-            return seed.hashCode() and Int.MAX_VALUE
+            return notificationIdForUpdate(update)
         }
 
         private fun canPostNotifications(): Boolean {
-            if (!manager.areNotificationsEnabled()) return false
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-            return ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS,
-            ) == PackageManager.PERMISSION_GRANTED
+            val permissionGranted =
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS,
+                ) == PackageManager.PERMISSION_GRANTED
+            return canPostNotifications(
+                areNotificationsEnabled = manager.areNotificationsEnabled(),
+                sdkInt = Build.VERSION.SDK_INT,
+                permissionGranted = permissionGranted,
+            )
         }
 
         private companion object {
@@ -105,3 +108,18 @@ class PushNotificationManager
             const val UPDATES_INTENT_REQUEST_CODE = 2001
         }
     }
+
+internal fun notificationIdForUpdate(update: ParsedPushUpdate): Int {
+    val seed = update.remoteEventId ?: "${update.linkUrl}:${update.content}"
+    return seed.hashCode() and Int.MAX_VALUE
+}
+
+internal fun canPostNotifications(
+    areNotificationsEnabled: Boolean,
+    sdkInt: Int,
+    permissionGranted: Boolean,
+): Boolean {
+    if (!areNotificationsEnabled) return false
+    if (sdkInt < Build.VERSION_CODES.TIRAMISU) return true
+    return permissionGranted
+}

@@ -33,14 +33,7 @@ fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
 ) {
     LaunchedEffect(uiState.startupDestination, openUpdatesRequest) {
-        val target =
-            when (uiState.startupDestination) {
-                StartupDestination.Loading -> null
-                StartupDestination.Auth -> AppRoute.Auth.route
-                StartupDestination.Subscriptions -> {
-                    if (openUpdatesRequest) AppRoute.Updates.route else AppRoute.Subscriptions.route
-                }
-            }
+        val target = resolveStartupRoute(uiState.startupDestination, openUpdatesRequest)
         if (target != null) {
             navController.navigate(target) {
                 popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
@@ -99,6 +92,19 @@ fun AppNavGraph(
                     },
                 )
             }
+        }
+    }
+}
+
+internal fun resolveStartupRoute(
+    startupDestination: StartupDestination,
+    openUpdatesRequest: Boolean,
+): String? {
+    return when (startupDestination) {
+        StartupDestination.Loading -> null
+        StartupDestination.Auth -> AppRoute.Auth.route
+        StartupDestination.Subscriptions -> {
+            if (openUpdatesRequest) AppRoute.Updates.route else AppRoute.Subscriptions.route
         }
     }
 }

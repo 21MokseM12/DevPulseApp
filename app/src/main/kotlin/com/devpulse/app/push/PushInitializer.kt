@@ -53,9 +53,8 @@ class PushInitializer
                     Log.w(LOG_TAG, "Не удалось получить FCM token при старте", task.exception)
                     return@addOnCompleteListener
                 }
-
-                val token = task.result.orEmpty()
-                if (token.isBlank()) return@addOnCompleteListener
+                if (!shouldSaveToken(task.isSuccessful, task.result)) return@addOnCompleteListener
+                val token = task.result.orEmpty().trim()
 
                 scope.launch {
                     pushTokenStore.saveToken(token)
@@ -68,3 +67,10 @@ class PushInitializer
             const val LOG_TAG = "PushInitializer"
         }
     }
+
+internal fun shouldSaveToken(
+    taskSuccessful: Boolean,
+    token: String?,
+): Boolean {
+    return taskSuccessful && !token.isNullOrBlank()
+}
