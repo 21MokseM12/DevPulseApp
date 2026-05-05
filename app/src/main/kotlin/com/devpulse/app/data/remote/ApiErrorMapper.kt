@@ -21,6 +21,7 @@ class ApiErrorMapper {
             when (kind) {
                 ApiErrorKind.BadRequest -> "Проверьте корректность введенных данных."
                 ApiErrorKind.NotFound -> "Запрошенный ресурс не найден."
+                ApiErrorKind.Configuration -> "Ошибка конфигурации приложения. Обратитесь к разработчику."
                 ApiErrorKind.Unknown -> "Произошла ошибка сервера. Попробуйте позже."
                 ApiErrorKind.NetworkTimeout -> "Превышено время ожидания сети. Повторите попытку."
                 ApiErrorKind.Network -> "Ошибка сети. Проверьте подключение к интернету."
@@ -43,6 +44,7 @@ class ApiErrorMapper {
             }
         val message =
             when (kind) {
+                ApiErrorKind.Configuration -> "Ошибка конфигурации приложения. Обратитесь к разработчику."
                 ApiErrorKind.NetworkTimeout -> "Превышено время ожидания сети. Повторите попытку."
                 ApiErrorKind.Network -> "Ошибка сети. Проверьте подключение к интернету."
                 else -> "Произошла непредвиденная ошибка. Попробуйте снова."

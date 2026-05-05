@@ -55,6 +55,29 @@ class DevPulseRemoteDataSourceTest {
         }
 
     @Test
+    fun registerClient_sendsLoginAndPasswordInRequestBody() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200))
+                val dataSource = createDataSource(server)
+
+                val result =
+                    dataSource.registerClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.Success)
+                val request = server.takeRequest()
+                val requestBody = request.body.readUtf8()
+                assertTrue(requestBody.contains(""""login":"moksem""""))
+                assertTrue(requestBody.contains(""""password":"secret""""))
+            }
+        }
+
+    @Test
     fun addLink_returnsApiFailureAndParsesErrorBody() =
         runTest {
             MockWebServer().use { server ->
@@ -116,10 +139,16 @@ class DevPulseRemoteDataSourceTest {
                     api = cancellableApi,
                     moshi = moshi,
                     apiErrorMapper = apiErrorMapper,
+                    authTransportSecurityGuard = AllowAllAuthTransportSecurityGuard,
                 )
 
             try {
-                dataSource.registerClient(ClientCredentialsRequestDto(login = "moksem"))
+                dataSource.registerClient(
+                    ClientCredentialsRequestDto(
+                        login = "moksem",
+                        password = "secret",
+                    ),
+                )
                 fail("Expected CancellationException")
             } catch (_: CancellationException) {
                 // expected
@@ -137,7 +166,13 @@ class DevPulseRemoteDataSourceTest {
                         ),
                 )
 
-            val result = dataSource.registerClient(ClientCredentialsRequestDto(login = "moksem"))
+            val result =
+                dataSource.registerClient(
+                    ClientCredentialsRequestDto(
+                        login = "moksem",
+                        password = "secret",
+                    ),
+                )
 
             assertTrue(result is RemoteCallResult.NetworkFailure)
             val failure = result as RemoteCallResult.NetworkFailure
@@ -156,7 +191,13 @@ class DevPulseRemoteDataSourceTest {
                 )
 
                 val dataSource = createDataSource(server)
-                val result = dataSource.unregisterClient(ClientCredentialsRequestDto(login = "moksem"))
+                val result =
+                    dataSource.unregisterClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
 
                 assertTrue(result is RemoteCallResult.ApiFailure)
                 val failure = result as RemoteCallResult.ApiFailure
@@ -207,6 +248,78 @@ class DevPulseRemoteDataSourceTest {
             assertEquals(ApiErrorKind.Unknown, failure.error.kind)
         }
 
+    @Test
+    fun registerClient_returnsConfigurationFailureWhenTransportIsInsecure() =
+        runTest {
+            val guard =
+                object : AuthTransportSecurityGuard {
+                    override fun getAuthTransportViolation() =
+                        com.devpulse.app.domain.model.ApiError(
+                            kind = ApiErrorKind.Configuration,
+                            userMessage = "Авторизация недоступна: небезопасный адрес сервера.",
+                        )
+                }
+            val dataSource =
+                DefaultDevPulseRemoteDataSource(
+                    api = FakeDevPulseApi(),
+                    moshi = moshi,
+                    apiErrorMapper = apiErrorMapper,
+                    authTransportSecurityGuard = guard,
+                )
+
+            val result =
+                dataSource.registerClient(
+                    ClientCredentialsRequestDto(
+                        login = "moksem",
+                        password = "secret",
+                    ),
+                )
+
+            assertTrue(result is RemoteCallResult.NetworkFailure)
+            val failure = result as RemoteCallResult.NetworkFailure
+            assertEquals(ApiErrorKind.Configuration, failure.error.kind)
+        }
+
+    @Test
+    fun registerClient_withTransportViolation_doesNotSendHttpRequest() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200))
+                val violatingGuard =
+                    object : AuthTransportSecurityGuard {
+                        override fun getAuthTransportViolation() =
+                            com.devpulse.app.domain.model.ApiError(
+                                kind = ApiErrorKind.Configuration,
+                                userMessage = "blocked",
+                            )
+                    }
+                val retrofit =
+                    Retrofit.Builder()
+                        .baseUrl(server.url("/"))
+                        .addConverterFactory(MoshiConverterFactory.create(moshi))
+                        .build()
+                val api = retrofit.create(DevPulseApi::class.java)
+                val dataSource =
+                    DefaultDevPulseRemoteDataSource(
+                        api = api,
+                        moshi = moshi,
+                        apiErrorMapper = apiErrorMapper,
+                        authTransportSecurityGuard = violatingGuard,
+                    )
+
+                val result =
+                    dataSource.registerClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.NetworkFailure)
+                assertEquals(0, server.requestCount)
+            }
+        }
+
     private fun createDataSource(server: MockWebServer): DefaultDevPulseRemoteDataSource {
         val retrofit =
             Retrofit.Builder()
@@ -214,11 +327,21 @@ class DevPulseRemoteDataSourceTest {
                 .addConverterFactory(MoshiConverterFactory.create(moshi))
                 .build()
         val api = retrofit.create(DevPulseApi::class.java)
-        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi, apiErrorMapper = apiErrorMapper)
+        return DefaultDevPulseRemoteDataSource(
+            api = api,
+            moshi = moshi,
+            apiErrorMapper = apiErrorMapper,
+            authTransportSecurityGuard = AllowAllAuthTransportSecurityGuard,
+        )
     }
 
     private fun createDataSource(api: DevPulseApi): DefaultDevPulseRemoteDataSource {
-        return DefaultDevPulseRemoteDataSource(api = api, moshi = moshi, apiErrorMapper = apiErrorMapper)
+        return DefaultDevPulseRemoteDataSource(
+            api = api,
+            moshi = moshi,
+            apiErrorMapper = apiErrorMapper,
+            authTransportSecurityGuard = AllowAllAuthTransportSecurityGuard,
+        )
     }
 
     private class FakeDevPulseApi(
@@ -245,5 +368,9 @@ class DevPulseRemoteDataSourceTest {
 
         override suspend fun removeLink(request: RemoveLinkRequestDto): Response<LinkResponseDto> =
             onRemoveLink(request)
+    }
+
+    private object AllowAllAuthTransportSecurityGuard : AuthTransportSecurityGuard {
+        override fun getAuthTransportViolation() = null
     }
 }

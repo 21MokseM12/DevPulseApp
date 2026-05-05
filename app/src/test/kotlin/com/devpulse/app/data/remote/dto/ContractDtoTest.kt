@@ -16,11 +16,15 @@ class ContractDtoTest {
     @Test
     fun clientCredentialsRequest_serializesExpectedFields() {
         val adapter = moshi.adapter(ClientCredentialsRequestDto::class.java)
-        val dto = ClientCredentialsRequestDto(login = "moksem")
+        val dto =
+            ClientCredentialsRequestDto(
+                login = "moksem",
+                password = "secret",
+            )
 
         val json = adapter.toJson(dto)
 
-        assertEquals("""{"login":"moksem"}""", json)
+        assertEquals("""{"login":"moksem","password":"secret"}""", json)
     }
 
     @Test

@@ -20,8 +20,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.0.0"
+        versionCode = 24
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +30,7 @@ android {
         debug {
             buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
             buildConfigField("String", "ENVIRONMENT", "\"debug\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
         create("staging") {
@@ -37,6 +38,7 @@ android {
             matchingFallbacks += listOf("debug")
             buildConfigField("String", "BASE_URL", "\"https://staging-api.devpulse.example/\"")
             buildConfigField("String", "ENVIRONMENT", "\"staging\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
 
         release {
@@ -47,6 +49,7 @@ android {
             )
             buildConfigField("String", "BASE_URL", "\"https://api.devpulse.example/\"")
             buildConfigField("String", "ENVIRONMENT", "\"release\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
     }
 

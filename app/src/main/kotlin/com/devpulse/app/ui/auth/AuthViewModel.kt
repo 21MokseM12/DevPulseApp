@@ -62,11 +62,20 @@ class AuthViewModel
             }
 
             viewModelScope.launch {
-                when (val result = remoteDataSource.registerClient(ClientCredentialsRequestDto(login = login))) {
+                when (
+                    val result =
+                        remoteDataSource.registerClient(
+                            ClientCredentialsRequestDto(
+                                login = login,
+                                password = password,
+                            ),
+                        )
+                ) {
                     is RemoteCallResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 login = login,
+                                password = "",
                                 isLoading = false,
                                 isAuthorized = true,
                             )

@@ -31,14 +31,17 @@ class DefaultDevPulseRemoteDataSource
         private val api: DevPulseApi,
         moshi: Moshi,
         private val apiErrorMapper: ApiErrorMapper,
+        private val authTransportSecurityGuard: AuthTransportSecurityGuard,
     ) : DevPulseRemoteDataSource {
         private val apiErrorAdapter = moshi.adapter(ApiErrorResponseDto::class.java)
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            authTransportSecurityViolation()?.let { return it }
             return executeUnit { api.registerClient(request) }
         }
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            authTransportSecurityViolation()?.let { return it }
             return executeUnit { api.unregisterClient(request) }
         }
 
@@ -128,5 +131,13 @@ class DefaultDevPulseRemoteDataSource
             return runCatching {
                 apiErrorAdapter.fromJson(errorBody.string())
             }.getOrNull()
+        }
+
+        private fun authTransportSecurityViolation(): RemoteCallResult.NetworkFailure? {
+            val violation = authTransportSecurityGuard.getAuthTransportViolation() ?: return null
+            return RemoteCallResult.NetworkFailure(
+                error = violation,
+                throwable = IllegalStateException(violation.technicalDescription ?: violation.userMessage),
+            )
         }
     }

@@ -2,6 +2,8 @@ package com.devpulse.app.di
 
 import com.devpulse.app.BuildConfig
 import com.devpulse.app.data.remote.ApiErrorMapper
+import com.devpulse.app.data.remote.AuthTransportSecurityGuard
+import com.devpulse.app.data.remote.BuildConfigAuthTransportSecurityGuard
 import com.devpulse.app.data.remote.ClientLoginHeaderInterceptor
 import com.devpulse.app.data.remote.DevPulseApi
 import com.squareup.moshi.Moshi
@@ -10,6 +12,8 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.CertificatePinner
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -24,12 +28,16 @@ object NetworkModule {
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
         val level =
             if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
+                HttpLoggingInterceptor.Level.BASIC
             } else {
                 HttpLoggingInterceptor.Level.NONE
             }
-        return HttpLoggingInterceptor().apply { this.level = level }
+        return createLoggingInterceptor(level)
     }
+
+    @Provides
+    @Singleton
+    fun provideAuthTransportSecurityGuard(): AuthTransportSecurityGuard = BuildConfigAuthTransportSecurityGuard()
 
     @Provides
     @Singleton
@@ -37,10 +45,15 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor,
         clientLoginHeaderInterceptor: ClientLoginHeaderInterceptor,
     ): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(clientLoginHeaderInterceptor)
-            .addInterceptor(loggingInterceptor)
-            .build()
+        val builder =
+            OkHttpClient.Builder()
+                .addInterceptor(clientLoginHeaderInterceptor)
+                .addInterceptor(loggingInterceptor)
+        createCertificatePinner(
+            baseUrl = BuildConfig.BASE_URL,
+            environment = BuildConfig.ENVIRONMENT,
+        )?.let { builder.certificatePinner(it) }
+        return builder.build()
     }
 
     @Provides
@@ -73,3 +86,36 @@ object NetworkModule {
         return retrofit.create(DevPulseApi::class.java)
     }
 }
+
+internal fun createLoggingInterceptor(level: HttpLoggingInterceptor.Level): HttpLoggingInterceptor {
+    return HttpLoggingInterceptor().apply {
+        sensitiveHeadersForRedaction().forEach(::redactHeader)
+        this.level = level
+    }
+}
+
+internal fun sensitiveHeadersForRedaction(): Set<String> {
+    return setOf("Authorization", "Cookie", "Set-Cookie", "Client-Login")
+}
+
+internal fun createCertificatePinner(
+    baseUrl: String,
+    environment: String,
+): CertificatePinner? {
+    if (environment.equals(DEBUG_ENVIRONMENT, ignoreCase = true)) {
+        return null
+    }
+    val host = baseUrl.toHttpUrlOrNull()?.host ?: return null
+    if (host !in PINNED_HOSTS) {
+        return null
+    }
+    return CertificatePinner.Builder()
+        .add(host, PIN_PRIMARY)
+        .add(host, PIN_BACKUP)
+        .build()
+}
+
+private const val DEBUG_ENVIRONMENT = "debug"
+private val PINNED_HOSTS = setOf("api.devpulse.example", "staging-api.devpulse.example")
+private const val PIN_PRIMARY = "sha256/afwiKY3RxoMmL1+gD2Q2T6f1V3l0Y7S4A5kZZgwyUrw="
+private const val PIN_BACKUP = "sha256/klO23n5h5pLxL7f3vR7Fj1hX1WfNfHwO51j5jC9f4QY="

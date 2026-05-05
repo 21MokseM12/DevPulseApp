@@ -65,6 +65,7 @@ class AuthViewModelTest {
             advanceUntilIdle()
 
             assertEquals("moksem", remote.lastRegisterLogin)
+            assertEquals("secret", remote.lastRegisterPassword)
             assertEquals("moksem", viewModel.uiState.value.login)
             assertTrue(viewModel.uiState.value.isAuthorized)
         }
@@ -84,6 +85,8 @@ class AuthViewModelTest {
             assertTrue(viewModel.uiState.value.isAuthorized)
             assertEquals(1, remote.registerCalls)
             assertEquals("moksem", remote.lastRegisterLogin)
+            assertEquals("secret", remote.lastRegisterPassword)
+            assertEquals("", viewModel.uiState.value.password)
         }
     }
 
@@ -187,10 +190,13 @@ class AuthViewModelTest {
             private set
         var lastRegisterLogin: String? = null
             private set
+        var lastRegisterPassword: String? = null
+            private set
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             registerCalls += 1
             lastRegisterLogin = request.login
+            lastRegisterPassword = request.password
             gate?.await()
             return result
         }

@@ -3,6 +3,7 @@ package com.devpulse.app.data.repository
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.data.remote.ApiErrorMapper
+import com.devpulse.app.data.remote.AuthTransportSecurityGuard
 import com.devpulse.app.data.remote.ClientLoginHeaderInterceptor
 import com.devpulse.app.data.remote.DefaultDevPulseRemoteDataSource
 import com.devpulse.app.data.remote.DevPulseApi
@@ -170,8 +171,13 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
                 api = api,
                 moshi = moshi,
                 apiErrorMapper = ApiErrorMapper(),
+                authTransportSecurityGuard = AllowAllAuthTransportSecurityGuard,
             )
         return DefaultSubscriptionsRepository(remoteDataSource = remoteDataSource)
+    }
+
+    private object AllowAllAuthTransportSecurityGuard : AuthTransportSecurityGuard {
+        override fun getAuthTransportViolation() = null
     }
 
     private class FakeSessionStore(login: String?) : SessionStore {

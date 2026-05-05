@@ -3,6 +3,7 @@ package com.devpulse.app.domain.model
 enum class ApiErrorKind {
     BadRequest,
     NotFound,
+    Configuration,
     NetworkTimeout,
     Network,
     Unknown,
