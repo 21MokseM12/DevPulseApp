@@ -2,9 +2,14 @@ package com.devpulse.app.data.remote
 
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
 import com.devpulse.app.data.remote.dto.ApiErrorResponseDto
+import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
+import com.devpulse.app.data.remote.dto.MarkReadRequestDto
+import com.devpulse.app.data.remote.dto.MarkReadResponseDto
+import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
+import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.squareup.moshi.Moshi
 import retrofit2.Response
 import java.io.IOException
@@ -21,7 +26,17 @@ interface DevPulseRemoteDataSource {
 
     suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto>
 
-    suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto>
+    suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto>
+
+    suspend fun getNotifications(
+        limit: Int,
+        offset: Int,
+        tags: List<String>,
+    ): RemoteCallResult<NotificationListResponseDto>
+
+    suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto>
+
+    suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto>
 }
 
 @Singleton
@@ -53,8 +68,24 @@ class DefaultDevPulseRemoteDataSource
             return execute { api.addLink(request) }
         }
 
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> {
+        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> {
             return execute { api.removeLink(request) }
+        }
+
+        override suspend fun getNotifications(
+            limit: Int,
+            offset: Int,
+            tags: List<String>,
+        ): RemoteCallResult<NotificationListResponseDto> {
+            return execute { api.getNotifications(limit = limit, offset = offset, tags = tags) }
+        }
+
+        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
+            return execute { api.getUnreadNotificationsCount() }
+        }
+
+        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
+            return execute { api.markNotificationsRead(request = request) }
         }
 
         private suspend fun <T> execute(block: suspend () -> Response<T>): RemoteCallResult<T> {

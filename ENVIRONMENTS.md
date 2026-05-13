@@ -2,11 +2,40 @@
 
 В проекте `app` модуль использует `BuildConfig.BASE_URL` и `BuildConfig.ENVIRONMENT` для выбора API-окружения без правок исходного кода.
 
+## Контрактная API-граница Android
+
+- Android-клиент работает только с bot HTTP API (`/api/v1/...`), включая `links` и `notifications`.
+- Контракты `scrapper` (`HTTP/Async`) считаются backend-internal и не вызываются мобильным приложением напрямую.
+
 ## Доступные окружения
 
 - `debug` -> `http://10.0.2.2:8080/`
 - `staging` -> `https://staging-api.devpulse.example/`
 - `release` -> `https://api.devpulse.example/`
+
+## TLS pinning (staging/release)
+
+- `staging` и `release` сборки требуют явной настройки certificate pin-ов через Gradle properties:
+  - `devpulse.stagingCertPins=sha256/<pin1>,sha256/<pin2>`
+  - `devpulse.releaseCertPins=sha256/<pin1>,sha256/<pin2>`
+- Формат: список `sha256/...` через запятую, без пробелов.
+- При отсутствии pin-ов в `staging/release`:
+  - auth-запросы блокируются `AuthTransportSecurityGuard` до сетевого вызова;
+  - сеть в production-конфигурации падает fail-fast при создании `OkHttpClient`.
+- Это fail-closed политика: приложение не делает небезопасный transport в production-вариантах.
+
+### Ротация pin-ов (runbook)
+
+- Получите новый и резервный pin у backend/security команды (для текущего и следующего сертификата).
+- Обновите `devpulse.stagingCertPins` и `devpulse.releaseCertPins` в защищенном CI/локальном секрете.
+- Проверьте `:app:testDebugUnitTest` и сборки `assembleStaging`/`assembleRelease`.
+- Выпустите релиз с пересечением старых/новых pin-ов минимум на один цикл ротации сертификата.
+- После завершения ротации удалите устаревший pin в следующем релизе.
+
+### Ограничение текущей реализации
+
+- Реальные production/staging pin-значения в репозитории не хранятся (по требованиям безопасности), поэтому их нужно задавать внешне через секреты CI/локальной среды.
+- Без этих данных production/staging intentionally блокируются по fail-closed политике.
 
 ## Как собирать нужное окружение
 

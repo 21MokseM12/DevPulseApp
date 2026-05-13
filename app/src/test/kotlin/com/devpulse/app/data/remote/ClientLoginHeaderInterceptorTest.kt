@@ -93,6 +93,28 @@ class ClientLoginHeaderInterceptorTest {
         }
     }
 
+    @Test
+    fun addsClientLoginHeader_forNotificationsEndpoints() {
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notifications":[]}"""))
+                val sessionStore = FakeSessionStore()
+                sessionStore.saveSession(login = "moksem")
+                val client = buildClient(sessionStore)
+
+                client.newCall(
+                    Request.Builder()
+                        .url(server.url("/api/v1/notifications?limit=20&offset=0"))
+                        .get()
+                        .build(),
+                ).execute().close()
+
+                val recorded = server.takeRequest()
+                assertEquals("moksem", recorded.getHeader("Client-Login"))
+            }
+        }
+    }
+
     private fun buildClient(sessionStore: SessionStore): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(ClientLoginHeaderInterceptor(sessionStore))

@@ -62,4 +62,22 @@ class ApiErrorMapperTest {
         assertEquals(ApiErrorKind.Unknown, error.kind)
         assertEquals("Произошла непредвиденная ошибка. Попробуйте снова.", error.userMessage)
     }
+
+    @Test
+    fun redactsSensitiveDataInTechnicalDescription() {
+        val apiError =
+            mapper.mapApiError(
+                statusCode = 400,
+                rawError =
+                    ApiErrorResponseDto(
+                        description = "invalid body",
+                        code = "BAD_REQUEST",
+                        exceptionMessage = "?password=secret&token=abc Authorization: Bearer private",
+                    ),
+            )
+        val networkError = mapper.mapNetworkError(IOException("refresh_token=my-token"))
+
+        assertEquals("?password=***&token=*** Authorization: Bearer ***", apiError.technicalDescription)
+        assertEquals("refresh_token=***", networkError.technicalDescription)
+    }
 }

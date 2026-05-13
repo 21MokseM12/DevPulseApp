@@ -3,9 +3,14 @@ package com.devpulse.app.data.repository
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
+import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
+import com.devpulse.app.data.remote.dto.MarkReadRequestDto
+import com.devpulse.app.data.remote.dto.MarkReadResponseDto
+import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
+import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.repository.SubscriptionsResult
@@ -188,20 +193,14 @@ class DefaultSubscriptionsRepositoryTest {
     }
 
     @Test
-    fun removeSubscription_returnsRemovedLink() {
+    fun removeSubscription_returnsSuccessWithoutParsingLinkBody() {
         runTest {
             val remote =
                 FakeRemoteDataSource(
                     linksResult = RemoteCallResult.Success(data = emptyList(), statusCode = 200),
                     removeResult =
                         RemoteCallResult.Success(
-                            data =
-                                LinkResponseDto(
-                                    id = 55L,
-                                    url = "https://example.com/remove",
-                                    tags = emptyList(),
-                                    filters = emptyList(),
-                                ),
+                            data = BotApiMessageResponseDto(message = "Link removed"),
                             statusCode = 200,
                         ),
                 )
@@ -210,7 +209,7 @@ class DefaultSubscriptionsRepositoryTest {
             val result = repository.removeSubscription("https://example.com/remove")
 
             assertTrue(result is SubscriptionsResult.Success)
-            assertEquals(55L, (result as SubscriptionsResult.Success).links.first().id)
+            assertTrue((result as SubscriptionsResult.Success).links.isEmpty())
         }
     }
 
@@ -252,15 +251,9 @@ class DefaultSubscriptionsRepositoryTest {
                     ),
                 statusCode = 200,
             ),
-        private val removeResult: RemoteCallResult<LinkResponseDto> =
+        private val removeResult: RemoteCallResult<BotApiMessageResponseDto> =
             RemoteCallResult.Success(
-                data =
-                    LinkResponseDto(
-                        id = 0L,
-                        url = "https://example.com",
-                        tags = emptyList(),
-                        filters = emptyList(),
-                    ),
+                data = BotApiMessageResponseDto(message = "ok"),
                 statusCode = 200,
             ),
     ) : DevPulseRemoteDataSource {
@@ -276,6 +269,23 @@ class DefaultSubscriptionsRepositoryTest {
 
         override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> = addResult
 
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> = removeResult
+        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> =
+            removeResult
+
+        override suspend fun getNotifications(
+            limit: Int,
+            offset: Int,
+            tags: List<String>,
+        ): RemoteCallResult<NotificationListResponseDto> {
+            throw UnsupportedOperationException()
+        }
+
+        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
+            throw UnsupportedOperationException()
+        }
+
+        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
+            throw UnsupportedOperationException()
+        }
     }
 }

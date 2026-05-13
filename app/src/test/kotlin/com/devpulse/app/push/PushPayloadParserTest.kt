@@ -14,6 +14,9 @@ class PushPayloadParserTest {
                 payload =
                     mapOf(
                         "event_id" to "evt-10",
+                        "id" to "10",
+                        "update_owner" to "scrapper",
+                        "creation_date" to "2026-05-13T20:00:00Z",
                         "url" to "https://example.com/article",
                         "title" to "Новый пост",
                         "content" to "Вышла новая статья",
@@ -25,6 +28,9 @@ class PushPayloadParserTest {
 
         requireNotNull(result)
         assertEquals("evt-10", result.remoteEventId)
+        assertEquals(10L, result.linkUpdateId)
+        assertEquals("scrapper", result.updateOwner)
+        assertEquals("2026-05-13T20:00:00Z", result.creationDate)
         assertEquals("https://example.com/article", result.linkUrl)
         assertEquals("Новый пост", result.title)
         assertEquals("Вышла новая статья", result.content)
@@ -47,6 +53,8 @@ class PushPayloadParserTest {
         requireNotNull(result)
         assertEquals("Fallback title", result.title)
         assertEquals("msg-7", result.remoteEventId)
+        assertEquals("unknown", result.updateOwner)
+        assertEquals("", result.creationDate)
     }
 
     @Test

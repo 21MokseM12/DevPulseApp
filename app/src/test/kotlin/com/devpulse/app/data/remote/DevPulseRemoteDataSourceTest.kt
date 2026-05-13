@@ -1,9 +1,14 @@
 package com.devpulse.app.data.remote
 
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
+import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
+import com.devpulse.app.data.remote.dto.MarkReadRequestDto
+import com.devpulse.app.data.remote.dto.MarkReadResponseDto
+import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
+import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -133,6 +138,17 @@ class DevPulseRemoteDataSourceTest {
 
                     override suspend fun removeLink(request: com.devpulse.app.data.remote.dto.RemoveLinkRequestDto) =
                         throw UnsupportedOperationException()
+
+                    override suspend fun getNotifications(
+                        limit: Int,
+                        offset: Int,
+                        tags: List<String>,
+                    ) = throw UnsupportedOperationException()
+
+                    override suspend fun getUnreadNotificationsCount() = throw UnsupportedOperationException()
+
+                    override suspend fun markNotificationsRead(request: MarkReadRequestDto) =
+                        throw UnsupportedOperationException()
                 }
             val dataSource =
                 DefaultDevPulseRemoteDataSource(
@@ -204,6 +220,43 @@ class DevPulseRemoteDataSourceTest {
                 assertEquals(500, failure.statusCode)
                 assertEquals(ApiErrorKind.Unknown, failure.error.kind)
                 assertEquals("Произошла ошибка сервера. Попробуйте позже.", failure.error.userMessage)
+            }
+        }
+
+    @Test
+    fun removeLink_returnsMessageResponseForHttp200() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""{"message":"Link removed"}"""),
+                )
+
+                val dataSource = createDataSource(server)
+                val result = dataSource.removeLink(RemoveLinkRequestDto(link = "https://example.org"))
+
+                assertTrue(result is RemoteCallResult.Success)
+                assertEquals("Link removed", (result as RemoteCallResult.Success).data.message)
+            }
+        }
+
+    @Test
+    fun getNotifications_addsExpectedQueryParameters() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""{"notifications":[]}"""),
+                )
+
+                val dataSource = createDataSource(server)
+                val result = dataSource.getNotifications(limit = 50, offset = 20, tags = listOf("kotlin", "android"))
+
+                assertTrue(result is RemoteCallResult.Success)
+                val request = server.takeRequest()
+                assertEquals("/api/v1/notifications?limit=50&offset=20&tags=kotlin&tags=android", request.path)
             }
         }
 
@@ -353,7 +406,13 @@ class DevPulseRemoteDataSourceTest {
             { throw UnsupportedOperationException() },
         private val onAddLink: suspend (AddLinkRequestDto) -> Response<LinkResponseDto> =
             { throw UnsupportedOperationException() },
-        private val onRemoveLink: suspend (RemoveLinkRequestDto) -> Response<LinkResponseDto> =
+        private val onRemoveLink: suspend (RemoveLinkRequestDto) -> Response<BotApiMessageResponseDto> =
+            { throw UnsupportedOperationException() },
+        private val onGetNotifications: suspend (Int, Int, List<String>) -> Response<NotificationListResponseDto> =
+            { _, _, _ -> throw UnsupportedOperationException() },
+        private val onGetUnreadCount: suspend () -> Response<UnreadCountResponseDto> =
+            { throw UnsupportedOperationException() },
+        private val onMarkNotificationsRead: suspend (MarkReadRequestDto) -> Response<MarkReadResponseDto> =
             { throw UnsupportedOperationException() },
     ) : DevPulseApi {
         override suspend fun registerClient(request: ClientCredentialsRequestDto): Response<Unit> =
@@ -366,8 +425,19 @@ class DevPulseRemoteDataSourceTest {
 
         override suspend fun addLink(request: AddLinkRequestDto): Response<LinkResponseDto> = onAddLink(request)
 
-        override suspend fun removeLink(request: RemoveLinkRequestDto): Response<LinkResponseDto> =
+        override suspend fun removeLink(request: RemoveLinkRequestDto): Response<BotApiMessageResponseDto> =
             onRemoveLink(request)
+
+        override suspend fun getNotifications(
+            limit: Int,
+            offset: Int,
+            tags: List<String>,
+        ): Response<NotificationListResponseDto> = onGetNotifications(limit, offset, tags)
+
+        override suspend fun getUnreadNotificationsCount(): Response<UnreadCountResponseDto> = onGetUnreadCount()
+
+        override suspend fun markNotificationsRead(request: MarkReadRequestDto): Response<MarkReadResponseDto> =
+            onMarkNotificationsRead(request)
     }
 
     private object AllowAllAuthTransportSecurityGuard : AuthTransportSecurityGuard {
