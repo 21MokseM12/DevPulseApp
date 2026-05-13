@@ -22,16 +22,49 @@
   - `adb reverse tcp:8080 tcp:8080`
   - после этого `debug` сборка будет обращаться к локальному API через USB.
 
-## Debug-поток для тестовых push (FCM)
+## Firebase/FCM конфигурация
 
-- Добавьте в проект `app/google-services.json` из Firebase Console (проект для debug-среды).
-- Убедитесь, что устройство подключено к интернету, а приложение было запущено хотя бы один раз.
-- Найдите token в `logcat` по тегам `PushInitializer` или `DevPulseFcmService`.
-- Отправьте тестовое сообщение через Firebase Console (`Cloud Messaging`) на этот token.
-- Проверка для E-1:
-  - сообщение фиксируется в `logcat` (`Получен push...`);
-  - канал `devpulse_updates` создан в системных настройках уведомлений приложения;
-  - token сохраняется в локальном `DataStore` (`push_token`), доступен через `PushTokenStore`.
+- `google-services` plugin применяется автоматически только если найден один из файлов:
+  - `app/google-services.json`
+  - `app/src/debug/google-services.json`
+  - `app/src/staging/google-services.json`
+  - `app/src/release/google-services.json`
+- Если конфигурация отсутствует, сборка продолжит работать, но FCM token запрашиваться не будет (лог: `FCM отключен: google-services.json не найден`).
+
+## Безопасный provisioning `google-services.json`
+
+- Запросите файл у владельца Firebase-проекта (не через публичные чаты/тикеты без ограничений доступа).
+- Сохраняйте файл только локально в одном из путей выше.
+- Не коммитьте файл в git: пути добавлены в `.gitignore`.
+- Для QA рекомендуется отдельный Firebase-проект и отдельный `google-services.json` для `staging`.
+
+## Smoke-проверка push на реальном устройстве
+
+1. Установите `staging` или `debug` сборку с валидным `google-services.json`.
+2. Откройте приложение хотя бы один раз с интернетом.
+3. Проверьте получение token в `logcat` по тегам `PushInitializer`/`DevPulseFcmService`.
+4. Отправьте тестовый push на token через Firebase Console (`Cloud Messaging`).
+5. Проверьте ожидаемый e2e-flow:
+   - payload принят сервисом;
+   - событие сохранено в Room;
+   - показано системное уведомление;
+   - тап по уведомлению открывает экран `Updates`.
+
+### Android 13+
+
+- Разрешение `POST_NOTIFICATIONS` должно быть запрошено и выдано.
+- Без разрешения уведомление не отображается (ожидаемое поведение).
+
+### Android ниже 13
+
+- Runtime-разрешение на уведомления не требуется.
+- Уведомление отображается при включенных уведомлениях приложения.
+
+### Проверка устойчивости payload handling
+
+- Payload без `url/link` или с невалидным URL игнорируется без crash.
+- Payload без `content/body/description` сохраняется с fallback-сообщением: `Проверьте новые изменения по отслеживаемой ссылке.`
+- Канал `devpulse_updates` должен быть создан при старте приложения и доступен в системных настройках.
 
 ## Внутренний beta релиз
 

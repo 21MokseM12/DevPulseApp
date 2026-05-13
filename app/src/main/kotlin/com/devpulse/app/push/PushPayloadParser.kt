@@ -24,8 +24,10 @@ class PushPayloadParser
             val linkUrl = payload.firstNotBlank("link", "url") ?: return null
             if (!isValidHttpUri(linkUrl)) return null
 
-            val content = payload.firstNotBlank("content", "description", "body") ?: notificationBody?.trim()
-            if (content.isNullOrBlank()) return null
+            val content =
+                payload.firstNotBlank("content", "description", "body")
+                    ?: notificationBody?.trim()?.takeIf { it.isNotBlank() }
+                    ?: DEFAULT_CONTENT
 
             val title =
                 payload.firstNotBlank("title")
@@ -60,5 +62,6 @@ class PushPayloadParser
 
         private companion object {
             const val DEFAULT_TITLE = "Новое обновление подписки"
+            const val DEFAULT_CONTENT = "Проверьте новые изменения по отслеживаемой ссылке."
         }
     }

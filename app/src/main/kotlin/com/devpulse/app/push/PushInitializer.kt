@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.util.Log
+import com.devpulse.app.BuildConfig
 import com.devpulse.app.data.local.preferences.PushTokenStore
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,6 +43,10 @@ class PushInitializer
         }
 
         private fun requestAndStoreToken() {
+            if (!shouldRequestFcmToken(BuildConfig.FIREBASE_CONFIGURED)) {
+                Log.i(LOG_TAG, "FCM отключен: google-services.json не найден")
+                return
+            }
             val tokenTask =
                 runCatching { FirebaseMessaging.getInstance().token }.getOrElse { throwable ->
                     Log.w(LOG_TAG, "Firebase Messaging не настроен: token недоступен", throwable)
@@ -74,3 +79,5 @@ internal fun shouldSaveToken(
 ): Boolean {
     return taskSuccessful && !token.isNullOrBlank()
 }
+
+internal fun shouldRequestFcmToken(firebaseConfigured: Boolean): Boolean = firebaseConfigured

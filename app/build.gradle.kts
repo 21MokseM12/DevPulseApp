@@ -12,6 +12,16 @@ plugins {
     id("jacoco")
 }
 
+val hasFirebaseConfig =
+    file("google-services.json").exists() ||
+        listOf("debug", "staging", "release").any { buildType ->
+            file("src/$buildType/google-services.json").exists()
+        }
+
+if (hasFirebaseConfig) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.devpulse.app"
     compileSdk = 36
@@ -20,8 +30,9 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.1.0"
+        versionCode = 25
+        versionName = "1.2.0"
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

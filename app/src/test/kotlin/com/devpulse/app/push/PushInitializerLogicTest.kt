@@ -6,6 +6,16 @@ import org.junit.Test
 
 class PushInitializerLogicTest {
     @Test
+    fun shouldRequestFcmToken_returnsFalse_whenFirebaseNotConfigured() {
+        assertFalse(shouldRequestFcmToken(firebaseConfigured = false))
+    }
+
+    @Test
+    fun shouldRequestFcmToken_returnsTrue_whenFirebaseConfigured() {
+        assertTrue(shouldRequestFcmToken(firebaseConfigured = true))
+    }
+
+    @Test
     fun shouldSaveToken_returnsTrue_whenTaskSuccessfulAndTokenPresent() {
         assertTrue(shouldSaveToken(taskSuccessful = true, token = "fcm-token"))
     }
