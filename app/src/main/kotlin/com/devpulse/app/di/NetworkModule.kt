@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.Locale
 import javax.inject.Singleton
 
 @Module
@@ -45,14 +46,23 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor,
         clientLoginHeaderInterceptor: ClientLoginHeaderInterceptor,
     ): OkHttpClient {
+        val certificatePinner =
+            createCertificatePinner(
+                baseUrl = BuildConfig.BASE_URL,
+                environment = BuildConfig.ENVIRONMENT,
+                releasePinsConfig = BuildConfig.RELEASE_CERT_PINS,
+                stagingPinsConfig = BuildConfig.STAGING_CERT_PINS,
+            )
+        enforceProductionPinningPolicy(
+            baseUrl = BuildConfig.BASE_URL,
+            environment = BuildConfig.ENVIRONMENT,
+            hasCertificatePinner = certificatePinner != null,
+        )
         val builder =
             OkHttpClient.Builder()
                 .addInterceptor(clientLoginHeaderInterceptor)
                 .addInterceptor(loggingInterceptor)
-        createCertificatePinner(
-            baseUrl = BuildConfig.BASE_URL,
-            environment = BuildConfig.ENVIRONMENT,
-        )?.let { builder.certificatePinner(it) }
+        certificatePinner?.let { builder.certificatePinner(it) }
         return builder.build()
     }
 
@@ -88,7 +98,12 @@ object NetworkModule {
 }
 
 internal fun createLoggingInterceptor(level: HttpLoggingInterceptor.Level): HttpLoggingInterceptor {
-    return HttpLoggingInterceptor().apply {
+    val defaultLogger = HttpLoggingInterceptor.Logger.DEFAULT
+    val redactingLogger =
+        HttpLoggingInterceptor.Logger { rawMessage ->
+            defaultLogger.log(redactSensitiveLogData(rawMessage))
+        }
+    return HttpLoggingInterceptor(redactingLogger).apply {
         sensitiveHeadersForRedaction().forEach(::redactHeader)
         this.level = level
     }
@@ -101,21 +116,74 @@ internal fun sensitiveHeadersForRedaction(): Set<String> {
 internal fun createCertificatePinner(
     baseUrl: String,
     environment: String,
+    releasePinsConfig: String,
+    stagingPinsConfig: String,
 ): CertificatePinner? {
     if (environment.equals(DEBUG_ENVIRONMENT, ignoreCase = true)) {
         return null
     }
     val host = baseUrl.toHttpUrlOrNull()?.host ?: return null
-    if (host !in PINNED_HOSTS) {
+    val configuredPins = resolvePinsForEnvironment(environment, releasePinsConfig, stagingPinsConfig)
+    if (configuredPins.isEmpty()) {
         return null
     }
-    return CertificatePinner.Builder()
-        .add(host, PIN_PRIMARY)
-        .add(host, PIN_BACKUP)
-        .build()
+    val builder = CertificatePinner.Builder()
+    configuredPins.forEach { pin ->
+        builder.add(host, pin)
+    }
+    return builder.build()
 }
 
 private const val DEBUG_ENVIRONMENT = "debug"
-private val PINNED_HOSTS = setOf("api.devpulse.example", "staging-api.devpulse.example")
-private const val PIN_PRIMARY = "sha256/afwiKY3RxoMmL1+gD2Q2T6f1V3l0Y7S4A5kZZgwyUrw="
-private const val PIN_BACKUP = "sha256/klO23n5h5pLxL7f3vR7Fj1hX1WfNfHwO51j5jC9f4QY="
+private const val STAGING_ENVIRONMENT = "staging"
+private const val RELEASE_ENVIRONMENT = "release"
+private val SENSITIVE_QUERY_KEYS = setOf("password", "token", "access_token", "refresh_token", "api_key", "secret")
+private val SENSITIVE_JSON_KEYS = setOf("password", "token", "accessToken", "refreshToken", "apiKey", "secret")
+private val SENSITIVE_BEARER_REGEX = Regex("(?i)(Bearer\\s+)([^\\s\"]+)")
+
+internal fun redactSensitiveLogData(raw: String): String {
+    var result = raw
+    SENSITIVE_QUERY_KEYS.forEach { key ->
+        val pattern = Regex("(?i)(\\b${Regex.escape(key)}=)([^&\\s]+)")
+        result = result.replace(pattern, "$1***")
+    }
+    SENSITIVE_JSON_KEYS.forEach { key ->
+        val pattern = Regex("(?i)(\"$key\"\\s*:\\s*\")(.*?)(\")")
+        result = result.replace(pattern, "$1***$3")
+    }
+    result = result.replace(SENSITIVE_BEARER_REGEX, "$1***")
+    return result
+}
+
+internal fun resolvePinsForEnvironment(
+    environment: String,
+    releasePinsConfig: String,
+    stagingPinsConfig: String,
+): Set<String> {
+    val pinsConfig =
+        when (environment.lowercase(Locale.US)) {
+            RELEASE_ENVIRONMENT -> releasePinsConfig
+            STAGING_ENVIRONMENT -> stagingPinsConfig
+            else -> ""
+        }
+    return pinsConfig
+        .split(",")
+        .asSequence()
+        .map { it.trim() }
+        .filter { it.startsWith("sha256/") }
+        .toSet()
+}
+
+internal fun enforceProductionPinningPolicy(
+    baseUrl: String,
+    environment: String,
+    hasCertificatePinner: Boolean,
+) {
+    if (environment.equals(DEBUG_ENVIRONMENT, ignoreCase = true)) {
+        return
+    }
+    val isHttps = baseUrl.toHttpUrlOrNull()?.isHttps == true
+    if (isHttps && !hasCertificatePinner) {
+        throw IllegalStateException("TLS pinning must be configured for $environment builds.")
+    }
+}

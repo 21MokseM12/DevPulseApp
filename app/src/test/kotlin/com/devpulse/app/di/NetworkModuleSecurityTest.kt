@@ -31,6 +31,8 @@ class NetworkModuleSecurityTest {
             createCertificatePinner(
                 baseUrl = "https://api.devpulse.example/",
                 environment = "debug",
+                releasePinsConfig = "",
+                stagingPinsConfig = "",
             )
 
         assertNull(pinner)
@@ -42,19 +44,58 @@ class NetworkModuleSecurityTest {
             createCertificatePinner(
                 baseUrl = "https://api.devpulse.example/",
                 environment = "release",
+                releasePinsConfig =
+                    "sha256/afwiKY3RxoMmL1+gD2Q2T6f1V3l0Y7S4A5kZZgwyUrw=," +
+                        "sha256/klO23n5h5pLxL7f3vR7Fj1hX1WfNfHwO51j5jC9f4QY=",
+                stagingPinsConfig = "",
             )
 
         assertNotNull(pinner)
     }
 
     @Test
-    fun createCertificatePinner_returnsNull_forUnknownHost() {
+    fun createCertificatePinner_returnsNull_forMissingPins() {
         val pinner =
             createCertificatePinner(
                 baseUrl = "https://example.org/",
                 environment = "release",
+                releasePinsConfig = "",
+                stagingPinsConfig = "",
             )
 
         assertNull(pinner)
+    }
+
+    @Test
+    fun redactSensitiveLogData_masksQueryJsonAndBearerToken() {
+        val raw =
+            "POST /api/v1/clients?password=super-secret&token=abc123 Authorization: Bearer top-secret " +
+                "{\"password\":\"admin123\",\"accessToken\":\"xyz\"}"
+
+        val redacted = redactSensitiveLogData(raw)
+
+        assertTrue(redacted.contains("password=***"))
+        assertTrue(redacted.contains("token=***"))
+        assertTrue(redacted.contains("Bearer ***"))
+        assertTrue(redacted.contains(""""password":"***""""))
+        assertTrue(redacted.contains(""""accessToken":"***""""))
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun enforceProductionPinningPolicy_throws_forHttpsReleaseWithoutPins() {
+        enforceProductionPinningPolicy(
+            baseUrl = "https://api.devpulse.example/",
+            environment = "release",
+            hasCertificatePinner = false,
+        )
+    }
+
+    @Test
+    fun enforceProductionPinningPolicy_allowsDebugWithoutPins() {
+        enforceProductionPinningPolicy(
+            baseUrl = "http://10.0.2.2:8080/",
+            environment = "debug",
+            hasCertificatePinner = false,
+        )
     }
 }
