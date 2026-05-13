@@ -254,6 +254,10 @@ class UpdatesViewModelTest {
             return markAsReadResult
         }
 
+        override suspend fun clearUpdates() {
+            updates.value = emptyList()
+        }
+
         fun emitUpdates(value: List<UpdateEvent>) {
             updates.value = value
         }

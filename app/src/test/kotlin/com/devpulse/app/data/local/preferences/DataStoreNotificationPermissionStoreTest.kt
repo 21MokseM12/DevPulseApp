@@ -31,6 +31,19 @@ class DataStoreNotificationPermissionStoreTest {
         }
     }
 
+    @Test
+    fun clearRequestedFlag_resetsRequestedState() {
+        runTest {
+            val store = createStore()
+            store.markRequested()
+
+            store.clearRequestedFlag()
+
+            assertFalse(store.hasRequested())
+            assertFalse(store.observeHasRequested().first())
+        }
+    }
+
     private fun createStore(): NotificationPermissionStore {
         val tempFile = Files.createTempFile("notification-permission-store-test", ".preferences_pb")
         val dataStore =

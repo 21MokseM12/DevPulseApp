@@ -3,6 +3,8 @@ package com.devpulse.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
+import com.devpulse.app.domain.usecase.AccountLifecycleResult
+import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,8 +13,22 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class LogoutActionStatus {
+    Idle,
+    InProgress,
+}
+
+enum class UnregisterActionStatus {
+    Idle,
+    InProgress,
+}
+
 data class SettingsUiState(
     val hasRequestedNotificationPermission: Boolean = false,
+    val logoutStatus: LogoutActionStatus = LogoutActionStatus.Idle,
+    val unregisterStatus: UnregisterActionStatus = UnregisterActionStatus.Idle,
+    val showUnregisterConfirmation: Boolean = false,
+    val unregisterErrorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -20,6 +36,7 @@ class SettingsViewModel
     @Inject
     constructor(
         private val notificationPermissionStore: NotificationPermissionStore,
+        private val accountLifecycleUseCase: AccountLifecycleUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -37,6 +54,81 @@ class SettingsViewModel
         fun onPermissionRequestTriggered() {
             viewModelScope.launch {
                 notificationPermissionStore.markRequested()
+            }
+        }
+
+        fun onLogoutRequested() {
+            if (_uiState.value.logoutStatus == LogoutActionStatus.InProgress) return
+
+            _uiState.update { state ->
+                state.copy(
+                    logoutStatus = LogoutActionStatus.InProgress,
+                    unregisterErrorMessage = null,
+                )
+            }
+            viewModelScope.launch {
+                val result = accountLifecycleUseCase.logout()
+                _uiState.update { state ->
+                    when (result) {
+                        AccountLifecycleResult.Success ->
+                            state.copy(logoutStatus = LogoutActionStatus.Idle)
+                        is AccountLifecycleResult.Failure ->
+                            state.copy(
+                                logoutStatus = LogoutActionStatus.Idle,
+                                unregisterErrorMessage = result.error.userMessage,
+                            )
+                        AccountLifecycleResult.Cancelled ->
+                            state.copy(
+                                logoutStatus = LogoutActionStatus.Idle,
+                                unregisterErrorMessage = "Операция выхода отменена.",
+                            )
+                    }
+                }
+            }
+        }
+
+        fun onUnregisterRequested() {
+            _uiState.update { state ->
+                state.copy(
+                    showUnregisterConfirmation = true,
+                    unregisterErrorMessage = null,
+                )
+            }
+        }
+
+        fun onUnregisterDismissed() {
+            _uiState.update { state ->
+                state.copy(showUnregisterConfirmation = false)
+            }
+        }
+
+        fun onUnregisterConfirmed() {
+            if (_uiState.value.unregisterStatus == UnregisterActionStatus.InProgress) return
+            _uiState.update { state ->
+                state.copy(
+                    showUnregisterConfirmation = false,
+                    unregisterStatus = UnregisterActionStatus.InProgress,
+                    unregisterErrorMessage = null,
+                )
+            }
+            viewModelScope.launch {
+                val result = accountLifecycleUseCase.unregister()
+                _uiState.update { state ->
+                    when (result) {
+                        AccountLifecycleResult.Success ->
+                            state.copy(unregisterStatus = UnregisterActionStatus.Idle)
+                        is AccountLifecycleResult.Failure ->
+                            state.copy(
+                                unregisterStatus = UnregisterActionStatus.Idle,
+                                unregisterErrorMessage = result.error.userMessage,
+                            )
+                        AccountLifecycleResult.Cancelled ->
+                            state.copy(
+                                unregisterStatus = UnregisterActionStatus.Idle,
+                                unregisterErrorMessage = "Удаление аккаунта отменено.",
+                            )
+                    }
+                }
             }
         }
     }
