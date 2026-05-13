@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -41,7 +43,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun SettingsRoute(
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
-    onLogout: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
@@ -49,8 +50,11 @@ fun SettingsRoute(
         uiState = uiState,
         onGoToSubscriptions = onGoToSubscriptions,
         onGoToUpdates = onGoToUpdates,
-        onLogout = onLogout,
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
+        onLogoutRequested = viewModel::onLogoutRequested,
+        onUnregisterRequested = viewModel::onUnregisterRequested,
+        onUnregisterDismissed = viewModel::onUnregisterDismissed,
+        onUnregisterConfirmed = viewModel::onUnregisterConfirmed,
     )
 }
 
@@ -59,8 +63,11 @@ private fun SettingsScreen(
     uiState: SettingsUiState,
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
-    onLogout: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
+    onLogoutRequested: () -> Unit,
+    onUnregisterRequested: () -> Unit,
+    onUnregisterDismissed: () -> Unit,
+    onUnregisterConfirmed: () -> Unit,
 ) {
     val context = LocalContext.current
     val activity = context.findActivity()
@@ -156,7 +163,59 @@ private fun SettingsScreen(
         Button(onClick = onGoToUpdates, modifier = Modifier.fillMaxWidth()) {
             Text(text = "Открыть Updates")
         }
-        Button(onClick = onLogout, modifier = Modifier.fillMaxWidth()) { Text(text = "Выйти") }
+        Button(
+            onClick = onLogoutRequested,
+            enabled = uiState.logoutStatus != LogoutActionStatus.InProgress,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text =
+                    if (uiState.logoutStatus == LogoutActionStatus.InProgress) {
+                        "Выход..."
+                    } else {
+                        "Выйти"
+                    },
+            )
+        }
+        OutlinedButton(
+            onClick = onUnregisterRequested,
+            enabled = uiState.unregisterStatus != UnregisterActionStatus.InProgress,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text =
+                    if (uiState.unregisterStatus == UnregisterActionStatus.InProgress) {
+                        "Удаление аккаунта..."
+                    } else {
+                        "Удалить аккаунт"
+                    },
+            )
+        }
+        if (uiState.unregisterErrorMessage != null) {
+            Text(
+                text = uiState.unregisterErrorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+
+    if (uiState.showUnregisterConfirmation) {
+        AlertDialog(
+            onDismissRequest = onUnregisterDismissed,
+            title = { Text(text = "Удалить аккаунт?") },
+            text = { Text(text = "Аккаунт будет удален на сервере, а локальные данные очищены.") },
+            confirmButton = {
+                Button(onClick = onUnregisterConfirmed) {
+                    Text(text = "Удалить")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = onUnregisterDismissed) {
+                    Text(text = "Отмена")
+                }
+            },
+        )
     }
 }
 

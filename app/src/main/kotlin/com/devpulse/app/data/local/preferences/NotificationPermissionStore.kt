@@ -16,6 +16,8 @@ interface NotificationPermissionStore {
     suspend fun hasRequested(): Boolean
 
     suspend fun markRequested()
+
+    suspend fun clearRequestedFlag()
 }
 
 @Singleton
@@ -35,6 +37,12 @@ class DataStoreNotificationPermissionStore
         override suspend fun markRequested() {
             dataStore.edit { preferences ->
                 preferences[HAS_REQUESTED_KEY] = true
+            }
+        }
+
+        override suspend fun clearRequestedFlag() {
+            dataStore.edit { preferences ->
+                preferences.remove(HAS_REQUESTED_KEY)
             }
         }
 
