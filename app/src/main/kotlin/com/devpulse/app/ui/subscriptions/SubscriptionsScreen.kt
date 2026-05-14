@@ -284,11 +284,7 @@ private fun SearchAndFiltersSection(
 }
 
 private fun hasActiveSearch(uiState: SubscriptionsUiState): Boolean {
-    return uiState.searchState.query.isNotBlank() ||
-        uiState.searchState.tagFilter != null ||
-        uiState.searchState.hasFiltersOnly ||
-        uiState.searchState.onlyTagged ||
-        uiState.searchState.sortMode != SubscriptionsSortMode.RECENTLY_ADDED
+    return uiState.searchState.hasActiveCriteria()
 }
 
 private fun staleDataMessage(lastSyncAtEpochMs: Long?): String {

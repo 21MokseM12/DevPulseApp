@@ -91,6 +91,60 @@ class ApplySubscriptionsSearchUseCaseTest {
         assertEquals(listOf(4L, 3L, 2L, 1L), result.map { it.id })
     }
 
+    @Test
+    fun invoke_largeDataset_keepsBehaviorForIndexedTerms() {
+        val targetTagged =
+            TrackedLink(
+                id = 9_001L,
+                url = "https://feeds.example.dev/kotlin/weekly",
+                tags = listOf("kotlin-digest", "mobile"),
+                filters = listOf("contains:kotlin"),
+            )
+        val targetWithFilter =
+            TrackedLink(
+                id = 9_002L,
+                url = "https://feeds.example.dev/android/release",
+                tags = listOf("android"),
+                filters = listOf("contains:android-release"),
+            )
+        val links =
+            buildList {
+                repeat(500) { index ->
+                    add(
+                        TrackedLink(
+                            id = index.toLong(),
+                            url = "https://noise.example.dev/item-$index",
+                            tags = listOf("tag-$index"),
+                            filters = listOf("contains:$index"),
+                        ),
+                    )
+                }
+                add(targetTagged)
+                add(targetWithFilter)
+            }
+
+        val byTagToken =
+            useCase(
+                links = links,
+                state = SubscriptionsSearchState(query = "tag:kotlin"),
+            )
+        assertEquals(listOf(9_001L), byTagToken.map { it.id })
+
+        val byFilterToken =
+            useCase(
+                links = links,
+                state = SubscriptionsSearchState(query = "filter:android-release"),
+            )
+        assertEquals(listOf(9_002L), byFilterToken.map { it.id })
+
+        val byMixedQuery =
+            useCase(
+                links = links,
+                state = SubscriptionsSearchState(query = "url:feeds.example.dev mobile"),
+            )
+        assertEquals(listOf(9_001L), byMixedQuery.map { it.id })
+    }
+
     private fun testLinks(): List<TrackedLink> {
         return listOf(
             TrackedLink(
