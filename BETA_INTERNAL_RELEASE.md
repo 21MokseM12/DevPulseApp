@@ -35,13 +35,14 @@
 - Экран ленты обновлений с read/unread статусом и действием "пометить как прочитанное".
 - Интеграция push (FCM): обработка payload, сохранение истории в Room, системные уведомления.
 - Runtime permission для уведомлений (Android 13+) и экран настроек разрешений.
-- Базовый CI pipeline для PR: lint, unit tests, assembleDebug, публикация unit-test отчетов.
+- CI quality gates для PR: `qualityCheck`, `testDebugUnitTest`, contract-выборка через `--tests`, `assembleDebug` + публикация отчетов и CI summary.
 
 ### Известные ограничения beta
 
 - UI-тесты (instrumented) в beta-процессе не запускаются автоматически, используется unit-test regression.
 - В `lintDebug` есть предупреждения, которые временно зафиксированы baseline (`app/lint-baseline.xml`).
 - Текущие `BASE_URL` для `staging`/`release` остаются заглушками до подключения реального backend-контура.
+- Матрица локальных/CI quality checks: `docs/ci-quality-matrix.md`.
 
 ## Smoke Checklist (реальное устройство)
 

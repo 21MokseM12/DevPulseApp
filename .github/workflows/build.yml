@@ -6,21 +6,32 @@ on:
 
 jobs:
   verify:
-    name: ${{ matrix.job_name }}
+    name: ${{ matrix.gate_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
       matrix:
         include:
-          - job_name: Lint
-            gradle_task: lintDebug
-            publish_test_results: false
-          - job_name: Unit Tests
-            gradle_task: testDebugUnitTest
-            publish_test_results: true
-          - job_name: Assemble Debug
-            gradle_task: assembleDebug
-            publish_test_results: false
+          - gate_id: quality
+            gate_name: Quality (ktlint + lint)
+            gradle_command: :app:qualityCheck
+            retry_on_fail: false
+            merge_policy: blocking
+          - gate_id: unit
+            gate_name: Unit Tests
+            gradle_command: :app:testDebugUnitTest
+            retry_on_fail: true
+            merge_policy: blocking
+          - gate_id: contract
+            gate_name: Contract Check
+            gradle_command: :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"
+            retry_on_fail: true
+            merge_policy: blocking
+          - gate_id: assemble
+            gate_name: Assemble Debug
+            gradle_command: :app:assembleDebug
+            retry_on_fail: false
+            merge_policy: blocking
 
     steps:
       - name: Checkout
@@ -38,15 +49,113 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Run ${{ matrix.gradle_task }}
-        run: ./gradlew :app:${{ matrix.gradle_task }}
+      - name: Run ${{ matrix.gate_name }} with retry policy
+        env:
+          GATE_ID: ${{ matrix.gate_id }}
+          GATE_NAME: ${{ matrix.gate_name }}
+          GRADLE_COMMAND: ${{ matrix.gradle_command }}
+          RETRY_ON_FAIL: ${{ matrix.retry_on_fail }}
+          MERGE_POLICY: ${{ matrix.merge_policy }}
+        run: |
+          set -eo pipefail
+          mkdir -p ci-metadata
 
-      - name: Upload unit test reports
-        if: ${{ matrix.publish_test_results }}
+          max_attempts=1
+          if [ "$RETRY_ON_FAIL" = "true" ]; then
+            max_attempts=2
+          fi
+
+          attempt=1
+          status="failure"
+          start_epoch=$(date +%s)
+          while [ $attempt -le $max_attempts ]; do
+            echo "Running gate '$GATE_NAME' (attempt $attempt/$max_attempts)"
+            if ./gradlew --no-daemon --stacktrace $GRADLE_COMMAND; then
+              status="success"
+              break
+            fi
+
+            if [ $attempt -lt $max_attempts ]; then
+              echo "Retrying gate '$GATE_NAME' after failure..."
+              sleep 10
+            fi
+            attempt=$((attempt + 1))
+          done
+          end_epoch=$(date +%s)
+          duration_seconds=$((end_epoch - start_epoch))
+
+          ATTEMPTS_USED="$attempt" \
+          MAX_ATTEMPTS="$max_attempts" \
+          STATUS="$status" \
+          DURATION_SECONDS="$duration_seconds" \
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          gate_metadata = {
+              "gate_id": os.environ["GATE_ID"],
+              "gate_name": os.environ["GATE_NAME"],
+              "gradle_task": os.environ["GRADLE_COMMAND"],
+              "merge_policy": os.environ["MERGE_POLICY"],
+              "retry_enabled": os.environ["RETRY_ON_FAIL"] == "true",
+              "attempts_used": int(os.environ["ATTEMPTS_USED"]),
+              "max_attempts": int(os.environ["MAX_ATTEMPTS"]),
+              "status": os.environ["STATUS"],
+              "duration_seconds": int(os.environ["DURATION_SECONDS"]),
+          }
+          Path("ci-metadata").mkdir(parents=True, exist_ok=True)
+          Path(f"ci-metadata/gate-{gate_metadata['gate_id']}.json").write_text(
+              json.dumps(gate_metadata, indent=2),
+              encoding="utf-8",
+          )
+          PY
+          if [ "$status" != "success" ]; then
+            echo "Gate ${{ matrix.gate_name }} failed."
+            exit 1
+          fi
+
+      - name: Upload quality artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-test-reports
+          name: quality-${{ matrix.gate_id }}
           path: |
+            ci-metadata/gate-${{ matrix.gate_id }}.json
+            app/build/reports/ktlint/**
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
             app/build/test-results/testDebugUnitTest/**
             app/build/reports/tests/testDebugUnitTest/**
+            app/build/reports/jacoco/jacocoTestReport/**
+            app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  quality-summary:
+    name: Quality Summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs: verify
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download gate artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Build quality summary
+        run: |
+          python3 scripts/ci/quality_gate_report.py \
+            --artifacts-dir artifacts \
+            --matrix-doc docs/ci-quality-matrix.md \
+            --output ci-quality-summary.md
+          cat ci-quality-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload quality summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-summary
+          path: ci-quality-summary.md
           if-no-files-found: error
