@@ -7,14 +7,9 @@ import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
-import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
-import com.devpulse.app.data.remote.dto.MarkReadRequestDto
-import com.devpulse.app.data.remote.dto.MarkReadResponseDto
-import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
-import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.UpdateEvent
@@ -148,25 +143,8 @@ class SettingsViewModelTest {
 
         override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> = error("Not used")
 
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> {
+        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<LinkResponseDto> =
             error("Not used")
-        }
-
-        override suspend fun getNotifications(
-            limit: Int,
-            offset: Int,
-            tags: List<String>,
-        ): RemoteCallResult<NotificationListResponseDto> {
-            error("Not used")
-        }
-
-        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
-            error("Not used")
-        }
-
-        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
-            error("Not used")
-        }
     }
 
     private class FakeSessionStore : SessionStore {

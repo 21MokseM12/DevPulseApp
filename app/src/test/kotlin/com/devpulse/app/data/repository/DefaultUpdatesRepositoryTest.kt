@@ -154,5 +154,9 @@ class DefaultUpdatesRepositoryTest {
             }
             return markAsReadResult
         }
+
+        override suspend fun clearAll() {
+            data.value = emptyList()
+        }
     }
 }
