@@ -40,6 +40,18 @@ class ApiErrorMapperTest {
     }
 
     @Test
+    fun mapsServerUnavailableStatusWithDedicatedFallbackMessage() {
+        val error =
+            mapper.mapApiError(
+                statusCode = 503,
+                rawError = null,
+            )
+
+        assertEquals(ApiErrorKind.Unknown, error.kind)
+        assertEquals("Сервер временно недоступен. Попробуйте позже.", error.userMessage)
+    }
+
+    @Test
     fun mapsTimeoutAsNetworkTimeout() {
         val error = mapper.mapNetworkError(SocketTimeoutException("timeout"))
 

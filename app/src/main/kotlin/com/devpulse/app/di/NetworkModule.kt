@@ -7,6 +7,8 @@ import com.devpulse.app.data.remote.BuildConfigAuthTransportSecurityGuard
 import com.devpulse.app.data.remote.ClientLoginHeaderInterceptor
 import com.devpulse.app.data.remote.DEBUG_ENVIRONMENT
 import com.devpulse.app.data.remote.DevPulseApi
+import com.devpulse.app.data.remote.NetworkPolicyDefaults
+import com.devpulse.app.data.remote.RetryPolicyInterceptor
 import com.devpulse.app.data.remote.resolveTransportPinsForEnvironment
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -20,6 +22,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
 @Module
@@ -61,7 +64,12 @@ object NetworkModule {
         )
         val builder =
             OkHttpClient.Builder()
+                .connectTimeout(NetworkPolicyDefaults.timeouts.connectTimeoutSeconds, TimeUnit.SECONDS)
+                .readTimeout(NetworkPolicyDefaults.timeouts.readTimeoutSeconds, TimeUnit.SECONDS)
+                .writeTimeout(NetworkPolicyDefaults.timeouts.writeTimeoutSeconds, TimeUnit.SECONDS)
+                .callTimeout(NetworkPolicyDefaults.timeouts.callTimeoutSeconds, TimeUnit.SECONDS)
                 .addInterceptor(clientLoginHeaderInterceptor)
+                .addInterceptor(RetryPolicyInterceptor())
                 .addInterceptor(loggingInterceptor)
         certificatePinner?.let { builder.certificatePinner(it) }
         return builder.build()

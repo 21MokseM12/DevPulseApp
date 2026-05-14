@@ -27,6 +27,14 @@ class NetworkModuleSecurityTest {
     }
 
     @Test
+    fun networkPolicyDefaults_usesExpectedTimeouts() {
+        assertEquals(10L, com.devpulse.app.data.remote.NetworkPolicyDefaults.timeouts.connectTimeoutSeconds)
+        assertEquals(20L, com.devpulse.app.data.remote.NetworkPolicyDefaults.timeouts.readTimeoutSeconds)
+        assertEquals(20L, com.devpulse.app.data.remote.NetworkPolicyDefaults.timeouts.writeTimeoutSeconds)
+        assertEquals(30L, com.devpulse.app.data.remote.NetworkPolicyDefaults.timeouts.callTimeoutSeconds)
+    }
+
+    @Test
     fun createCertificatePinner_returnsNull_forDebugEnvironment() {
         val pinner =
             createCertificatePinner(
