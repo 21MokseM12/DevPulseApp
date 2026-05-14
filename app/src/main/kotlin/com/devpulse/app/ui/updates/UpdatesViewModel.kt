@@ -4,11 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devpulse.app.domain.model.RemoteNotification
 import com.devpulse.app.domain.model.UpdateEvent
+import com.devpulse.app.domain.model.UpdatesFilterState
+import com.devpulse.app.domain.model.UpdatesPeriodFilter
+import com.devpulse.app.domain.model.UpdatesQuickFilter
 import com.devpulse.app.domain.repository.MarkReadResult
 import com.devpulse.app.domain.repository.NotificationsRepository
 import com.devpulse.app.domain.repository.NotificationsResult
 import com.devpulse.app.domain.repository.UnreadCountResult
+import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +28,11 @@ import kotlin.math.max
 data class UpdatesUiState(
     val isLoading: Boolean = true,
     val events: List<UpdateEvent> = emptyList(),
+    val allEvents: List<UpdateEvent> = emptyList(),
     val unreadCount: Int = 0,
+    val filterState: UpdatesFilterState = UpdatesFilterState(),
+    val availableSources: List<String> = emptyList(),
+    val availableTags: List<String> = emptyList(),
     val markingIds: Set<Long> = emptySet(),
     val actionErrorMessage: String? = null,
 )
@@ -32,16 +42,102 @@ class UpdatesViewModel
     @Inject
     constructor(
         private val notificationsRepository: NotificationsRepository,
+        private val applyUpdatesFiltersUseCase: ApplyUpdatesFiltersUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(UpdatesUiState())
         val uiState: StateFlow<UpdatesUiState> = _uiState.asStateFlow()
+        private var searchDebounceJob: Job? = null
 
         init {
             loadUpdates()
         }
 
+        fun refresh() {
+            loadUpdates()
+        }
+
+        fun onQueryChanged(query: String) {
+            _uiState.update { state ->
+                state.copy(filterState = state.filterState.copy(query = query))
+            }
+            searchDebounceJob?.cancel()
+            searchDebounceJob =
+                viewModelScope.launch {
+                    delay(SEARCH_DEBOUNCE_MS)
+                    applyFilters()
+                }
+        }
+
+        fun onUnreadOnlyToggled() {
+            _uiState.update { state ->
+                state.copy(
+                    filterState =
+                        state.filterState.copy(
+                            unreadOnly = !state.filterState.unreadOnly,
+                        ),
+                )
+            }
+            applyFilters()
+        }
+
+        fun onSourceChanged(source: String?) {
+            _uiState.update { state ->
+                state.copy(filterState = state.filterState.copy(source = source))
+            }
+            applyFilters()
+        }
+
+        fun onPeriodChanged(period: UpdatesPeriodFilter) {
+            _uiState.update { state ->
+                state.copy(filterState = state.filterState.copy(period = period))
+            }
+            applyFilters()
+        }
+
+        fun onTagToggled(tag: String) {
+            _uiState.update { state ->
+                val nextTags =
+                    if (tag in state.filterState.selectedTags) {
+                        state.filterState.selectedTags - tag
+                    } else {
+                        state.filterState.selectedTags + tag
+                    }
+                state.copy(filterState = state.filterState.copy(selectedTags = nextTags))
+            }
+            applyFilters()
+        }
+
+        fun applyQuickFilter(filter: UpdatesQuickFilter) {
+            _uiState.update { state ->
+                val nextState =
+                    when (filter) {
+                        UpdatesQuickFilter.UNREAD ->
+                            state.filterState.copy(
+                                unreadOnly = true,
+                            )
+                        UpdatesQuickFilter.TODAY ->
+                            state.filterState.copy(
+                                period = UpdatesPeriodFilter.TODAY,
+                            )
+                        UpdatesQuickFilter.GITHUB_ONLY ->
+                            state.filterState.copy(source = SOURCE_GITHUB)
+                    }
+                state.copy(filterState = nextState)
+            }
+            applyFilters()
+        }
+
+        fun resetFilters() {
+            searchDebounceJob?.cancel()
+            _uiState.update { state ->
+                state.copy(filterState = UpdatesFilterState())
+            }
+            applyFilters()
+        }
+
         private fun loadUpdates() {
             viewModelScope.launch {
+                _uiState.update { it.copy(isLoading = true) }
                 val notificationsResult =
                     notificationsRepository.getNotifications(
                         limit = FEED_LIMIT,
@@ -51,7 +147,7 @@ class UpdatesViewModel
                 val unreadResult = notificationsRepository.getUnreadCount()
 
                 _uiState.update { state ->
-                    val events =
+                    val allEvents =
                         when (notificationsResult) {
                             is NotificationsResult.Success ->
                                 notificationsResult.notifications.map { it.toUpdateEvent() }
@@ -64,11 +160,14 @@ class UpdatesViewModel
                         }
                     state.copy(
                         isLoading = false,
-                        events = events,
+                        allEvents = allEvents,
                         unreadCount = unreadCount,
+                        availableSources = allEvents.map { it.source }.filter { it.isNotBlank() }.distinct().sorted(),
+                        availableTags = allEvents.flatMap { it.tags }.distinct().sorted(),
                         actionErrorMessage = resolveError(notificationsResult, unreadResult),
                     )
                 }
+                applyFilters()
             }
         }
 
@@ -103,11 +202,28 @@ class UpdatesViewModel
                         }
                     state.copy(
                         events = rollbackEvents,
+                        allEvents =
+                            if (marked) {
+                                state.allEvents.map { event ->
+                                    if (event.id == updateId) event.copy(isRead = true) else event
+                                }
+                            } else {
+                                state.allEvents
+                            },
                         unreadCount = if (marked) state.unreadCount else state.unreadCount + 1,
                         markingIds = state.markingIds - updateId,
                         actionErrorMessage = if (marked) null else "Не удалось отметить событие прочитанным.",
                     )
                 }
+                applyFilters()
+            }
+        }
+
+        private fun applyFilters() {
+            _uiState.update { state ->
+                state.copy(
+                    events = applyUpdatesFiltersUseCase(state.allEvents, state.filterState),
+                )
             }
         }
 
@@ -131,6 +247,8 @@ class UpdatesViewModel
                 content = content,
                 receivedAtEpochMs = creationDate.toEpochMsOrZero(),
                 isRead = isRead,
+                source = updateOwner,
+                tags = tags,
             )
         }
 
@@ -145,5 +263,7 @@ class UpdatesViewModel
         private companion object {
             const val FEED_LIMIT = 100
             const val FEED_OFFSET = 0
+            const val SEARCH_DEBOUNCE_MS = 300L
+            const val SOURCE_GITHUB = "github"
         }
     }

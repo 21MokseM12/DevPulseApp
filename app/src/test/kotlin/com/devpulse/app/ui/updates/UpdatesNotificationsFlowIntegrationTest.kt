@@ -13,6 +13,7 @@ import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.data.repository.DefaultNotificationsRepository
+import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,7 +34,11 @@ class UpdatesNotificationsFlowIntegrationTest {
         runTest {
             val remote = RecordingRemoteDataSource()
             val repository = DefaultNotificationsRepository(remoteDataSource = remote)
-            val viewModel = UpdatesViewModel(notificationsRepository = repository)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
             advanceUntilIdle()
 
             val initialState = viewModel.uiState.value
@@ -50,6 +55,54 @@ class UpdatesNotificationsFlowIntegrationTest {
             assertTrue(afterMarkState.events.any { it.id == 10L && it.isRead })
             assertEquals(1, afterMarkState.unreadCount)
             assertEquals(null, afterMarkState.actionErrorMessage)
+        }
+
+    @Test
+    fun updatesViewModel_refreshRespectsActiveFilters() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onQueryChanged("unread")
+            advanceUntilIdle()
+            viewModel.onUnreadOnlyToggled()
+            advanceUntilIdle()
+            assertEquals(listOf(10L, 11L), viewModel.uiState.value.events.map { it.id })
+
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 12L,
+                        title = "Old read",
+                        description = "Body C",
+                        url = "https://example.com/c",
+                        unread = false,
+                        linkId = 103L,
+                        receivedAt = "2026-05-10T08:00:00Z",
+                        readAt = "2026-05-10T08:10:00Z",
+                    ),
+                    NotificationDto(
+                        id = 13L,
+                        title = "Fresh unread",
+                        description = "Body D",
+                        url = "https://example.com/d",
+                        unread = true,
+                        linkId = 104L,
+                        receivedAt = "2026-05-14T13:00:00Z",
+                        readAt = null,
+                    ),
+                ),
+            )
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(listOf(13L), viewModel.uiState.value.events.map { it.id })
         }
 
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
@@ -78,6 +131,11 @@ class UpdatesNotificationsFlowIntegrationTest {
             )
         var lastMarkReadIds: List<Long>? = null
             private set
+
+        fun replaceNotifications(next: List<NotificationDto>) {
+            notifications.clear()
+            notifications.addAll(next)
+        }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             error("Not used")

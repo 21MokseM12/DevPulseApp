@@ -3,13 +3,16 @@ package com.devpulse.app.ui.updates
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.RemoteNotification
+import com.devpulse.app.domain.model.UpdatesPeriodFilter
 import com.devpulse.app.domain.repository.MarkReadResult
 import com.devpulse.app.domain.repository.NotificationsRepository
 import com.devpulse.app.domain.repository.NotificationsResult
 import com.devpulse.app.domain.repository.UnreadCountResult
+import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -47,7 +50,7 @@ class UpdatesViewModelTest {
                         ),
                     unreadResult = UnreadCountResult.Success(unreadCount = 3),
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -74,7 +77,7 @@ class UpdatesViewModelTest {
                         ),
                     unreadResult = UnreadCountResult.Success(unreadCount = 0),
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -108,7 +111,7 @@ class UpdatesViewModelTest {
                     unreadResult = UnreadCountResult.Success(unreadCount = 2),
                     markReadResult = MarkReadResult.Success(updatedCount = 1),
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             viewModel.markAsRead(2L)
@@ -152,7 +155,7 @@ class UpdatesViewModelTest {
                                 ),
                         ),
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             viewModel.markAsRead(3L)
@@ -187,7 +190,7 @@ class UpdatesViewModelTest {
                         ),
                     unreadResult = UnreadCountResult.Success(unreadCount = 0),
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             viewModel.markAsRead(4L)
@@ -223,7 +226,7 @@ class UpdatesViewModelTest {
                     unreadResult = UnreadCountResult.Success(unreadCount = 1),
                     markGate = gate,
                 )
-            val viewModel = UpdatesViewModel(repository)
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
             viewModel.markAsRead(5L)
@@ -235,6 +238,103 @@ class UpdatesViewModelTest {
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.events.first().isRead)
         }
+    }
+
+    @Test
+    fun onQueryChanged_appliesAfterDebounce() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 11L,
+                                        title = "GitHub deploy",
+                                        content = "Prod",
+                                        source = "github",
+                                    ),
+                                    remoteNotification(
+                                        id = 12L,
+                                        title = "Jira issue",
+                                        content = "Backlog",
+                                        source = "jira",
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.onQueryChanged("deploy")
+            runCurrent()
+            assertEquals(2, viewModel.uiState.value.events.size)
+
+            advanceTimeBy(300L)
+            runCurrent()
+            assertEquals(listOf(11L), viewModel.uiState.value.events.map { it.id })
+        }
+    }
+
+    @Test
+    fun periodAndUnread_filtersCanBeCombined() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 21L,
+                                        creationDate = "2026-05-14T09:00:00Z",
+                                        isRead = false,
+                                    ),
+                                    remoteNotification(
+                                        id = 22L,
+                                        creationDate = "2026-05-14T08:00:00Z",
+                                        isRead = true,
+                                    ),
+                                    remoteNotification(
+                                        id = 23L,
+                                        creationDate = "2026-05-01T08:00:00Z",
+                                        isRead = false,
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.onPeriodChanged(UpdatesPeriodFilter.TODAY)
+            viewModel.onUnreadOnlyToggled()
+            advanceUntilIdle()
+
+            assertEquals(listOf(21L), viewModel.uiState.value.events.map { it.id })
+        }
+    }
+
+    private fun remoteNotification(
+        id: Long,
+        title: String = "Update$id",
+        content: String = "Payload$id",
+        source: String = "bot",
+        creationDate: String = "2026-05-14T10:00:00Z",
+        isRead: Boolean = false,
+    ): RemoteNotification {
+        return RemoteNotification(
+            id = id,
+            title = title,
+            content = content,
+            link = "https://example.com/$id",
+            tags = emptyList(),
+            isRead = isRead,
+            updateOwner = source,
+            creationDate = creationDate,
+        )
     }
 
     private class FakeNotificationsRepository(

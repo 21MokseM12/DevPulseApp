@@ -7,10 +7,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.domain.model.UpdateEvent
+import com.devpulse.app.domain.model.UpdatesPeriodFilter
+import com.devpulse.app.domain.model.UpdatesQuickFilter
 import com.devpulse.app.ui.testing.SmokeTestTags
 
 @Composable
@@ -37,6 +42,13 @@ fun UpdatesRoute(
         onGoToSettings = onGoToSettings,
         onLogout = onLogout,
         onMarkAsRead = viewModel::markAsRead,
+        onQueryChanged = viewModel::onQueryChanged,
+        onUnreadOnlyToggled = viewModel::onUnreadOnlyToggled,
+        onSourceChanged = viewModel::onSourceChanged,
+        onPeriodChanged = viewModel::onPeriodChanged,
+        onTagToggled = viewModel::onTagToggled,
+        onQuickFilterSelected = viewModel::applyQuickFilter,
+        onResetFilters = viewModel::resetFilters,
     )
 }
 
@@ -47,6 +59,13 @@ private fun UpdatesScreen(
     onGoToSettings: () -> Unit,
     onLogout: () -> Unit,
     onMarkAsRead: (Long) -> Unit,
+    onQueryChanged: (String) -> Unit,
+    onUnreadOnlyToggled: () -> Unit,
+    onSourceChanged: (String?) -> Unit,
+    onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
+    onTagToggled: (String) -> Unit,
+    onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
+    onResetFilters: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -72,6 +91,16 @@ private fun UpdatesScreen(
             onGoToSettings = onGoToSettings,
             onLogout = onLogout,
         )
+        FiltersSection(
+            uiState = uiState,
+            onQueryChanged = onQueryChanged,
+            onUnreadOnlyToggled = onUnreadOnlyToggled,
+            onSourceChanged = onSourceChanged,
+            onPeriodChanged = onPeriodChanged,
+            onTagToggled = onTagToggled,
+            onQuickFilterSelected = onQuickFilterSelected,
+            onResetFilters = onResetFilters,
+        )
 
         if (uiState.actionErrorMessage != null) {
             Text(
@@ -87,7 +116,7 @@ private fun UpdatesScreen(
             }
 
             uiState.events.isEmpty() -> {
-                EmptyState()
+                EmptyState(hasActiveFilters = uiState.filterState.hasActiveFilters)
             }
 
             else -> {
@@ -96,6 +125,151 @@ private fun UpdatesScreen(
                     markingIds = uiState.markingIds,
                     onMarkAsRead = onMarkAsRead,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FiltersSection(
+    uiState: UpdatesUiState,
+    onQueryChanged: (String) -> Unit,
+    onUnreadOnlyToggled: () -> Unit,
+    onSourceChanged: (String?) -> Unit,
+    onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
+    onTagToggled: (String) -> Unit,
+    onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
+    onResetFilters: () -> Unit,
+) {
+    val filterState = uiState.filterState
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = filterState.query,
+            onValueChange = onQueryChanged,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text(text = "Поиск по событиям") },
+            placeholder = { Text(text = "Текст, ссылка или источник") },
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                FilterChip(
+                    selected = false,
+                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.UNREAD) },
+                    label = { Text("Quick: unread") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = false,
+                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.TODAY) },
+                    label = { Text("Quick: today") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = false,
+                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.GITHUB_ONLY) },
+                    label = { Text("Quick: github-only") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = filterState.unreadOnly,
+                    onClick = onUnreadOnlyToggled,
+                    label = { Text("Непрочитанные") },
+                )
+            }
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                FilterChip(
+                    selected = filterState.source == null,
+                    onClick = { onSourceChanged(null) },
+                    label = { Text("Источник: все") },
+                )
+            }
+            items(uiState.availableSources) { source ->
+                FilterChip(
+                    selected = filterState.source == source,
+                    onClick = { onSourceChanged(source) },
+                    label = { Text("Источник: $source") },
+                )
+            }
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item {
+                FilterChip(
+                    selected = filterState.period == UpdatesPeriodFilter.ALL,
+                    onClick = { onPeriodChanged(UpdatesPeriodFilter.ALL) },
+                    label = { Text("Период: все") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = filterState.period == UpdatesPeriodFilter.TODAY,
+                    onClick = { onPeriodChanged(UpdatesPeriodFilter.TODAY) },
+                    label = { Text("Сегодня") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = filterState.period == UpdatesPeriodFilter.LAST_7_DAYS,
+                    onClick = { onPeriodChanged(UpdatesPeriodFilter.LAST_7_DAYS) },
+                    label = { Text("7 дней") },
+                )
+            }
+            item {
+                FilterChip(
+                    selected = filterState.period == UpdatesPeriodFilter.LAST_30_DAYS,
+                    onClick = { onPeriodChanged(UpdatesPeriodFilter.LAST_30_DAYS) },
+                    label = { Text("30 дней") },
+                )
+            }
+        }
+
+        if (uiState.availableTags.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(uiState.availableTags) { tag ->
+                    FilterChip(
+                        selected = tag in filterState.selectedTags,
+                        onClick = { onTagToggled(tag) },
+                        label = { Text("#$tag") },
+                    )
+                }
+            }
+        }
+
+        if (filterState.hasActiveFilters) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Активные фильтры применены",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Button(onClick = onResetFilters) {
+                    Text("Сбросить")
+                }
             }
         }
     }
@@ -183,14 +357,19 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(hasActiveFilters: Boolean) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = "Пока нет событий")
-        Text(text = "Новые уведомления из Bot API появятся здесь")
+        if (hasActiveFilters) {
+            Text(text = "Ничего не найдено")
+            Text(text = "Измените фильтры или сбросьте их")
+        } else {
+            Text(text = "Пока нет событий")
+            Text(text = "Новые уведомления из Bot API появятся здесь")
+        }
     }
 }
 

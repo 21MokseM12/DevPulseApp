@@ -58,5 +58,6 @@ private fun PushUpdateEntity.toDomain(): UpdateEvent {
         content = content,
         receivedAtEpochMs = receivedAtEpochMs,
         isRead = isRead,
+        source = "push",
     )
 }

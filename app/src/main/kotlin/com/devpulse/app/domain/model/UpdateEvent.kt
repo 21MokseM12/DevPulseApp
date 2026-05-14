@@ -8,4 +8,6 @@ data class UpdateEvent(
     val content: String,
     val receivedAtEpochMs: Long,
     val isRead: Boolean,
+    val source: String = "",
+    val tags: List<String> = emptyList(),
 )
