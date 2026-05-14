@@ -39,6 +39,38 @@ class PushHandlingIntegrationTest {
         }
     }
 
+    @Test
+    fun handle_payloadWithoutLinkUpdateFields_usesContractDefaults() {
+        runTest {
+            val repository = CapturingUpdatesRepository()
+            val handler =
+                PushMessageHandler(
+                    payloadParser = PushPayloadParser(),
+                    updatesRepository = repository,
+                )
+
+            val outcome =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "url" to "https://example.com/contract",
+                            "content" to "Update body",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "evt-fallback",
+                    receivedAtEpochMs = 100L,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            val saved = requireNotNull(repository.lastUpdate)
+            assertEquals("evt-fallback", saved.remoteEventId)
+            assertEquals(null, saved.linkUpdateId)
+            assertEquals("unknown", saved.updateOwner)
+            assertEquals("", saved.creationDate)
+        }
+    }
+
     private class CapturingUpdatesRepository : UpdatesRepository {
         var lastUpdate: ParsedPushUpdate? = null
             private set

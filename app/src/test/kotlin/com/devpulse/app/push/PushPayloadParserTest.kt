@@ -58,6 +58,31 @@ class PushPayloadParserTest {
     }
 
     @Test
+    fun parse_withLinkUpdateAliasFields_mapsContractFields() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "eventId" to "evt-77",
+                        "link_update_id" to "77",
+                        "updateOwner" to "bot",
+                        "creationDate" to "2026-05-14T10:00:00Z",
+                        "link" to "https://example.com/feed",
+                        "description" to "Contract payload",
+                    ),
+                notificationTitle = null,
+                notificationBody = null,
+                fallbackMessageId = null,
+            )
+
+        requireNotNull(result)
+        assertEquals("evt-77", result.remoteEventId)
+        assertEquals(77L, result.linkUpdateId)
+        assertEquals("bot", result.updateOwner)
+        assertEquals("2026-05-14T10:00:00Z", result.creationDate)
+    }
+
+    @Test
     fun parse_missingLink_returnsNull() {
         val result =
             parser.parse(

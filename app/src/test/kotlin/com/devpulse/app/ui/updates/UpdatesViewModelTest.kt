@@ -1,14 +1,15 @@
 package com.devpulse.app.ui.updates
 
-import com.devpulse.app.domain.model.UpdateEvent
-import com.devpulse.app.domain.repository.UpdatesRepository
-import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
+import com.devpulse.app.domain.model.RemoteNotification
+import com.devpulse.app.domain.repository.MarkReadResult
+import com.devpulse.app.domain.repository.NotificationsRepository
+import com.devpulse.app.domain.repository.NotificationsResult
+import com.devpulse.app.domain.repository.UnreadCountResult
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -24,22 +25,27 @@ class UpdatesViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun init_withEvents_showsContent() {
+    fun init_withNotifications_showsContentAndUnread() {
         runTest {
             val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 1L,
-                                remoteEventId = "evt-1",
-                                linkUrl = "https://example.com/1",
-                                title = "Update",
-                                content = "Payload",
-                                receivedAtEpochMs = 1000L,
-                                isRead = false,
-                            ),
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    RemoteNotification(
+                                        id = 1L,
+                                        title = "Update",
+                                        content = "Payload",
+                                        link = "https://example.com/1",
+                                        tags = listOf("updates"),
+                                        isRead = false,
+                                        updateOwner = "bot",
+                                        creationDate = "2026-05-14T10:00:00Z",
+                                    ),
+                                ),
                         ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 3),
                 )
             val viewModel = UpdatesViewModel(repository)
             advanceUntilIdle()
@@ -47,7 +53,34 @@ class UpdatesViewModelTest {
             val state = viewModel.uiState.value
             assertFalse(state.isLoading)
             assertEquals(1, state.events.size)
+            assertEquals(3, state.unreadCount)
             assertFalse(state.events.first().isRead)
+            assertEquals(1778752800000L, state.events.first().receivedAtEpochMs)
+        }
+    }
+
+    @Test
+    fun init_feedFailure_showsErrorAndEmptyState() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Failure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.Network,
+                                    userMessage = "Лента недоступна",
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 0),
+                )
+            val viewModel = UpdatesViewModel(repository)
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertFalse(state.isLoading)
+            assertTrue(state.events.isEmpty())
+            assertEquals("Лента недоступна", state.actionErrorMessage)
         }
     }
 
@@ -55,20 +88,25 @@ class UpdatesViewModelTest {
     fun markAsRead_success_marksEventRead() {
         runTest {
             val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 2L,
-                                remoteEventId = "evt-2",
-                                linkUrl = "https://example.com/2",
-                                title = "Update2",
-                                content = "Payload2",
-                                receivedAtEpochMs = 2000L,
-                                isRead = false,
-                            ),
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    RemoteNotification(
+                                        id = 2L,
+                                        title = "Update2",
+                                        content = "Payload2",
+                                        link = "https://example.com/2",
+                                        tags = emptyList(),
+                                        isRead = false,
+                                        updateOwner = "bot",
+                                        creationDate = "2026-05-14T10:00:00Z",
+                                    ),
+                                ),
                         ),
-                    markAsReadResult = true,
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                    markReadResult = MarkReadResult.Success(message = "ok"),
                 )
             val viewModel = UpdatesViewModel(repository)
             advanceUntilIdle()
@@ -76,8 +114,9 @@ class UpdatesViewModelTest {
             viewModel.markAsRead(2L)
             advanceUntilIdle()
 
-            assertEquals(2L, repository.lastMarkedId)
+            assertEquals(listOf(2L), repository.lastMarkedIds)
             assertTrue(viewModel.uiState.value.events.first().isRead)
+            assertEquals(1, viewModel.uiState.value.unreadCount)
             assertEquals(null, viewModel.uiState.value.actionErrorMessage)
         }
     }
@@ -86,20 +125,32 @@ class UpdatesViewModelTest {
     fun markAsRead_failure_restoresUnreadAndShowsError() {
         runTest {
             val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 3L,
-                                remoteEventId = "evt-3",
-                                linkUrl = "https://example.com/3",
-                                title = "Update3",
-                                content = "Payload3",
-                                receivedAtEpochMs = 3000L,
-                                isRead = false,
-                            ),
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    RemoteNotification(
+                                        id = 3L,
+                                        title = "Update3",
+                                        content = "Payload3",
+                                        link = "https://example.com/3",
+                                        tags = emptyList(),
+                                        isRead = false,
+                                        updateOwner = "bot",
+                                        creationDate = "2026-05-14T10:00:00Z",
+                                    ),
+                                ),
                         ),
-                    markAsReadResult = false,
+                    unreadResult = UnreadCountResult.Success(unreadCount = 1),
+                    markReadResult =
+                        MarkReadResult.Failure(
+                            error =
+                                ApiError(
+                                    kind = ApiErrorKind.BadRequest,
+                                    userMessage = "Некорректный запрос",
+                                ),
+                        ),
                 )
             val viewModel = UpdatesViewModel(repository)
             advanceUntilIdle()
@@ -108,6 +159,7 @@ class UpdatesViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.events.first().isRead)
+            assertEquals(1, viewModel.uiState.value.unreadCount)
             assertEquals("Не удалось отметить событие прочитанным.", viewModel.uiState.value.actionErrorMessage)
         }
     }
@@ -116,19 +168,24 @@ class UpdatesViewModelTest {
     fun markAsRead_ignoresAlreadyReadEvent() {
         runTest {
             val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 4L,
-                                remoteEventId = "evt-4",
-                                linkUrl = "https://example.com/4",
-                                title = "Read update",
-                                content = "Payload4",
-                                receivedAtEpochMs = 4000L,
-                                isRead = true,
-                            ),
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    RemoteNotification(
+                                        id = 4L,
+                                        title = "Read update",
+                                        content = "Payload4",
+                                        link = "https://example.com/4",
+                                        tags = emptyList(),
+                                        isRead = true,
+                                        updateOwner = "bot",
+                                        creationDate = "2026-05-14T10:00:00Z",
+                                    ),
+                                ),
                         ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 0),
                 )
             val viewModel = UpdatesViewModel(repository)
             advanceUntilIdle()
@@ -136,7 +193,7 @@ class UpdatesViewModelTest {
             viewModel.markAsRead(4L)
             advanceUntilIdle()
 
-            assertEquals(0, repository.markAsReadCalls)
+            assertEquals(0, repository.markReadCalls)
             assertTrue(viewModel.uiState.value.events.first().isRead)
         }
     }
@@ -146,19 +203,24 @@ class UpdatesViewModelTest {
         runTest {
             val gate = CompletableDeferred<Unit>()
             val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 5L,
-                                remoteEventId = "evt-5",
-                                linkUrl = "https://example.com/5",
-                                title = "Slow update",
-                                content = "Payload5",
-                                receivedAtEpochMs = 5000L,
-                                isRead = false,
-                            ),
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    RemoteNotification(
+                                        id = 5L,
+                                        title = "Slow update",
+                                        content = "Payload5",
+                                        link = "https://example.com/5",
+                                        tags = emptyList(),
+                                        isRead = false,
+                                        updateOwner = "bot",
+                                        creationDate = "2026-05-14T10:00:00Z",
+                                    ),
+                                ),
                         ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 1),
                     markGate = gate,
                 )
             val viewModel = UpdatesViewModel(repository)
@@ -168,98 +230,37 @@ class UpdatesViewModelTest {
             runCurrent()
             viewModel.markAsRead(5L)
 
-            assertEquals(1, repository.markAsReadCalls)
+            assertEquals(1, repository.markReadCalls)
             gate.complete(Unit)
             advanceUntilIdle()
             assertTrue(viewModel.uiState.value.events.first().isRead)
         }
     }
 
-    @Test
-    fun newUpdatesEmission_clearsPreviousActionError() {
-        runTest {
-            val repository =
-                FakeUpdatesRepository(
-                    initial =
-                        listOf(
-                            UpdateEvent(
-                                id = 6L,
-                                remoteEventId = "evt-6",
-                                linkUrl = "https://example.com/6",
-                                title = "Update6",
-                                content = "Payload6",
-                                receivedAtEpochMs = 6000L,
-                                isRead = false,
-                            ),
-                        ),
-                    markAsReadResult = false,
-                )
-            val viewModel = UpdatesViewModel(repository)
-            advanceUntilIdle()
-
-            viewModel.markAsRead(6L)
-            advanceUntilIdle()
-            assertEquals("Не удалось отметить событие прочитанным.", viewModel.uiState.value.actionErrorMessage)
-
-            repository.emitUpdates(
-                listOf(
-                    UpdateEvent(
-                        id = 7L,
-                        remoteEventId = "evt-7",
-                        linkUrl = "https://example.com/7",
-                        title = "Update7",
-                        content = "Payload7",
-                        receivedAtEpochMs = 7000L,
-                        isRead = false,
-                    ),
-                ),
-            )
-            advanceUntilIdle()
-
-            assertEquals(null, viewModel.uiState.value.actionErrorMessage)
-            assertEquals(7L, viewModel.uiState.value.events.first().id)
-        }
-    }
-
-    private class FakeUpdatesRepository(
-        initial: List<UpdateEvent>,
-        private val markAsReadResult: Boolean = true,
+    private class FakeNotificationsRepository(
+        private val notificationsResult: NotificationsResult,
+        private val unreadResult: UnreadCountResult,
+        private val markReadResult: MarkReadResult = MarkReadResult.Success(message = "ok"),
         private val markGate: CompletableDeferred<Unit>? = null,
-    ) : UpdatesRepository {
-        private val updates = MutableStateFlow(initial)
-        var lastMarkedId: Long? = null
+    ) : NotificationsRepository {
+        var lastMarkedIds: List<Long>? = null
             private set
-        var markAsReadCalls: Int = 0
+        var markReadCalls: Int = 0
             private set
 
-        override fun observeUpdates(): Flow<List<UpdateEvent>> = updates.asStateFlow()
+        override suspend fun getNotifications(
+            limit: Int,
+            offset: Int,
+            tags: List<String>,
+        ): NotificationsResult = notificationsResult
 
-        override suspend fun saveIncomingUpdate(
-            update: ParsedPushUpdate,
-            receivedAtEpochMs: Long,
-        ): Boolean {
-            return true
-        }
+        override suspend fun getUnreadCount(): UnreadCountResult = unreadResult
 
-        override suspend fun markAsRead(updateId: Long): Boolean {
-            markAsReadCalls += 1
-            lastMarkedId = updateId
+        override suspend fun markRead(notificationIds: List<Long>): MarkReadResult {
+            markReadCalls += 1
+            lastMarkedIds = notificationIds
             markGate?.await()
-            if (markAsReadResult) {
-                updates.value =
-                    updates.value.map { event ->
-                        if (event.id == updateId) event.copy(isRead = true) else event
-                    }
-            }
-            return markAsReadResult
-        }
-
-        override suspend fun clearUpdates() {
-            updates.value = emptyList()
-        }
-
-        fun emitUpdates(value: List<UpdateEvent>) {
-            updates.value = value
+            return markReadResult
         }
     }
 }

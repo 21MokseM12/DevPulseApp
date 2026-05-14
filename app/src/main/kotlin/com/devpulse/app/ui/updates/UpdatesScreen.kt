@@ -54,6 +54,11 @@ private fun UpdatesScreen(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
         )
+        Text(
+            text = "Непрочитанных: ${uiState.unreadCount}",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
         TopActions(
             onGoToSubscriptions = onGoToSubscriptions,
             onGoToSettings = onGoToSettings,
@@ -174,7 +179,7 @@ private fun EmptyState() {
         verticalArrangement = Arrangement.Center,
     ) {
         Text(text = "Пока нет событий")
-        Text(text = "Новые push-обновления появятся здесь")
+        Text(text = "Новые уведомления из Bot API появятся здесь")
     }
 }
 
