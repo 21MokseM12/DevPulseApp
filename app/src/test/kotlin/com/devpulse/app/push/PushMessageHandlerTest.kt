@@ -1,5 +1,8 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationPreferences
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import kotlinx.coroutines.flow.Flow
@@ -17,7 +20,18 @@ class PushMessageHandlerTest {
     fun handle_validPayload_savesUpdate() {
         runTest {
             val repository = FakeUpdatesRepository(saveResult = true)
-            val handler = PushMessageHandler(payloadParser = parser, updatesRepository = repository)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                presentationMode = NotificationPresentationMode.Compact,
+                            ),
+                        ),
+                )
 
             val result =
                 handler.handle(
@@ -38,6 +52,8 @@ class PushMessageHandlerTest {
             assertEquals(1, repository.saveCalls)
             assertNotNull(repository.lastUpdate)
             assertEquals(1234L, repository.lastReceivedAt)
+            assertEquals(NotificationPresentationMode.Compact, result.presentationMode)
+            assertEquals(true, result.shouldShowSystemNotification)
         }
     }
 
@@ -45,7 +61,18 @@ class PushMessageHandlerTest {
     fun handle_invalidPayload_doesNotSaveAndReturnsIgnoredInvalid() {
         runTest {
             val repository = FakeUpdatesRepository(saveResult = true)
-            val handler = PushMessageHandler(payloadParser = parser, updatesRepository = repository)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                presentationMode = NotificationPresentationMode.Detailed,
+                            ),
+                        ),
+                )
 
             val result =
                 handler.handle(
@@ -60,6 +87,42 @@ class PushMessageHandlerTest {
             assertNull(result.update)
             assertEquals(0, repository.saveCalls)
             assertNull(repository.lastUpdate)
+        }
+    }
+
+    @Test
+    fun handle_savedUpdate_respectsDisabledNotificationPreference() {
+        runTest {
+            val repository = FakeUpdatesRepository(saveResult = true)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = false,
+                                presentationMode = NotificationPresentationMode.Detailed,
+                            ),
+                        ),
+                )
+
+            val result =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-18",
+                            "url" to "https://example.com/news",
+                            "content" to "News body",
+                        ),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-3",
+                    receivedAtEpochMs = 999L,
+                )
+
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertEquals(false, result.shouldShowSystemNotification)
         }
     }
 
@@ -88,5 +151,19 @@ class PushMessageHandlerTest {
         override suspend fun markAsRead(updateId: Long): Boolean = false
 
         override suspend fun clearUpdates() = Unit
+    }
+
+    private class FakeNotificationPreferencesStore(
+        private val preferences: NotificationPreferences,
+    ) : NotificationPreferencesStore {
+        override fun observePreferences(): Flow<NotificationPreferences> = flowOf(preferences)
+
+        override suspend fun getPreferences(): NotificationPreferences = preferences
+
+        override suspend fun setEnabled(enabled: Boolean) = Unit
+
+        override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
+
+        override suspend fun reset() = Unit
     }
 }

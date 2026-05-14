@@ -1,6 +1,9 @@
 package com.devpulse.app.ui.settings
 
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
+import com.devpulse.app.data.local.preferences.NotificationPreferences
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.PushTokenStore
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
@@ -57,7 +60,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, useCase)
+            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
@@ -94,7 +97,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, useCase)
+            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
             advanceUntilIdle()
 
             viewModel.onLogoutRequested()
@@ -134,7 +137,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, useCase)
+            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
@@ -265,6 +268,26 @@ class SettingsLifecycleFlowIntegrationTest {
         override suspend fun clearRequestedFlag() {
             steps += "permission.clear"
             requested.value = false
+        }
+    }
+
+    private class RecordingNotificationPreferencesStore : NotificationPreferencesStore {
+        private val preferences = MutableStateFlow(NotificationPreferences())
+
+        override fun observePreferences(): Flow<NotificationPreferences> = preferences.asStateFlow()
+
+        override suspend fun getPreferences(): NotificationPreferences = preferences.value
+
+        override suspend fun setEnabled(enabled: Boolean) {
+            preferences.value = preferences.value.copy(enabled = enabled)
+        }
+
+        override suspend fun setPresentationMode(mode: NotificationPresentationMode) {
+            preferences.value = preferences.value.copy(presentationMode = mode)
+        }
+
+        override suspend fun reset() {
+            preferences.value = NotificationPreferences()
         }
     }
 }

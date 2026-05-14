@@ -1,5 +1,8 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationPreferences
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +22,7 @@ class PushHandlingIntegrationTest {
                 PushMessageHandler(
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
+                    notificationPreferencesStore = StaticNotificationPreferencesStore(),
                 )
 
             val outcome =
@@ -48,6 +52,7 @@ class PushHandlingIntegrationTest {
                 PushMessageHandler(
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
+                    notificationPreferencesStore = StaticNotificationPreferencesStore(),
                 )
 
             val outcome =
@@ -80,6 +85,7 @@ class PushHandlingIntegrationTest {
                 PushMessageHandler(
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
+                    notificationPreferencesStore = StaticNotificationPreferencesStore(),
                 )
 
             val outcome =
@@ -101,6 +107,42 @@ class PushHandlingIntegrationTest {
         }
     }
 
+    @Test
+    fun handle_notificationsDisabled_savesEventButSuppressesSystemNotification() {
+        runTest {
+            val repository = CapturingUpdatesRepository()
+            val handler =
+                PushMessageHandler(
+                    payloadParser = PushPayloadParser(),
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        StaticNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = false,
+                                presentationMode = NotificationPresentationMode.Detailed,
+                            ),
+                        ),
+                )
+
+            val outcome =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "url" to "https://example.com/contract",
+                            "content" to "Update body",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "evt-disabled",
+                    receivedAtEpochMs = 100L,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertNotNull(repository.lastUpdate)
+            assertEquals(false, outcome.shouldShowSystemNotification)
+        }
+    }
+
     private class CapturingUpdatesRepository : UpdatesRepository {
         var lastUpdate: ParsedPushUpdate? = null
             private set
@@ -118,5 +160,19 @@ class PushHandlingIntegrationTest {
         override suspend fun markAsRead(updateId: Long): Boolean = false
 
         override suspend fun clearUpdates() = Unit
+    }
+
+    private class StaticNotificationPreferencesStore(
+        private val preferences: NotificationPreferences = NotificationPreferences(),
+    ) : NotificationPreferencesStore {
+        override fun observePreferences(): Flow<NotificationPreferences> = flowOf(preferences)
+
+        override suspend fun getPreferences(): NotificationPreferences = preferences
+
+        override suspend fun setEnabled(enabled: Boolean) = Unit
+
+        override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
+
+        override suspend fun reset() = Unit
     }
 }

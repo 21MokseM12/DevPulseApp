@@ -43,7 +43,12 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
                     receivedAtEpochMs = System.currentTimeMillis(),
                 )
             if (outcome.result == PushHandleResult.Saved && outcome.update != null) {
-                pushNotificationManager.showUpdateNotification(outcome.update)
+                if (outcome.shouldShowSystemNotification) {
+                    pushNotificationManager.showUpdateNotification(
+                        update = outcome.update,
+                        presentationMode = outcome.presentationMode,
+                    )
+                }
             }
             Log.d(
                 LOG_TAG,

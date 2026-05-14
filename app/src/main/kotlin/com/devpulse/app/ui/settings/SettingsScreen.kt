@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -39,6 +41,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 
 @Composable
 fun SettingsRoute(
@@ -59,6 +62,8 @@ fun SettingsRoute(
         onGoToSubscriptions = onGoToSubscriptions,
         onGoToUpdates = onGoToUpdates,
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
+        onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
+        onNotificationPresentationModeSelected = viewModel::onNotificationPresentationModeSelected,
         onLogoutRequested = viewModel::onLogoutRequested,
         onUnregisterRequested = viewModel::onUnregisterRequested,
         onUnregisterDismissed = viewModel::onUnregisterDismissed,
@@ -72,6 +77,8 @@ private fun SettingsScreen(
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
+    onNotificationToggleChanged: (Boolean) -> Unit,
+    onNotificationPresentationModeSelected: (NotificationPresentationMode) -> Unit,
     onLogoutRequested: () -> Unit,
     onUnregisterRequested: () -> Unit,
     onUnregisterDismissed: () -> Unit,
@@ -134,6 +141,65 @@ private fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
     ) {
         Text(text = "Settings", style = MaterialTheme.typography.headlineMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Показывать системные уведомления",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Switch(
+                checked = uiState.notificationPreferences.enabled,
+                onCheckedChange = onNotificationToggleChanged,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Compact) },
+                enabled = uiState.notificationPreferences.enabled,
+                modifier = Modifier,
+            ) {
+                Text(
+                    text =
+                        if (uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Compact) {
+                            "Compact ✓"
+                        } else {
+                            "Compact"
+                        },
+                )
+            }
+            OutlinedButton(
+                onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Detailed) },
+                enabled = uiState.notificationPreferences.enabled,
+                modifier = Modifier,
+            ) {
+                Text(
+                    text =
+                        if (uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Detailed) {
+                            "Detailed ✓"
+                        } else {
+                            "Detailed"
+                        },
+                )
+            }
+        }
+        Text(
+            text =
+                when (uiState.notificationPreferences.presentationMode) {
+                    NotificationPresentationMode.Compact ->
+                        "Compact: короткий текст в шторке без деталей."
+                    NotificationPresentationMode.Detailed ->
+                        "Detailed: полный текст обновления в уведомлении."
+                },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             text = permissionDescription(permissionState),
             style = MaterialTheme.typography.bodyMedium,

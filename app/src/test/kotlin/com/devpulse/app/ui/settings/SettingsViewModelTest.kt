@@ -1,6 +1,9 @@
 package com.devpulse.app.ui.settings
 
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
+import com.devpulse.app.data.local.preferences.NotificationPreferences
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.PushTokenStore
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
@@ -44,7 +47,12 @@ class SettingsViewModelTest {
     fun onPermissionRequestTriggered_marksPermissionAsRequested() {
         runTest {
             val store = FakeNotificationPermissionStore()
-            val viewModel = SettingsViewModel(store, FakeAccountLifecycleUseCase())
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    FakeNotificationPreferencesStore(),
+                    FakeAccountLifecycleUseCase(),
+                )
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.hasRequestedNotificationPermission)
@@ -62,6 +70,7 @@ class SettingsViewModelTest {
             val viewModel =
                 SettingsViewModel(
                     store,
+                    FakeNotificationPreferencesStore(),
                     FakeAccountLifecycleUseCase(
                         unregisterResult =
                             AccountLifecycleResult.Failure(
@@ -92,6 +101,7 @@ class SettingsViewModelTest {
             val viewModel =
                 SettingsViewModel(
                     store,
+                    FakeNotificationPreferencesStore(),
                     FakeAccountLifecycleUseCase(
                         logoutResult = AccountLifecycleResult.Cancelled,
                     ),
@@ -114,6 +124,7 @@ class SettingsViewModelTest {
             val viewModel =
                 SettingsViewModel(
                     store,
+                    FakeNotificationPreferencesStore(),
                     FakeAccountLifecycleUseCase(
                         logoutResult = AccountLifecycleResult.Success,
                     ),
@@ -136,6 +147,7 @@ class SettingsViewModelTest {
             val viewModel =
                 SettingsViewModel(
                     store,
+                    FakeNotificationPreferencesStore(),
                     FakeAccountLifecycleUseCase(
                         unregisterResult = AccountLifecycleResult.Success,
                     ),
@@ -149,6 +161,52 @@ class SettingsViewModelTest {
             assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
             viewModel.onAuthNavigationHandled()
             assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+        }
+    }
+
+    @Test
+    fun onNotificationToggleChanged_updatesUiStateFromPreferencesStore() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val preferencesStore = FakeNotificationPreferencesStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    preferencesStore,
+                    FakeAccountLifecycleUseCase(),
+                )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.notificationPreferences.enabled)
+            viewModel.onNotificationToggleChanged(false)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.notificationPreferences.enabled)
+        }
+    }
+
+    @Test
+    fun onNotificationPresentationModeSelected_updatesUiStateFromPreferencesStore() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val preferencesStore = FakeNotificationPreferencesStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    preferencesStore,
+                    FakeAccountLifecycleUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onNotificationPresentationModeSelected(
+                NotificationPresentationMode.Compact,
+            )
+            advanceUntilIdle()
+
+            assertEquals(
+                NotificationPresentationMode.Compact,
+                viewModel.uiState.value.notificationPreferences.presentationMode,
+            )
         }
     }
 
@@ -181,6 +239,26 @@ class SettingsViewModelTest {
         override suspend fun logout(): AccountLifecycleResult = logoutResult
 
         override suspend fun unregister(): AccountLifecycleResult = unregisterResult
+    }
+
+    private class FakeNotificationPreferencesStore : NotificationPreferencesStore {
+        private val preferences = MutableStateFlow(NotificationPreferences())
+
+        override fun observePreferences(): Flow<NotificationPreferences> = preferences.asStateFlow()
+
+        override suspend fun getPreferences(): NotificationPreferences = preferences.value
+
+        override suspend fun setEnabled(enabled: Boolean) {
+            preferences.value = preferences.value.copy(enabled = enabled)
+        }
+
+        override suspend fun setPresentationMode(mode: NotificationPresentationMode) {
+            preferences.value = preferences.value.copy(presentationMode = mode)
+        }
+
+        override suspend fun reset() {
+            preferences.value = NotificationPreferences()
+        }
     }
 
     private class FakeRemoteDataSource : DevPulseRemoteDataSource {

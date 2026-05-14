@@ -3,6 +3,9 @@ package com.devpulse.app.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
+import com.devpulse.app.data.local.preferences.NotificationPreferences
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +28,7 @@ enum class UnregisterActionStatus {
 
 data class SettingsUiState(
     val hasRequestedNotificationPermission: Boolean = false,
+    val notificationPreferences: NotificationPreferences = NotificationPreferences(),
     val logoutStatus: LogoutActionStatus = LogoutActionStatus.Idle,
     val unregisterStatus: UnregisterActionStatus = UnregisterActionStatus.Idle,
     val showUnregisterConfirmation: Boolean = false,
@@ -37,6 +41,7 @@ class SettingsViewModel
     @Inject
     constructor(
         private val notificationPermissionStore: NotificationPermissionStore,
+        private val notificationPreferencesStore: NotificationPreferencesStore,
         private val accountLifecycleUseCase: AccountLifecycleUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
@@ -50,11 +55,30 @@ class SettingsViewModel
                     }
                 }
             }
+            viewModelScope.launch {
+                notificationPreferencesStore.observePreferences().collect { preferences ->
+                    _uiState.update { state ->
+                        state.copy(notificationPreferences = preferences)
+                    }
+                }
+            }
         }
 
         fun onPermissionRequestTriggered() {
             viewModelScope.launch {
                 notificationPermissionStore.markRequested()
+            }
+        }
+
+        fun onNotificationToggleChanged(enabled: Boolean) {
+            viewModelScope.launch {
+                notificationPreferencesStore.setEnabled(enabled)
+            }
+        }
+
+        fun onNotificationPresentationModeSelected(mode: NotificationPresentationMode) {
+            viewModelScope.launch {
+                notificationPreferencesStore.setPresentationMode(mode)
             }
         }
 

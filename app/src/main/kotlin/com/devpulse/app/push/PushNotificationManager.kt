@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.devpulse.app.MainActivity
+import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,22 +27,29 @@ class PushNotificationManager
         private val manager by lazy { NotificationManagerCompat.from(context) }
 
         @SuppressLint("MissingPermission")
-        fun showUpdateNotification(update: ParsedPushUpdate) {
+        fun showUpdateNotification(
+            update: ParsedPushUpdate,
+            presentationMode: NotificationPresentationMode,
+        ) {
             if (!canPostNotifications()) return
 
             val notificationId = notificationIdForUpdate(update)
             val contentIntent = buildOpenUpdatesPendingIntent()
+            val title = textResolver.resolveTitle(update.title)
+            val body = textResolver.resolveBody(update.content, presentationMode)
             val notification =
                 NotificationCompat
                     .Builder(context, PushNotificationChannels.UPDATES_CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.ic_popup_reminder)
-                    .setContentTitle(textResolver.resolveTitle(update.title))
-                    .setContentText(textResolver.resolveBody(update.content))
-                    .setStyle(
-                        NotificationCompat.BigTextStyle().bigText(
-                            textResolver.resolveBody(update.content),
-                        ),
-                    )
+                    .setContentTitle(title)
+                    .setContentText(body)
+                    .let { builder ->
+                        if (presentationMode == NotificationPresentationMode.Detailed) {
+                            builder.setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                        } else {
+                            builder
+                        }
+                    }
                     .setAutoCancel(true)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setCategory(NotificationCompat.CATEGORY_MESSAGE)
@@ -51,18 +59,24 @@ class PushNotificationManager
 
             runCatching {
                 manager.notify(notificationId, notification)
-                manager.notify(SUMMARY_NOTIFICATION_ID, buildSummaryNotification(contentIntent))
+                manager.notify(
+                    SUMMARY_NOTIFICATION_ID,
+                    buildSummaryNotification(contentIntent, presentationMode),
+                )
             }.onFailure { error ->
                 Log.w(LOG_TAG, "Не удалось показать системное уведомление", error)
             }
         }
 
-        private fun buildSummaryNotification(contentIntent: PendingIntent): android.app.Notification {
+        private fun buildSummaryNotification(
+            contentIntent: PendingIntent,
+            presentationMode: NotificationPresentationMode,
+        ): android.app.Notification {
             return NotificationCompat
                 .Builder(context, PushNotificationChannels.UPDATES_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
                 .setContentTitle("DevPulse")
-                .setContentText("Новые обновления по подпискам")
+                .setContentText(textResolver.resolveSummaryBody(presentationMode))
                 .setAutoCancel(true)
                 .setGroup(UPDATES_GROUP_KEY)
                 .setGroupSummary(true)
