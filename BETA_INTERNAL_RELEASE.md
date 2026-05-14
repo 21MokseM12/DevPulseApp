@@ -2,7 +2,7 @@
 
 ## Версия beta
 
-- Версия приложения: `1.15.0`
+- Версия приложения: `1.17.0`
 - Тип сборки для внутреннего тестирования: `staging`
 - APK артефакт: `app/build/outputs/apk/staging/app-staging.apk`
 
@@ -39,10 +39,12 @@
 
 ### Известные ограничения beta
 
-- UI-тесты (instrumented) в beta-процессе не запускаются автоматически, используется unit-test regression.
+- UI smoke-тесты (instrumented/Compose) запускаются автоматически в CI job `Instrumented Smoke (Compose)` с retry и артефактами диагностики.
 - В `lintDebug` есть предупреждения, которые временно зафиксированы baseline (`app/lint-baseline.xml`).
 - Текущие `BASE_URL` для `staging`/`release` остаются заглушками до подключения реального backend-контура.
 - Матрица локальных/CI quality checks: `docs/ci-quality-matrix.md`.
+- Матрица instrumented smoke-сценариев: `docs/instrumented-smoke-matrix.md`.
+- Flaky/quarantine policy для smoke: `docs/instrumented-smoke-flaky-policy.md`.
 
 ## Smoke Checklist (реальное устройство)
 

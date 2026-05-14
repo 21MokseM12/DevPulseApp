@@ -131,11 +131,78 @@ jobs:
             app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
+  instrumented-smoke:
+    name: Instrumented Smoke (Compose)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run instrumented smoke tests with retry
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            set -eo pipefail
+            mkdir -p app/build/reports/androidTests app/build/outputs/androidTest-results
+            max_attempts=2
+            attempt=1
+            status="failure"
+            while [ $attempt -le $max_attempts ]; do
+              echo "Running instrumented smoke (attempt $attempt/$max_attempts)"
+              if ./gradlew --no-daemon --stacktrace :app:connectedDebugAndroidTest \
+                -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest; then
+                status="success"
+                break
+              fi
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying smoke suite after failure..."
+                sleep 10
+              fi
+              attempt=$((attempt + 1))
+            done
+            adb logcat -d > app/build/reports/androidTests/logcat-smoke.txt || true
+            adb pull \
+              /sdcard/Android/data/com.devpulse.app/files/smoke-screenshots \
+              app/build/outputs/androidTest-results/smoke-screenshots || true
+            if [ "$status" != "success" ]; then
+              exit 1
+            fi
+
+      - name: Upload instrumented smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-instrumented-smoke
+          path: |
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
+            app/build/outputs/androidTest-results/smoke-screenshots/**
+          if-no-files-found: error
+
   quality-summary:
     name: Quality Summary
     runs-on: ubuntu-latest
     if: always()
-    needs: verify
+    needs:
+      - verify
+      - instrumented-smoke
     steps:
       - name: Checkout
         uses: actions/checkout@v4

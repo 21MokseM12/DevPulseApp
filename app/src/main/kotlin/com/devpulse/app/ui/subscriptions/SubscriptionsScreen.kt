@@ -21,10 +21,12 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.domain.model.TrackedLink
+import com.devpulse.app.ui.testing.SmokeTestTags
 
 @Composable
 fun SubscriptionsRoute(
@@ -74,7 +76,10 @@ private fun SubscriptionsScreen(
         Text(
             text = "Subscriptions",
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_TITLE),
         )
         TopActions(
             onGoToUpdates = onGoToUpdates,
@@ -142,7 +147,10 @@ private fun SubscriptionsScreen(
             title = { Text(text = "Удалить подписку?") },
             text = { Text(text = uiState.pendingRemoval.url) },
             confirmButton = {
-                TextButton(onClick = onRemoveConfirmed) {
+                TextButton(
+                    onClick = onRemoveConfirmed,
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON),
+                ) {
                     Text(text = "Удалить")
                 }
             },
@@ -172,7 +180,10 @@ private fun AddSubscriptionForm(
             onValueChange = onAddLinkInputChange,
             label = { Text(text = "URL") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT),
             enabled = !uiState.isAdding,
         )
         OutlinedTextField(
@@ -180,7 +191,10 @@ private fun AddSubscriptionForm(
             onValueChange = onAddTagsInputChange,
             label = { Text(text = "Tags (через запятую)") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_TAGS_INPUT),
             enabled = !uiState.isAdding,
         )
         OutlinedTextField(
@@ -188,7 +202,10 @@ private fun AddSubscriptionForm(
             onValueChange = onAddFiltersInputChange,
             label = { Text(text = "Filters (через запятую)") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_FILTERS_INPUT),
             enabled = !uiState.isAdding,
         )
         if (uiState.addErrorMessage != null) {
@@ -200,7 +217,10 @@ private fun AddSubscriptionForm(
         Button(
             onClick = onAddSubscription,
             enabled = !uiState.isAdding,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON),
         ) {
             if (uiState.isAdding) {
                 CircularProgressIndicator(
@@ -227,9 +247,18 @@ private fun TopActions(
                 .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(onClick = onGoToUpdates, modifier = Modifier.weight(1f)) { Text(text = "Открыть Updates") }
+        Button(
+            onClick = onGoToUpdates,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON),
+        ) { Text(text = "Открыть Updates") }
         Button(onClick = onGoToSettings, modifier = Modifier.weight(1f)) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout) { Text(text = "Выйти") }
+        Button(
+            onClick = onLogout,
+            modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON),
+        ) { Text(text = "Выйти") }
     }
 }
 
@@ -246,7 +275,10 @@ private fun LinksContent(
     ) {
         items(items = links, key = { it.id }) { link ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(SmokeTestTags.subscriptionRow(link.id)),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -258,6 +290,7 @@ private fun LinksContent(
                 TextButton(
                     onClick = { onRemoveRequested(link) },
                     enabled = !isRemoving,
+                    modifier = Modifier.testTag(SmokeTestTags.subscriptionRemoveButton(link.id)),
                 ) {
                     Text(text = "Удалить")
                 }

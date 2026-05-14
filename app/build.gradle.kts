@@ -33,11 +33,11 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 40
-        versionName = "1.16.0"
+        versionCode = 41
+        versionName = "1.17.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.devpulse.app.HiltTestRunner"
     }
 
     buildTypes {
@@ -219,6 +219,8 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.8.0")
+    androidTestImplementation("com.google.dagger:hilt-android-testing:2.57.2")
+    kspAndroidTest("com.google.dagger:hilt-android-compiler:2.57.2")
 
     debugImplementation("androidx.compose.ui:ui-tooling:1.8.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.8.0")

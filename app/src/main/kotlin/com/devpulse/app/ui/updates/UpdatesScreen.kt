@@ -15,11 +15,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.domain.model.UpdateEvent
+import com.devpulse.app.ui.testing.SmokeTestTags
 
 @Composable
 fun UpdatesRoute(
@@ -52,12 +54,18 @@ private fun UpdatesScreen(
         Text(
             text = "Updates",
             style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .testTag(SmokeTestTags.UPDATES_TITLE),
         )
         Text(
             text = "Непрочитанных: ${uiState.unreadCount}",
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp)
+                    .testTag(SmokeTestTags.UPDATES_UNREAD_COUNT),
         )
         TopActions(
             onGoToSubscriptions = onGoToSubscriptions,
@@ -149,7 +157,10 @@ private fun UpdatesList(
                     Button(
                         onClick = { onMarkAsRead(event.id) },
                         enabled = !markingIds.contains(event.id),
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier =
+                            Modifier
+                                .padding(top = 4.dp)
+                                .testTag(SmokeTestTags.updateMarkReadButton(event.id)),
                     ) {
                         Text(text = "Пометить как прочитанное")
                     }
@@ -196,8 +207,16 @@ private fun TopActions(
                 .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(onClick = onGoToSubscriptions, modifier = Modifier.weight(1f)) { Text(text = "Открыть Subscriptions") }
+        Button(
+            onClick = onGoToSubscriptions,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(SmokeTestTags.UPDATES_OPEN_SUBSCRIPTIONS_BUTTON),
+        ) { Text(text = "Открыть Subscriptions") }
         Button(onClick = onGoToSettings, modifier = Modifier.weight(1f)) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout) { Text(text = "Выйти") }
+        Button(onClick = onLogout, modifier = Modifier.testTag(SmokeTestTags.UPDATES_LOGOUT_BUTTON)) {
+            Text(text = "Выйти")
+        }
     }
 }

@@ -13,10 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.ui.testing.SmokeTestTags
 
 @Composable
 fun AuthRoute(
@@ -54,14 +56,21 @@ private fun AuthScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
     ) {
-        Text(text = "Auth", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Auth",
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.testTag(SmokeTestTags.AUTH_TITLE),
+        )
         OutlinedTextField(
             value = uiState.login,
             onValueChange = onLoginChange,
             label = { Text(text = "Логин") },
             singleLine = true,
             enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.AUTH_LOGIN_INPUT),
         )
         OutlinedTextField(
             value = uiState.password,
@@ -70,7 +79,10 @@ private fun AuthScreen(
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
             enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.AUTH_PASSWORD_INPUT),
         )
         if (uiState.errorMessage != null) {
             Text(
@@ -82,7 +94,10 @@ private fun AuthScreen(
         Button(
             onClick = onSubmit,
             enabled = !uiState.isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.AUTH_SUBMIT_BUTTON),
         ) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(
