@@ -45,18 +45,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
-import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.push.PushNotificationTextResolver
-import java.time.DayOfWeek
 import java.time.Instant
-import java.time.ZoneId
-import java.time.format.TextStyle
-import java.util.Locale
 
 @Composable
 fun SettingsRoute(
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
+    onOpenQuietHoursSchedule: () -> Unit,
     onNavigateToAuth: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
@@ -71,15 +67,12 @@ fun SettingsRoute(
         uiState = uiState,
         onGoToSubscriptions = onGoToSubscriptions,
         onGoToUpdates = onGoToUpdates,
+        onOpenQuietHoursSchedule = onOpenQuietHoursSchedule,
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
         onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
         onNotificationPresentationModeSelected = viewModel::onNotificationPresentationModeSelected,
         onNotificationDigestModeToggled = viewModel::onNotificationDigestModeToggled,
         onQuietHoursEnabledChanged = viewModel::onQuietHoursEnabledChanged,
-        onQuietHoursStartShifted = viewModel::onQuietHoursStartShifted,
-        onQuietHoursEndShifted = viewModel::onQuietHoursEndShifted,
-        onQuietHoursWeekdayToggled = viewModel::onQuietHoursWeekdayToggled,
-        onQuietHoursTimezoneModeSelected = viewModel::onQuietHoursTimezoneModeSelected,
         onSystemNotificationCapabilityChanged = viewModel::onSystemNotificationCapabilityChanged,
         onLogoutRequested = viewModel::onLogoutRequested,
         onUnregisterRequested = viewModel::onUnregisterRequested,
@@ -93,15 +86,12 @@ internal fun SettingsScreen(
     uiState: SettingsUiState,
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
+    onOpenQuietHoursSchedule: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
     onNotificationToggleChanged: (Boolean) -> Unit,
     onNotificationPresentationModeSelected: (NotificationPresentationMode) -> Unit,
     onNotificationDigestModeToggled: (Boolean) -> Unit,
     onQuietHoursEnabledChanged: (Boolean) -> Unit,
-    onQuietHoursStartShifted: (Int) -> Unit,
-    onQuietHoursEndShifted: (Int) -> Unit,
-    onQuietHoursWeekdayToggled: (DayOfWeek) -> Unit,
-    onQuietHoursTimezoneModeSelected: (QuietHoursTimezoneMode) -> Unit,
     onSystemNotificationCapabilityChanged: (Boolean) -> Unit,
     onLogoutRequested: () -> Unit,
     onUnregisterRequested: () -> Unit,
@@ -276,10 +266,7 @@ internal fun SettingsScreen(
             policy = uiState.notificationPreferences.quietHoursPolicy,
             enabled = effectiveNotificationsEnabled,
             onQuietHoursEnabledChanged = onQuietHoursEnabledChanged,
-            onQuietHoursStartShifted = onQuietHoursStartShifted,
-            onQuietHoursEndShifted = onQuietHoursEndShifted,
-            onQuietHoursWeekdayToggled = onQuietHoursWeekdayToggled,
-            onQuietHoursTimezoneModeSelected = onQuietHoursTimezoneModeSelected,
+            onOpenQuietHoursSchedule = onOpenQuietHoursSchedule,
         )
         Text(
             text = permissionDescription(permissionState),
@@ -379,12 +366,9 @@ private fun QuietHoursCard(
     policy: QuietHoursPolicy,
     enabled: Boolean,
     onQuietHoursEnabledChanged: (Boolean) -> Unit,
-    onQuietHoursStartShifted: (Int) -> Unit,
-    onQuietHoursEndShifted: (Int) -> Unit,
-    onQuietHoursWeekdayToggled: (DayOfWeek) -> Unit,
-    onQuietHoursTimezoneModeSelected: (QuietHoursTimezoneMode) -> Unit,
+    onOpenQuietHoursSchedule: () -> Unit,
 ) {
-    val nextWindowPreview = remember(policy) { quietHoursPreview(policy, Instant.now()) }
+    val nextWindowPreview = formatQuietHoursPreview(policy = policy, now = Instant.now())
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -402,81 +386,18 @@ private fun QuietHoursCard(
                     enabled = enabled,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = { onQuietHoursStartShifted(30) },
-                    enabled = enabled && policy.enabled,
-                ) {
-                    Text(text = "С ${formatMinutes(policy.fromMinutes)}")
-                }
-                OutlinedButton(
-                    onClick = { onQuietHoursEndShifted(30) },
-                    enabled = enabled && policy.enabled,
-                ) {
-                    Text(text = "До ${formatMinutes(policy.toMinutes)}")
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                DayOfWeek.entries.forEach { day ->
-                    val selected = policy.weekdays.contains(day)
-                    OutlinedButton(
-                        onClick = { onQuietHoursWeekdayToggled(day) },
-                        enabled = enabled && policy.enabled,
-                    ) {
-                        Text(
-                            text = day.shortLabel(),
-                            color =
-                                if (selected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Device) },
-                    enabled = enabled && policy.enabled,
-                ) {
-                    Text(
-                        text =
-                            if (policy.timezoneMode == QuietHoursTimezoneMode.Device) {
-                                "Часовой пояс устройства ✓"
-                            } else {
-                                "Часовой пояс устройства"
-                            },
-                    )
-                }
-                OutlinedButton(
-                    onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Fixed) },
-                    enabled = enabled && policy.enabled,
-                ) {
-                    Text(
-                        text =
-                            if (policy.timezoneMode == QuietHoursTimezoneMode.Fixed) {
-                                "Фиксированный UTC ✓"
-                            } else {
-                                "Фиксированный UTC"
-                            },
-                    )
-                }
-            }
             Text(
                 text = nextWindowPreview,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Button(
+                onClick = onOpenQuietHoursSchedule,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = "Открыть расписание quiet hours")
+            }
         }
     }
 }
@@ -526,48 +447,6 @@ internal fun NotificationPreviewCard(
             )
         }
     }
-}
-
-private fun quietHoursPreview(
-    policy: QuietHoursPolicy,
-    now: Instant,
-): String {
-    if (!policy.enabled) return "Quiet hours выключены."
-    val zoneId =
-        if (policy.timezoneMode == QuietHoursTimezoneMode.Device) {
-            ZoneId.systemDefault()
-        } else {
-            policy.resolvedFixedZoneId?.let { ZoneId.of(it) } ?: ZoneId.systemDefault()
-        }
-    val currentDay = now.atZone(zoneId).dayOfWeek
-    val weekdaysPreview =
-        policy.weekdays
-            .sortedBy { it.value }
-            .joinToString(separator = ", ") { it.shortLabel() }
-    return buildString {
-        append("Следующее тихое окно: ")
-        append(formatMinutes(policy.fromMinutes))
-        append("–")
-        append(formatMinutes(policy.toMinutes))
-        append(" (")
-        append(zoneId.id)
-        append("). Дни: ")
-        append(weekdaysPreview)
-        append(". Сегодня: ")
-        append(currentDay.shortLabel())
-        append(".")
-    }
-}
-
-private fun formatMinutes(minutes: Int): String {
-    val normalized = ((minutes % (24 * 60)) + (24 * 60)) % (24 * 60)
-    val hours = normalized / 60
-    val mins = normalized % 60
-    return "%02d:%02d".format(hours, mins)
-}
-
-private fun DayOfWeek.shortLabel(): String {
-    return getDisplayName(TextStyle.SHORT, Locale("ru"))
 }
 
 private fun permissionDescription(state: NotificationPermissionState): String {

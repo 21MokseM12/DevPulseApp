@@ -22,4 +22,8 @@ sealed interface AppRoute {
     data object Settings : AppRoute {
         override val route: String = "settings"
     }
+
+    data object QuietHoursSchedule : AppRoute {
+        override val route: String = "quiet-hours-schedule"
+    }
 }

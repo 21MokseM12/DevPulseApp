@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
+import com.devpulse.app.ui.settings.QuietHoursScheduleRoute
 import com.devpulse.app.ui.settings.SettingsRoute
 import com.devpulse.app.ui.subscriptions.SubscriptionsRoute
 import com.devpulse.app.ui.updates.UpdatesRoute
@@ -87,12 +88,19 @@ fun AppNavGraph(
                 SettingsRoute(
                     onGoToSubscriptions = { navController.navigateToTopLevel(AppRoute.Subscriptions.route) },
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
+                    onOpenQuietHoursSchedule = { navController.navigate(AppRoute.QuietHoursSchedule.route) },
                     onNavigateToAuth = {
                         navController.navigate(AppRoute.Auth.route) {
                             popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
                             launchSingleTop = true
                         }
                     },
+                )
+            }
+
+            composable(AppRoute.QuietHoursSchedule.route) {
+                QuietHoursScheduleRoute(
+                    onNavigateBack = { navController.popBackStack() },
                 )
             }
         }

@@ -4,9 +4,11 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
+import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.push.PushNotificationTextResolver
 import org.junit.Rule
@@ -24,15 +26,12 @@ class NotificationSettingsUiTest {
                 uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
                 onGoToSubscriptions = {},
                 onGoToUpdates = {},
+                onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
                 onNotificationPresentationModeSelected = {},
                 onNotificationDigestModeToggled = {},
                 onQuietHoursEnabledChanged = {},
-                onQuietHoursStartShifted = { _ -> },
-                onQuietHoursEndShifted = { _ -> },
-                onQuietHoursWeekdayToggled = { _ -> },
-                onQuietHoursTimezoneModeSelected = { _ -> },
                 onSystemNotificationCapabilityChanged = {},
                 onLogoutRequested = {},
                 onUnregisterRequested = {},
@@ -68,15 +67,12 @@ class NotificationSettingsUiTest {
                     ),
                 onGoToSubscriptions = {},
                 onGoToUpdates = {},
+                onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
                 onNotificationPresentationModeSelected = {},
                 onNotificationDigestModeToggled = {},
                 onQuietHoursEnabledChanged = {},
-                onQuietHoursStartShifted = { _ -> },
-                onQuietHoursEndShifted = { _ -> },
-                onQuietHoursWeekdayToggled = { _ -> },
-                onQuietHoursTimezoneModeSelected = { _ -> },
                 onSystemNotificationCapabilityChanged = {},
                 onLogoutRequested = {},
                 onUnregisterRequested = {},
@@ -85,7 +81,37 @@ class NotificationSettingsUiTest {
             )
         }
 
-        composeRule.onNodeWithText("Следующее тихое окно: 22:00–07:00 (UTC).", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Quiet hours:", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Ближайший старт:", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Ближайшее завершение:", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun settingsScreen_opensQuietHoursScheduleFromCard() {
+        var openClicks = 0
+        composeRule.setContent {
+            SettingsScreen(
+                uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
+                onGoToSubscriptions = {},
+                onGoToUpdates = {},
+                onOpenQuietHoursSchedule = { openClicks += 1 },
+                onPermissionRequestTriggered = {},
+                onNotificationToggleChanged = {},
+                onNotificationPresentationModeSelected = {},
+                onNotificationDigestModeToggled = {},
+                onQuietHoursEnabledChanged = {},
+                onSystemNotificationCapabilityChanged = {},
+                onLogoutRequested = {},
+                onUnregisterRequested = {},
+                onUnregisterDismissed = {},
+                onUnregisterConfirmed = {},
+            )
+        }
+
+        composeRule.onNodeWithText("Открыть расписание quiet hours").assertIsDisplayed().performClick()
+        composeRule.runOnIdle {
+            org.junit.Assert.assertEquals(1, openClicks)
+        }
     }
 
     @Test
@@ -102,5 +128,32 @@ class NotificationSettingsUiTest {
         composeRule
             .onNodeWithText(PushNotificationTextResolver.DAILY_DIGEST_SUMMARY_BODY)
             .assertIsDisplayed()
+    }
+
+    @Test
+    fun quietHoursScheduleScreen_showsDedicatedPreviewSection() {
+        composeRule.setContent {
+            QuietHoursScheduleScreen(
+                policy =
+                    QuietHoursPolicy(
+                        enabled = true,
+                        fromMinutes = 22 * 60,
+                        toMinutes = 6 * 60,
+                        weekdays = DayOfWeek.entries.toSet(),
+                        timezoneMode = QuietHoursTimezoneMode.Fixed,
+                        fixedZoneId = "UTC",
+                    ),
+                onNavigateBack = {},
+                onQuietHoursEnabledChanged = {},
+                onQuietHoursStartShifted = { _ -> },
+                onQuietHoursEndShifted = { _ -> },
+                onQuietHoursWeekdayToggled = { _ -> },
+                onQuietHoursTimezoneModeSelected = { _ -> },
+            )
+        }
+
+        composeRule.onNodeWithText("Quiet hours schedule").assertIsDisplayed()
+        composeRule.onNodeWithText("Preview ближайшего окна").assertIsDisplayed()
+        composeRule.onNodeWithText("Следующий старт:", substring = true).assertIsDisplayed()
     }
 }
