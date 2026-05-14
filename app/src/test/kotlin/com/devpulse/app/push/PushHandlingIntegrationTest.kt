@@ -54,5 +54,7 @@ class PushHandlingIntegrationTest {
         }
 
         override suspend fun markAsRead(updateId: Long): Boolean = false
+
+        override suspend fun clearUpdates() = Unit
     }
 }
