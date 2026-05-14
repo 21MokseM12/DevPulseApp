@@ -22,6 +22,7 @@
 - При отсутствии pin-ов в `staging/release`:
   - auth-запросы блокируются `AuthTransportSecurityGuard` до сетевого вызова;
   - сеть в production-конфигурации падает fail-fast при создании `OkHttpClient`.
+- Pinning применяется к целевому host из `BASE_URL` и его поддоменам (`host` + `*.host`).
 - Это fail-closed политика: приложение не делает небезопасный transport в production-вариантах.
 
 ### Ротация pin-ов (runbook)

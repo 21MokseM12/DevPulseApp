@@ -72,12 +72,17 @@ class ApiErrorMapperTest {
                     ApiErrorResponseDto(
                         description = "invalid body",
                         code = "BAD_REQUEST",
-                        exceptionMessage = "?password=secret&token=abc Authorization: Bearer private",
+                        exceptionMessage =
+                            "?login=alice&password=secret&token=abc " +
+                                "Authorization: Bearer private Authorization: Basic YWxpY2U6c2VjcmV0",
                     ),
             )
-        val networkError = mapper.mapNetworkError(IOException("refresh_token=my-token"))
+        val networkError = mapper.mapNetworkError(IOException("""{"login":"alice","refresh_token":"my-token"}"""))
 
-        assertEquals("?password=***&token=*** Authorization: Bearer ***", apiError.technicalDescription)
-        assertEquals("refresh_token=***", networkError.technicalDescription)
+        assertEquals(
+            "?login=***&password=***&token=*** Authorization: Bearer *** Authorization: Basic ***",
+            apiError.technicalDescription,
+        )
+        assertEquals("""{"login":"***","refresh_token":"***"}""", networkError.technicalDescription)
     }
 }

@@ -6,6 +6,7 @@
 
 - `staging` и `release` обязаны использовать `https` base URL.
 - `staging` и `release` обязаны иметь валидные `sha256/...` pin-ы.
+- Pinning применяется к основному backend host и его поддоменам (`<host>` + `*.<host>`).
 - При отсутствии валидных pin-ов авторизация блокируется в `AuthTransportSecurityGuard`.
 - При невалидной production-конфигурации (`http` или без pin-ов) сборка/инициализация сети падает fail-fast.
 
@@ -26,7 +27,7 @@
 - [ ] Локально/в CI прошли `./gradlew :app:testDebugUnitTest`.
 - [ ] Локально/в CI прошли `./gradlew :app:build` с подставленными pin-секретами.
 - [ ] Проверен auth flow на `https` endpoint (staging/release).
-- [ ] Проверено, что секреты не попали в логи и crash payload.
+- [ ] Проверено, что секреты не попали в логи и crash payload (`password/login`, auth headers, token/query params).
 
 ## Ротация pin-ов
 

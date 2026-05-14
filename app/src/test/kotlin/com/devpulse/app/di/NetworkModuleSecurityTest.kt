@@ -2,6 +2,7 @@ package com.devpulse.app.di
 
 import okhttp3.logging.HttpLoggingInterceptor
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -54,6 +55,25 @@ class NetworkModuleSecurityTest {
     }
 
     @Test
+    fun resolvePinnedHosts_addsWildcard_forDomainHost() {
+        val hosts = resolvePinnedHosts("api.devpulse.example")
+
+        assertTrue("api.devpulse.example" in hosts)
+        assertTrue("*.api.devpulse.example" in hosts)
+    }
+
+    @Test
+    fun resolvePinnedHosts_doesNotAddWildcard_forLocalAndIpHosts() {
+        val localhostHosts = resolvePinnedHosts("localhost")
+        val emulatorHosts = resolvePinnedHosts("10.0.2.2")
+
+        assertEquals(setOf("localhost"), localhostHosts)
+        assertEquals(setOf("10.0.2.2"), emulatorHosts)
+        assertFalse(localhostHosts.any { it.startsWith("*.") })
+        assertFalse(emulatorHosts.any { it.startsWith("*.") })
+    }
+
+    @Test
     fun createCertificatePinner_ignoresMalformedPins() {
         val pinner =
             createCertificatePinner(
@@ -83,14 +103,18 @@ class NetworkModuleSecurityTest {
     @Test
     fun redactSensitiveLogData_masksQueryJsonAndBearerToken() {
         val raw =
-            "POST /api/v1/clients?password=super-secret&token=abc123 Authorization: Bearer top-secret " +
-                "{\"password\":\"admin123\",\"accessToken\":\"xyz\"}"
+            "POST /api/v1/clients?login=alice&password=super-secret&token=abc123 " +
+                "Authorization: Bearer top-secret Authorization: Basic YWxpY2U6c2VjcmV0 " +
+                "{\"login\":\"alice\",\"password\":\"admin123\",\"accessToken\":\"xyz\"}"
 
         val redacted = redactSensitiveLogData(raw)
 
+        assertTrue(redacted.contains("login=***"))
         assertTrue(redacted.contains("password=***"))
         assertTrue(redacted.contains("token=***"))
         assertTrue(redacted.contains("Bearer ***"))
+        assertTrue(redacted.contains("Basic ***"))
+        assertTrue(redacted.contains(""""login":"***""""))
         assertTrue(redacted.contains(""""password":"***""""))
         assertTrue(redacted.contains(""""accessToken":"***""""))
     }

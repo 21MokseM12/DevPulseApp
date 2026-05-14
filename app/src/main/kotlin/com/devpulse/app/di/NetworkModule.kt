@@ -128,16 +128,37 @@ internal fun createCertificatePinner(
     if (configuredPins.isEmpty()) {
         return null
     }
+    val pinHosts = resolvePinnedHosts(host)
     val builder = CertificatePinner.Builder()
     configuredPins.forEach { pin ->
-        builder.add(host, pin)
+        pinHosts.forEach { pinHost ->
+            builder.add(pinHost, pin)
+        }
     }
     return builder.build()
 }
 
-private val SENSITIVE_QUERY_KEYS = setOf("password", "token", "access_token", "refresh_token", "api_key", "secret")
-private val SENSITIVE_JSON_KEYS = setOf("password", "token", "accessToken", "refreshToken", "apiKey", "secret")
+internal fun resolvePinnedHosts(baseHost: String): Set<String> {
+    if (baseHost.equals("localhost", ignoreCase = true)) {
+        return setOf(baseHost)
+    }
+    if (IPV4_HOST_REGEX.matches(baseHost) || baseHost.contains(":")) {
+        return setOf(baseHost)
+    }
+    if (!baseHost.contains(".")) {
+        return setOf(baseHost)
+    }
+    return linkedSetOf(baseHost, "*.$baseHost")
+}
+
+private val IPV4_HOST_REGEX = Regex("^\\d{1,3}(?:\\.\\d{1,3}){3}$")
+
+private val SENSITIVE_QUERY_KEYS =
+    setOf("password", "login", "token", "access_token", "refresh_token", "api_key", "secret")
+private val SENSITIVE_JSON_KEYS =
+    setOf("password", "login", "token", "accessToken", "refreshToken", "refresh_token", "apiKey", "secret")
 private val SENSITIVE_BEARER_REGEX = Regex("(?i)(Bearer\\s+)([^\\s\"]+)")
+private val SENSITIVE_BASIC_REGEX = Regex("(?i)(Basic\\s+)([^\\s\"]+)")
 
 internal fun redactSensitiveLogData(raw: String): String {
     var result = raw
@@ -150,6 +171,7 @@ internal fun redactSensitiveLogData(raw: String): String {
         result = result.replace(pattern, "$1***$3")
     }
     result = result.replace(SENSITIVE_BEARER_REGEX, "$1***")
+    result = result.replace(SENSITIVE_BASIC_REGEX, "$1***")
     return result
 }
 
