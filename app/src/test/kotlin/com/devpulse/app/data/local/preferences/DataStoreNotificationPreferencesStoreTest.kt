@@ -13,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 import java.nio.file.Files
+import java.time.DayOfWeek
 
 class DataStoreNotificationPreferencesStoreTest {
     @Test
@@ -24,6 +25,7 @@ class DataStoreNotificationPreferencesStoreTest {
 
             assertTrue(preferences.enabled)
             assertEquals(NotificationPresentationMode.Detailed, preferences.presentationMode)
+            assertEquals(false, preferences.quietHoursPolicy.enabled)
         }
     }
 
@@ -59,6 +61,7 @@ class DataStoreNotificationPreferencesStoreTest {
             val preferences = store.getPreferences()
             assertTrue(preferences.enabled)
             assertEquals(NotificationPresentationMode.Detailed, preferences.presentationMode)
+            assertEquals(false, preferences.quietHoursPolicy.enabled)
         }
     }
 
@@ -114,6 +117,51 @@ class DataStoreNotificationPreferencesStoreTest {
             assertTrue(preferences.enabled)
             assertEquals(NotificationPresentationMode.Detailed, preferences.presentationMode)
             assertEquals(null, preferences.digestMode)
+            assertEquals(false, preferences.quietHoursPolicy.enabled)
+        }
+    }
+
+    @Test
+    fun setQuietHoursPolicy_persistsScheduleAndTimezone() {
+        runTest {
+            val store = createStore()
+            val policy =
+                QuietHoursPolicy(
+                    enabled = true,
+                    fromMinutes = 23 * 60,
+                    toMinutes = 6 * 60 + 30,
+                    weekdays = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
+                    timezoneMode = QuietHoursTimezoneMode.Fixed,
+                    fixedZoneId = "Europe/Moscow",
+                )
+
+            store.setQuietHoursPolicy(policy)
+            val restored = store.getPreferences().quietHoursPolicy
+
+            assertTrue(restored.enabled)
+            assertEquals(23 * 60, restored.fromMinutes)
+            assertEquals(6 * 60 + 30, restored.toMinutes)
+            assertEquals(setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), restored.weekdays)
+            assertEquals(QuietHoursTimezoneMode.Fixed, restored.timezoneMode)
+            assertEquals("Europe/Moscow", restored.fixedZoneId)
+        }
+    }
+
+    @Test
+    fun setQuietHoursPolicy_invalidZone_fallsBackToSystemZone() {
+        runTest {
+            val store = createStore()
+            store.setQuietHoursPolicy(
+                QuietHoursPolicy(
+                    enabled = true,
+                    timezoneMode = QuietHoursTimezoneMode.Fixed,
+                    fixedZoneId = "Mars/Colony",
+                ),
+            )
+
+            val restored = store.getPreferences().quietHoursPolicy
+            assertEquals(QuietHoursTimezoneMode.Fixed, restored.timezoneMode)
+            assertTrue(restored.fixedZoneId != null)
         }
     }
 

@@ -291,6 +291,10 @@ class SettingsLifecycleFlowIntegrationTest {
             preferences.value = preferences.value.copy(digestMode = mode)
         }
 
+        override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) {
+            preferences.value = preferences.value.copy(quietHoursPolicy = policy)
+        }
+
         override suspend fun reset() {
             preferences.value = NotificationPreferences()
         }

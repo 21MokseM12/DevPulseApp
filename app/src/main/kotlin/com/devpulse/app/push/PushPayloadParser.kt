@@ -12,6 +12,7 @@ data class ParsedPushUpdate(
     val linkUrl: String,
     val title: String,
     val content: String,
+    val isCritical: Boolean = false,
 )
 
 @Singleton
@@ -49,6 +50,7 @@ class PushPayloadParser
             val creationDate =
                 payload.firstNotBlank("creationDate", "creation_date")
                     ?: DEFAULT_CREATION_DATE
+            val isCritical = payload.toCriticalFlag()
 
             return ParsedPushUpdate(
                 remoteEventId = remoteEventId,
@@ -58,6 +60,7 @@ class PushPayloadParser
                 linkUrl = linkUrl.trim(),
                 title = title,
                 content = content,
+                isCritical = isCritical,
             )
         }
 
@@ -75,10 +78,28 @@ class PushPayloadParser
                 }.getOrDefault(false)
         }
 
+        private fun Map<String, String>.toCriticalFlag(): Boolean {
+            val criticalValue = firstNotBlank("critical", "isCritical", "critical_event")
+            if (criticalValue != null) {
+                return parseBooleanLike(criticalValue)
+            }
+            val priorityValue = firstNotBlank("priority", "severity", "level")
+            if (priorityValue != null) {
+                return priorityValue.lowercase() in PRIORITY_CRITICAL_VALUES
+            }
+            return false
+        }
+
+        private fun parseBooleanLike(rawValue: String): Boolean {
+            return rawValue.lowercase() in BOOLEAN_TRUE_VALUES
+        }
+
         private companion object {
             const val DEFAULT_TITLE = "Новое обновление подписки"
             const val DEFAULT_CONTENT = "Проверьте новые изменения по отслеживаемой ссылке."
             const val DEFAULT_UPDATE_OWNER = "unknown"
             const val DEFAULT_CREATION_DATE = ""
+            val BOOLEAN_TRUE_VALUES = setOf("true", "1", "yes", "y", "on")
+            val PRIORITY_CRITICAL_VALUES = setOf("critical", "high", "urgent")
         }
     }

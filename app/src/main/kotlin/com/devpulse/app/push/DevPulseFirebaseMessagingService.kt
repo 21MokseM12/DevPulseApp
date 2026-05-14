@@ -70,7 +70,8 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
             )
         Log.d(
             LOG_TAG,
-            "Получен push: messageId=$messageId, result=${outcome.result}, dataKeys=${payload.keys}",
+            "Получен push: messageId=$messageId, result=${outcome.result}, " +
+                "quietSuppressed=${outcome.suppressedByQuietHours}, dataKeys=${payload.keys}",
         )
         return outcome
     }

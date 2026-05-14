@@ -6,6 +6,7 @@ import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.PushTokenStore
+import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
@@ -38,6 +39,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.DayOfWeek
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -255,6 +257,35 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun quietHoursHandlers_updateUiStateFromPreferencesStore() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val preferencesStore = FakeNotificationPreferencesStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    preferencesStore,
+                    FakeAccountLifecycleUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onQuietHoursEnabledChanged(true)
+            viewModel.onQuietHoursStartShifted(60)
+            viewModel.onQuietHoursEndShifted(-30)
+            viewModel.onQuietHoursWeekdayToggled(DayOfWeek.SUNDAY)
+            viewModel.onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Fixed)
+            advanceUntilIdle()
+
+            val policy = viewModel.uiState.value.notificationPreferences.quietHoursPolicy
+            assertTrue(policy.enabled)
+            assertEquals(23 * 60, policy.fromMinutes)
+            assertEquals(6 * 60 + 30, policy.toMinutes)
+            assertFalse(policy.weekdays.contains(DayOfWeek.SUNDAY))
+            assertEquals(QuietHoursTimezoneMode.Fixed, policy.timezoneMode)
+        }
+    }
+
     private class FakeNotificationPermissionStore : NotificationPermissionStore {
         private val requested = MutableStateFlow(false)
 
@@ -303,6 +334,10 @@ class SettingsViewModelTest {
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) {
             preferences.value = preferences.value.copy(digestMode = mode)
+        }
+
+        override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) {
+            preferences.value = preferences.value.copy(quietHoursPolicy = policy)
         }
 
         override suspend fun reset() {

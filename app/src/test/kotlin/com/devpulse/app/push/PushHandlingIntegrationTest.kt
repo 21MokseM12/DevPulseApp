@@ -4,6 +4,7 @@ import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
+import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +25,7 @@ class PushHandlingIntegrationTest {
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val outcome =
@@ -54,6 +56,7 @@ class PushHandlingIntegrationTest {
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val outcome =
@@ -87,6 +90,7 @@ class PushHandlingIntegrationTest {
                     payloadParser = PushPayloadParser(),
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val outcome =
@@ -123,6 +127,7 @@ class PushHandlingIntegrationTest {
                                 presentationMode = NotificationPresentationMode.Detailed,
                             ),
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val outcome =
@@ -160,6 +165,7 @@ class PushHandlingIntegrationTest {
                                 digestMode = NotificationDigestMode.Daily,
                             ),
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val outcome =
@@ -178,6 +184,49 @@ class PushHandlingIntegrationTest {
             assertEquals(PushHandleResult.Saved, outcome.result)
             assertEquals(NotificationDigestMode.Daily, outcome.digestMode)
             assertEquals(true, outcome.shouldShowSystemNotification)
+        }
+    }
+
+    @Test
+    fun handle_criticalPayload_ignoresQuietHoursSuppression() {
+        runTest {
+            val repository = CapturingUpdatesRepository()
+            val handler =
+                PushMessageHandler(
+                    payloadParser = PushPayloadParser(),
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        StaticNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                quietHoursPolicy =
+                                    QuietHoursPolicy(
+                                        enabled = true,
+                                        fromMinutes = 22 * 60,
+                                        toMinutes = 7 * 60,
+                                    ),
+                            ),
+                        ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                )
+
+            val outcome =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "url" to "https://example.com/contract",
+                            "content" to "Update body",
+                            "critical" to "true",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "evt-critical",
+                    receivedAtEpochMs = java.time.Instant.parse("2026-05-15T03:00:00Z").toEpochMilli(),
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals(true, outcome.shouldShowSystemNotification)
+            assertEquals(false, outcome.suppressedByQuietHours)
         }
     }
 
@@ -212,6 +261,9 @@ class PushHandlingIntegrationTest {
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
+
+        override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) =
+            Unit
 
         override suspend fun reset() = Unit
     }

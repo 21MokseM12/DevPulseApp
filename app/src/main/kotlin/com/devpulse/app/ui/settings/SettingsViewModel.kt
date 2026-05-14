@@ -7,6 +7,8 @@ import com.devpulse.app.data.local.preferences.NotificationPermissionStore
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
+import com.devpulse.app.data.local.preferences.QuietHoursPolicy
+import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.DayOfWeek
 import javax.inject.Inject
 
 enum class LogoutActionStatus {
@@ -99,6 +102,51 @@ class SettingsViewModel
             viewModelScope.launch {
                 val mode = if (enabled) NotificationDigestMode.Daily else null
                 notificationPreferencesStore.setDigestMode(mode)
+            }
+        }
+
+        fun onQuietHoursEnabledChanged(enabled: Boolean) {
+            updateQuietHoursPolicy { it.copy(enabled = enabled) }
+        }
+
+        fun onQuietHoursStartShifted(deltaMinutes: Int) {
+            updateQuietHoursPolicy { policy ->
+                policy.copy(fromMinutes = shiftMinutes(policy.fromMinutes, deltaMinutes))
+            }
+        }
+
+        fun onQuietHoursEndShifted(deltaMinutes: Int) {
+            updateQuietHoursPolicy { policy ->
+                policy.copy(toMinutes = shiftMinutes(policy.toMinutes, deltaMinutes))
+            }
+        }
+
+        fun onQuietHoursWeekdayToggled(day: DayOfWeek) {
+            updateQuietHoursPolicy { policy ->
+                val nextWeekdays =
+                    if (policy.weekdays.contains(day)) {
+                        policy.weekdays - day
+                    } else {
+                        policy.weekdays + day
+                    }
+                policy.copy(weekdays = if (nextWeekdays.isEmpty()) policy.weekdays else nextWeekdays)
+            }
+        }
+
+        fun onQuietHoursTimezoneModeSelected(mode: QuietHoursTimezoneMode) {
+            updateQuietHoursPolicy { policy ->
+                when (mode) {
+                    QuietHoursTimezoneMode.Device ->
+                        policy.copy(
+                            timezoneMode = QuietHoursTimezoneMode.Device,
+                            fixedZoneId = null,
+                        )
+                    QuietHoursTimezoneMode.Fixed ->
+                        policy.copy(
+                            timezoneMode = QuietHoursTimezoneMode.Fixed,
+                            fixedZoneId = policy.resolvedFixedZoneId ?: java.time.ZoneOffset.UTC.id,
+                        )
+                }
             }
         }
 
@@ -193,5 +241,25 @@ class SettingsViewModel
                     state.copy(shouldNavigateToAuth = false)
                 }
             }
+        }
+
+        private fun updateQuietHoursPolicy(transform: (QuietHoursPolicy) -> QuietHoursPolicy) {
+            viewModelScope.launch {
+                runCatching { notificationPreferencesStore.getPreferences() }
+                    .onSuccess { preferences ->
+                        notificationPreferencesStore.setQuietHoursPolicy(
+                            transform(preferences.quietHoursPolicy),
+                        )
+                    }
+            }
+        }
+
+        private fun shiftMinutes(
+            current: Int,
+            delta: Int,
+        ): Int {
+            val total = 24 * 60
+            val next = (current + delta) % total
+            return if (next < 0) next + total else next
         }
     }

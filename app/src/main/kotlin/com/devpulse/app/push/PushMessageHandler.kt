@@ -18,6 +18,7 @@ data class PushHandleOutcome(
     val result: PushHandleResult,
     val update: ParsedPushUpdate? = null,
     val shouldShowSystemNotification: Boolean = false,
+    val suppressedByQuietHours: Boolean = false,
     val presentationMode: NotificationPresentationMode = NotificationPresentationMode.Detailed,
     val digestMode: NotificationDigestMode? = null,
 )
@@ -29,6 +30,7 @@ class PushMessageHandler
         private val payloadParser: PushPayloadParser,
         private val updatesRepository: UpdatesRepository,
         private val notificationPreferencesStore: NotificationPreferencesStore,
+        private val quietHoursPolicyEvaluator: QuietHoursPolicyEvaluator,
     ) {
         suspend fun handle(
             payload: Map<String, String>,
@@ -56,10 +58,17 @@ class PushMessageHandler
                         .getOrDefault(
                             FALLBACK_PREFERENCES_ON_ERROR,
                         )
+                val suppressedByQuietHours =
+                    quietHoursPolicyEvaluator.shouldSuppressNotification(
+                        schedule = preferences.quietHoursPolicy,
+                        update = parsed,
+                        now = java.time.Instant.ofEpochMilli(receivedAtEpochMs),
+                    )
                 PushHandleOutcome(
                     result = PushHandleResult.Saved,
                     update = parsed,
-                    shouldShowSystemNotification = preferences.enabled,
+                    shouldShowSystemNotification = preferences.enabled && !suppressedByQuietHours,
+                    suppressedByQuietHours = suppressedByQuietHours,
                     presentationMode = preferences.presentationMode,
                     digestMode = preferences.digestMode,
                 )

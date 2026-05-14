@@ -34,6 +34,7 @@ class PushPayloadParserTest {
         assertEquals("https://example.com/article", result.linkUrl)
         assertEquals("Новый пост", result.title)
         assertEquals("Вышла новая статья", result.content)
+        assertEquals(false, result.isCritical)
     }
 
     @Test
@@ -124,5 +125,43 @@ class PushPayloadParserTest {
             )
 
         assertNull(result)
+    }
+
+    @Test
+    fun parse_withCriticalFlag_setsCriticalUpdate() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "url" to "https://example.com/article",
+                        "content" to "Body",
+                        "critical" to "true",
+                    ),
+                notificationTitle = "Title",
+                notificationBody = null,
+                fallbackMessageId = "msg-critical",
+            )
+
+        requireNotNull(result)
+        assertEquals(true, result.isCritical)
+    }
+
+    @Test
+    fun parse_withPriorityFlag_setsCriticalUpdate() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "url" to "https://example.com/article",
+                        "content" to "Body",
+                        "priority" to "critical",
+                    ),
+                notificationTitle = "Title",
+                notificationBody = null,
+                fallbackMessageId = "msg-priority",
+            )
+
+        requireNotNull(result)
+        assertEquals(true, result.isCritical)
     }
 }

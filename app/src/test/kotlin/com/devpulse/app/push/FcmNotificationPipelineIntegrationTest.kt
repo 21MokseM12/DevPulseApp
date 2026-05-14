@@ -4,6 +4,7 @@ import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
+import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import kotlinx.coroutines.flow.Flow
@@ -155,6 +156,45 @@ class FcmNotificationPipelineIntegrationTest {
         }
     }
 
+    @Test
+    fun processIncomingPayload_quietHoursEnabled_savesButSuppressesNotifier() {
+        runTest {
+            val repository = RecordingUpdatesRepository()
+            val notifier = RecordingNotifier()
+            val handler =
+                createHandler(
+                    repository,
+                    StaticPreferencesStore(
+                        NotificationPreferences(
+                            enabled = true,
+                            quietHoursPolicy =
+                                QuietHoursPolicy(
+                                    enabled = true,
+                                    fromMinutes = 22 * 60,
+                                    toMinutes = 7 * 60,
+                                ),
+                        ),
+                    ),
+                )
+
+            val outcome =
+                processIncomingPush(
+                    payload = validPayload(eventId = "evt-5"),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-5",
+                    receivedAtEpochMs = java.time.Instant.parse("2026-05-15T03:00:00Z").toEpochMilli(),
+                    pushMessageHandler = handler,
+                    pushNotifier = notifier,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals(true, outcome.suppressedByQuietHours)
+            assertEquals(1, repository.saveCalls)
+            assertEquals(0, notifier.calls.size)
+        }
+    }
+
     private fun createHandler(
         repository: RecordingUpdatesRepository,
         preferencesStore: NotificationPreferencesStore,
@@ -163,6 +203,7 @@ class FcmNotificationPipelineIntegrationTest {
             payloadParser = PushPayloadParser(),
             updatesRepository = repository,
             notificationPreferencesStore = preferencesStore,
+            quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
         )
 
     private fun validPayload(eventId: String): Map<String, String> =
@@ -228,6 +269,9 @@ class FcmNotificationPipelineIntegrationTest {
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
+
+        override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) =
+            Unit
 
         override suspend fun reset() = Unit
     }

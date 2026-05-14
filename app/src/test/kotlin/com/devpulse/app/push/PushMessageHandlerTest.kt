@@ -32,6 +32,7 @@ class PushMessageHandlerTest {
                                 presentationMode = NotificationPresentationMode.Compact,
                             ),
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val result =
@@ -73,6 +74,7 @@ class PushMessageHandlerTest {
                                 presentationMode = NotificationPresentationMode.Detailed,
                             ),
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val result =
@@ -106,6 +108,7 @@ class PushMessageHandlerTest {
                                 presentationMode = NotificationPresentationMode.Detailed,
                             ),
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val result =
@@ -144,6 +147,7 @@ class PushMessageHandlerTest {
                             ),
                             failOnGet = true,
                         ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
                 )
 
             val result =
@@ -165,6 +169,50 @@ class PushMessageHandlerTest {
             assertEquals(false, result.shouldShowSystemNotification)
             assertEquals(NotificationPresentationMode.Detailed, result.presentationMode)
             assertEquals(null, result.digestMode)
+            assertEquals(1, repository.saveCalls)
+        }
+    }
+
+    @Test
+    fun handle_quietHoursActive_suppressesSystemNotificationButKeepsSavedEvent() {
+        runTest {
+            val repository = FakeUpdatesRepository(saveResult = true)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                quietHoursPolicy =
+                                    com.devpulse.app.data.local.preferences.QuietHoursPolicy(
+                                        enabled = true,
+                                        fromMinutes = 22 * 60,
+                                        toMinutes = 7 * 60,
+                                    ),
+                            ),
+                        ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                )
+
+            val result =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-20",
+                            "url" to "https://example.com/news",
+                            "content" to "News body",
+                        ),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-5",
+                    receivedAtEpochMs = java.time.Instant.parse("2026-05-15T03:00:00Z").toEpochMilli(),
+                )
+
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertEquals(false, result.shouldShowSystemNotification)
+            assertEquals(true, result.suppressedByQuietHours)
             assertEquals(1, repository.saveCalls)
         }
     }
@@ -212,6 +260,9 @@ class PushMessageHandlerTest {
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
+
+        override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) =
+            Unit
 
         override suspend fun reset() = Unit
     }
