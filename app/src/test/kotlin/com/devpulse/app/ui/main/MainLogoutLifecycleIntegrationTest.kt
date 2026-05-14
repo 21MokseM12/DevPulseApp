@@ -30,6 +30,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -37,6 +38,45 @@ import org.junit.Test
 class MainLogoutLifecycleIntegrationTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @Test
+    fun coldStart_withSessionInStore_routesToSubscriptions_evenIfBootstrapHasNoSession() =
+        runTest {
+            val sessionStore =
+                RecordingSessionStore(
+                    steps = mutableListOf(),
+                    initialSession =
+                        StoredSession(
+                            login = "moksem",
+                            isRegistered = true,
+                            updatedAtEpochMs = 1L,
+                        ),
+                )
+            val viewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = false,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase =
+                        AccountLifecycleUseCase(
+                            remoteDataSource = FakeRemoteDataSource(),
+                            sessionStore = sessionStore,
+                            updatesRepository = RecordingUpdatesRepository(mutableListOf()),
+                            pushTokenStore = RecordingPushTokenStore(mutableListOf()),
+                            notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                        ),
+                )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+        }
 
     @Test
     fun logout_fromMainFlow_usesLifecycleCleanupAndRoutesToAuth() =
@@ -90,15 +130,14 @@ class MainLogoutLifecycleIntegrationTest {
 
     private class RecordingSessionStore(
         private val steps: MutableList<String>,
+        initialSession: StoredSession? =
+            StoredSession(
+                login = "moksem",
+                isRegistered = true,
+                updatedAtEpochMs = 1L,
+            ),
     ) : SessionStore {
-        private val state: MutableStateFlow<StoredSession?> =
-            MutableStateFlow(
-                StoredSession(
-                    login = "moksem",
-                    isRegistered = true,
-                    updatedAtEpochMs = 1L,
-                ),
-            )
+        private val state: MutableStateFlow<StoredSession?> = MutableStateFlow(initialSession)
 
         override fun observeSession(): Flow<StoredSession?> = state.asStateFlow()
 

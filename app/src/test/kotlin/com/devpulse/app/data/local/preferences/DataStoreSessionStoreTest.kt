@@ -54,6 +54,18 @@ class DataStoreSessionStoreTest {
         }
     }
 
+    @Test
+    fun saveSession_withBlankLogin_isTreatedAsNoSession() {
+        runTest {
+            val sessionStore = createSessionStore()
+
+            sessionStore.saveSession(login = "   ")
+
+            assertNull(sessionStore.getSession())
+            assertNull(sessionStore.observeSession().first())
+        }
+    }
+
     private fun createSessionStore(): SessionStore {
         val tempFile = Files.createTempFile("session-store-test", ".preferences_pb")
         val dataStore =

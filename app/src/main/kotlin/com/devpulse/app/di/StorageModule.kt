@@ -8,7 +8,6 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.devpulse.app.data.local.db.AppDatabase
 import com.devpulse.app.data.local.db.PushUpdatesDao
-import com.devpulse.app.data.local.db.SessionDao
 import com.devpulse.app.data.local.db.SubscriptionsCacheDao
 import dagger.Module
 import dagger.Provides
@@ -44,12 +43,11 @@ object StorageModule {
             context,
             AppDatabase::class.java,
             "devpulse.db",
-        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_3_4)
+            .fallbackToDestructiveMigration(dropAllTables = true)
+            .build()
     }
-
-    @Provides
-    @Singleton
-    fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
 
     @Provides
     @Singleton

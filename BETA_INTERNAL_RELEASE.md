@@ -2,7 +2,7 @@
 
 ## Версия beta
 
-- Версия приложения: `1.17.0`
+- Версия приложения: `1.19.0`
 - Тип сборки для внутреннего тестирования: `staging`
 - APK артефакт: `app/build/outputs/apk/staging/app-staging.apk`
 
@@ -45,6 +45,7 @@
 - Матрица локальных/CI quality checks: `docs/ci-quality-matrix.md`.
 - Матрица instrumented smoke-сценариев: `docs/instrumented-smoke-matrix.md`.
 - Flaky/quarantine policy для smoke: `docs/instrumented-smoke-flaky-policy.md`.
+- Архитектура хранения сессии: `docs/session-storage-architecture.md`.
 
 ## Smoke Checklist (реальное устройство)
 
