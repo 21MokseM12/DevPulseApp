@@ -29,6 +29,7 @@ data class SettingsUiState(
     val unregisterStatus: UnregisterActionStatus = UnregisterActionStatus.Idle,
     val showUnregisterConfirmation: Boolean = false,
     val unregisterErrorMessage: String? = null,
+    val shouldNavigateToAuth: Boolean = false,
 )
 
 @HiltViewModel
@@ -64,6 +65,7 @@ class SettingsViewModel
                 state.copy(
                     logoutStatus = LogoutActionStatus.InProgress,
                     unregisterErrorMessage = null,
+                    shouldNavigateToAuth = false,
                 )
             }
             viewModelScope.launch {
@@ -71,7 +73,10 @@ class SettingsViewModel
                 _uiState.update { state ->
                     when (result) {
                         AccountLifecycleResult.Success ->
-                            state.copy(logoutStatus = LogoutActionStatus.Idle)
+                            state.copy(
+                                logoutStatus = LogoutActionStatus.Idle,
+                                shouldNavigateToAuth = true,
+                            )
                         is AccountLifecycleResult.Failure ->
                             state.copy(
                                 logoutStatus = LogoutActionStatus.Idle,
@@ -92,6 +97,7 @@ class SettingsViewModel
                 state.copy(
                     showUnregisterConfirmation = true,
                     unregisterErrorMessage = null,
+                    shouldNavigateToAuth = false,
                 )
             }
         }
@@ -116,7 +122,10 @@ class SettingsViewModel
                 _uiState.update { state ->
                     when (result) {
                         AccountLifecycleResult.Success ->
-                            state.copy(unregisterStatus = UnregisterActionStatus.Idle)
+                            state.copy(
+                                unregisterStatus = UnregisterActionStatus.Idle,
+                                shouldNavigateToAuth = true,
+                            )
                         is AccountLifecycleResult.Failure ->
                             state.copy(
                                 unregisterStatus = UnregisterActionStatus.Idle,
@@ -128,6 +137,16 @@ class SettingsViewModel
                                 unregisterErrorMessage = "Удаление аккаунта отменено.",
                             )
                     }
+                }
+            }
+        }
+
+        fun onAuthNavigationHandled() {
+            _uiState.update { state ->
+                if (!state.shouldNavigateToAuth) {
+                    state
+                } else {
+                    state.copy(shouldNavigateToAuth = false)
                 }
             }
         }

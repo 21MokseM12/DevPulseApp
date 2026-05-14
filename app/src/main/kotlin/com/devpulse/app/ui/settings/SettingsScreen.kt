@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -43,9 +44,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 fun SettingsRoute(
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
+    onNavigateToAuth: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+    LaunchedEffect(uiState.shouldNavigateToAuth) {
+        if (uiState.shouldNavigateToAuth) {
+            onNavigateToAuth()
+            viewModel.onAuthNavigationHandled()
+        }
+    }
     SettingsScreen(
         uiState = uiState,
         onGoToSubscriptions = onGoToSubscriptions,

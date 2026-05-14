@@ -87,6 +87,12 @@ fun AppNavGraph(
                 SettingsRoute(
                     onGoToSubscriptions = { navController.navigateToTopLevel(AppRoute.Subscriptions.route) },
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
+                    onNavigateToAuth = {
+                        navController.navigate(AppRoute.Auth.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    },
                 )
             }
         }

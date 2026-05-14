@@ -15,6 +15,8 @@ import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
+import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
@@ -66,6 +68,7 @@ class SettingsLifecycleFlowIntegrationTest {
             assertEquals(UnregisterActionStatus.Idle, viewModel.uiState.value.unregisterStatus)
             assertEquals(null, viewModel.uiState.value.unregisterErrorMessage)
             assertFalse(viewModel.uiState.value.showUnregisterConfirmation)
+            assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
             assertEquals(
                 listOf(
                     "remote.unregister",
@@ -98,6 +101,7 @@ class SettingsLifecycleFlowIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(LogoutActionStatus.Idle, viewModel.uiState.value.logoutStatus)
+            assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
             assertEquals(
                 listOf(
                     "session.clear",
@@ -107,6 +111,40 @@ class SettingsLifecycleFlowIntegrationTest {
                 ),
                 steps,
             )
+        }
+
+    @Test
+    fun unregister_timeout_keepsUiResponsive_withoutLocalResetOrNavigation() =
+        runTest {
+            val steps = mutableListOf<String>()
+            val remote =
+                RecordingRemoteDataSource(
+                    steps,
+                    RemoteCallResult.NetworkFailure(
+                        error = ApiError(ApiErrorKind.NetworkTimeout, "timeout"),
+                        throwable = RuntimeException("timeout"),
+                    ),
+                )
+            val permissionStore = RecordingNotificationPermissionStore(steps)
+            val useCase =
+                AccountLifecycleUseCase(
+                    remoteDataSource = remote,
+                    sessionStore = RecordingSessionStore(steps),
+                    updatesRepository = RecordingUpdatesRepository(steps),
+                    pushTokenStore = RecordingPushTokenStore(steps),
+                    notificationPermissionStore = permissionStore,
+                )
+            val viewModel = SettingsViewModel(permissionStore, useCase)
+            advanceUntilIdle()
+
+            viewModel.onUnregisterRequested()
+            viewModel.onUnregisterConfirmed()
+            advanceUntilIdle()
+
+            assertEquals(UnregisterActionStatus.Idle, viewModel.uiState.value.unregisterStatus)
+            assertEquals("timeout", viewModel.uiState.value.unregisterErrorMessage)
+            assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+            assertEquals(listOf("remote.unregister"), steps)
         }
 
     private class RecordingRemoteDataSource(

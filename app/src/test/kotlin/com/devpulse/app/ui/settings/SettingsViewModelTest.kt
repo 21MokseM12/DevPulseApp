@@ -81,6 +81,7 @@ class SettingsViewModelTest {
             assertFalse(viewModel.uiState.value.showUnregisterConfirmation)
             assertEquals(UnregisterActionStatus.Idle, viewModel.uiState.value.unregisterStatus)
             assertEquals("timeout", viewModel.uiState.value.unregisterErrorMessage)
+            assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
         }
     }
 
@@ -102,6 +103,52 @@ class SettingsViewModelTest {
 
             assertEquals(LogoutActionStatus.Idle, viewModel.uiState.value.logoutStatus)
             assertEquals("Операция выхода отменена.", viewModel.uiState.value.unregisterErrorMessage)
+            assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+        }
+    }
+
+    @Test
+    fun onLogoutRequested_success_requestsAuthNavigation_andCanBeConsumed() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    FakeAccountLifecycleUseCase(
+                        logoutResult = AccountLifecycleResult.Success,
+                    ),
+                )
+            advanceUntilIdle()
+
+            viewModel.onLogoutRequested()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
+            viewModel.onAuthNavigationHandled()
+            assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+        }
+    }
+
+    @Test
+    fun onUnregisterConfirmed_success_requestsAuthNavigation_andCanBeConsumed() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    FakeAccountLifecycleUseCase(
+                        unregisterResult = AccountLifecycleResult.Success,
+                    ),
+                )
+            advanceUntilIdle()
+
+            viewModel.onUnregisterRequested()
+            viewModel.onUnregisterConfirmed()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
+            viewModel.onAuthNavigationHandled()
+            assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
         }
     }
 
