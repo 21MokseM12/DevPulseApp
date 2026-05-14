@@ -79,6 +79,35 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun subscriptionsSearch_filtersAndResetResultList() {
+        val kotlinUrl = "https://example.dev/kotlin-news"
+        val backendUrl = "https://example.dev/backend-feed"
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextInput(kotlinUrl)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_TAGS_INPUT).performTextInput("kotlin,news")
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_FILTERS_INPUT).performTextInput("contains:kotlin")
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTextExists(kotlinUrl)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextInput(backendUrl)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_TAGS_INPUT).performTextInput("backend")
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_FILTERS_INPUT).performTextInput("contains:alerts")
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTextExists(backendUrl)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_SEARCH_INPUT).performTextInput("tag:kotlin")
+        composeRule.waitUntilNodeWithTextExists(kotlinUrl)
+        composeRule.waitUntilNodeWithTextMissing(backendUrl)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTextExists(kotlinUrl)
+        composeRule.waitUntilNodeWithTextExists(backendUrl)
+    }
+
+    @Test
     fun updatesMarkRead_changesUnreadCounter() {
         login()
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON).performClick()

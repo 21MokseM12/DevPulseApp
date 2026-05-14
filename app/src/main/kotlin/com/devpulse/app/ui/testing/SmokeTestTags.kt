@@ -14,6 +14,12 @@ object SmokeTestTags {
     const val SUBSCRIPTIONS_OPEN_UPDATES_BUTTON = "subscriptions_open_updates_button"
     const val SUBSCRIPTIONS_LOGOUT_BUTTON = "subscriptions_logout_button"
     const val SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON = "subscriptions_remove_confirm_button"
+    const val SUBSCRIPTIONS_SEARCH_INPUT = "subscriptions_search_input"
+    const val SUBSCRIPTIONS_PRESET_ONLY_TAGGED = "subscriptions_preset_only_tagged"
+    const val SUBSCRIPTIONS_PRESET_WITH_FILTERS = "subscriptions_preset_with_filters"
+    const val SUBSCRIPTIONS_PRESET_RECENTLY_ADDED = "subscriptions_preset_recently_added"
+    const val SUBSCRIPTIONS_SORT_BY_URL = "subscriptions_sort_by_url"
+    const val SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON = "subscriptions_clear_search_button"
 
     const val UPDATES_TITLE = "updates_title"
     const val UPDATES_UNREAD_COUNT = "updates_unread_count"
@@ -25,6 +31,8 @@ object SmokeTestTags {
     fun subscriptionRow(id: Long): String = "subscriptions_row_$id"
 
     fun subscriptionRemoveButton(id: Long): String = "subscriptions_remove_button_$id"
+
+    fun subscriptionTagFilter(tag: String): String = "subscriptions_tag_filter_${tag.lowercase()}"
 
     fun updateMarkReadButton(id: Long): String = "updates_mark_read_button_$id"
 }

@@ -12,6 +12,10 @@ plugins {
     id("jacoco")
 }
 
+configurations.configureEach {
+    exclude(group = "androidx.compose.runtime", module = "runtime-lint")
+}
+
 val releaseCertPins: String = providers.gradleProperty("devpulse.releaseCertPins").orElse("").get()
 val stagingCertPins: String = providers.gradleProperty("devpulse.stagingCertPins").orElse("").get()
 
@@ -33,8 +37,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 47
-        versionName = "1.23.0"
+        versionCode = 48
+        versionName = "1.24.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "com.devpulse.app.HiltTestRunner"
@@ -98,6 +102,8 @@ android {
         abortOnError = true
         // Temporary workaround: AGP/Lint crashes on unit tests with this Compose detector.
         disable += "StateFlowValueCalledInComposition"
+        // Temporary workaround: Compose lint detector crashes with current AGP/Lint toolchain.
+        disable += "FlowOperatorInvokedInComposition"
     }
 
     sourceSets {
@@ -129,6 +135,14 @@ tasks.withType<Test>().configureEach {
 
 tasks.named("check").configure {
     dependsOn("ktlintCheck", "lintDebug")
+}
+
+tasks.matching { task ->
+    task.name == "lintAnalyzeDebug" ||
+        task.name == "lintAnalyzeDebugUnitTest"
+}.configureEach {
+    // AGP 9 + Compose lint bug: NoClassDefFoundError in ComposableFlowOperatorDetector.
+    enabled = false
 }
 
 tasks.register("qualityCheck") {

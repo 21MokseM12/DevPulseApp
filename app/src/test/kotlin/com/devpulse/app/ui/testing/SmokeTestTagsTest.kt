@@ -18,4 +18,9 @@ class SmokeTestTagsTest {
     fun updateMarkReadButton_generatesStableTag() {
         assertEquals("updates_mark_read_button_9", SmokeTestTags.updateMarkReadButton(9))
     }
+
+    @Test
+    fun subscriptionTagFilter_generatesStableTag() {
+        assertEquals("subscriptions_tag_filter_android", SmokeTestTags.subscriptionTagFilter("Android"))
+    }
 }

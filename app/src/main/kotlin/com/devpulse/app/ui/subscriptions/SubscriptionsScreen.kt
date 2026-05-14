@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -25,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.domain.model.SubscriptionsSortMode
 import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.ui.testing.SmokeTestTags
 import java.text.DateFormat
@@ -49,6 +52,12 @@ fun SubscriptionsRoute(
         onAddTagsInputChange = viewModel::onAddTagsInputChanged,
         onAddFiltersInputChange = viewModel::onAddFiltersInputChanged,
         onAddSubscription = viewModel::addSubscription,
+        onSearchQueryChanged = viewModel::onSearchQueryChanged,
+        onTagFilterSelected = viewModel::onTagFilterSelected,
+        onOnlyTaggedPresetToggled = viewModel::onOnlyTaggedPresetToggled,
+        onWithFiltersPresetToggled = viewModel::onWithFiltersPresetToggled,
+        onSortModeSelected = viewModel::onSortModeSelected,
+        onClearSearch = viewModel::clearSearch,
         onRemoveRequested = viewModel::onRemoveRequested,
         onRemoveDismissed = viewModel::onRemoveDismissed,
         onRemoveConfirmed = viewModel::confirmRemove,
@@ -68,6 +77,12 @@ private fun SubscriptionsScreen(
     onAddTagsInputChange: (String) -> Unit,
     onAddFiltersInputChange: (String) -> Unit,
     onAddSubscription: () -> Unit,
+    onSearchQueryChanged: (String) -> Unit,
+    onTagFilterSelected: (String?) -> Unit,
+    onOnlyTaggedPresetToggled: () -> Unit,
+    onWithFiltersPresetToggled: () -> Unit,
+    onSortModeSelected: (SubscriptionsSortMode) -> Unit,
+    onClearSearch: () -> Unit,
     onRemoveRequested: (TrackedLink) -> Unit,
     onRemoveDismissed: () -> Unit,
     onRemoveConfirmed: () -> Unit,
@@ -94,6 +109,15 @@ private fun SubscriptionsScreen(
             onAddTagsInputChange = onAddTagsInputChange,
             onAddFiltersInputChange = onAddFiltersInputChange,
             onAddSubscription = onAddSubscription,
+        )
+        SearchAndFiltersSection(
+            uiState = uiState,
+            onSearchQueryChanged = onSearchQueryChanged,
+            onTagFilterSelected = onTagFilterSelected,
+            onOnlyTaggedPresetToggled = onOnlyTaggedPresetToggled,
+            onWithFiltersPresetToggled = onWithFiltersPresetToggled,
+            onSortModeSelected = onSortModeSelected,
+            onClearSearch = onClearSearch,
         )
         if (uiState.removeErrorMessage != null) {
             Text(
@@ -135,8 +159,12 @@ private fun SubscriptionsScreen(
                     )
                 }
 
-                uiState.links.isEmpty() -> {
+                uiState.allLinks.isEmpty() -> {
                     EmptyState()
+                }
+
+                uiState.links.isEmpty() -> {
+                    NoResultsState(onClearSearch = onClearSearch)
                 }
 
                 else -> {
@@ -170,6 +198,97 @@ private fun SubscriptionsScreen(
             },
         )
     }
+}
+
+@Composable
+private fun SearchAndFiltersSection(
+    uiState: SubscriptionsUiState,
+    onSearchQueryChanged: (String) -> Unit,
+    onTagFilterSelected: (String?) -> Unit,
+    onOnlyTaggedPresetToggled: () -> Unit,
+    onWithFiltersPresetToggled: () -> Unit,
+    onSortModeSelected: (SubscriptionsSortMode) -> Unit,
+    onClearSearch: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        OutlinedTextField(
+            value = uiState.searchState.query,
+            onValueChange = onSearchQueryChanged,
+            label = { Text(text = "Поиск по URL, tags, filters") },
+            singleLine = true,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_SEARCH_INPUT),
+        )
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 2.dp),
+        ) {
+            item {
+                FilterChip(
+                    selected = uiState.searchState.onlyTagged,
+                    onClick = onOnlyTaggedPresetToggled,
+                    label = { Text(text = "Only tagged") },
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_ONLY_TAGGED),
+                )
+            }
+            item {
+                FilterChip(
+                    selected = uiState.searchState.hasFiltersOnly,
+                    onClick = onWithFiltersPresetToggled,
+                    label = { Text(text = "With filters") },
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_WITH_FILTERS),
+                )
+            }
+            item {
+                FilterChip(
+                    selected = uiState.searchState.sortMode == SubscriptionsSortMode.RECENTLY_ADDED,
+                    onClick = { onSortModeSelected(SubscriptionsSortMode.RECENTLY_ADDED) },
+                    label = { Text(text = "Recently added") },
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED),
+                )
+            }
+            item {
+                FilterChip(
+                    selected = uiState.searchState.sortMode == SubscriptionsSortMode.URL_ASCENDING,
+                    onClick = { onSortModeSelected(SubscriptionsSortMode.URL_ASCENDING) },
+                    label = { Text(text = "Sort by URL") },
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_SORT_BY_URL),
+                )
+            }
+            items(uiState.availableTags, key = { tag -> tag }) { tag ->
+                FilterChip(
+                    selected = uiState.searchState.tagFilter.equals(tag, ignoreCase = true),
+                    onClick = {
+                        val next = if (uiState.searchState.tagFilter.equals(tag, ignoreCase = true)) null else tag
+                        onTagFilterSelected(next)
+                    },
+                    label = { Text(text = "#$tag") },
+                    modifier = Modifier.testTag(SmokeTestTags.subscriptionTagFilter(tag)),
+                )
+            }
+        }
+        if (hasActiveSearch(uiState)) {
+            TextButton(
+                onClick = onClearSearch,
+                modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON),
+            ) {
+                Text(text = "Сбросить поиск и фильтры")
+            }
+        }
+    }
+}
+
+private fun hasActiveSearch(uiState: SubscriptionsUiState): Boolean {
+    return uiState.searchState.query.isNotBlank() ||
+        uiState.searchState.tagFilter != null ||
+        uiState.searchState.hasFiltersOnly ||
+        uiState.searchState.onlyTagged ||
+        uiState.searchState.sortMode != SubscriptionsSortMode.RECENTLY_ADDED
 }
 
 private fun staleDataMessage(lastSyncAtEpochMs: Long?): String {
@@ -337,6 +456,27 @@ private fun EmptyState() {
     ) {
         Text(text = "Список подписок пуст")
         Text(text = "Потяните вниз, чтобы обновить")
+    }
+}
+
+@Composable
+private fun NoResultsState(onClearSearch: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(text = "Ничего не найдено")
+        Text(text = "Измените критерии поиска или сбросьте фильтры")
+        Button(
+            onClick = onClearSearch,
+            modifier =
+                Modifier
+                    .padding(top = 12.dp)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON),
+        ) {
+            Text(text = "Сбросить")
+        }
     }
 }
 
