@@ -31,13 +31,14 @@ class PushInitializer
 
         private fun ensureNotificationChannel() {
             val manager = context.getSystemService(NotificationManager::class.java) ?: return
+            val channelConfig = updatesNotificationChannelConfig()
             val channel =
                 NotificationChannel(
-                    PushNotificationChannels.UPDATES_CHANNEL_ID,
-                    PushNotificationChannels.UPDATES_CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_DEFAULT,
+                    channelConfig.id,
+                    channelConfig.name,
+                    channelConfig.importance,
                 ).apply {
-                    description = PushNotificationChannels.UPDATES_CHANNEL_DESCRIPTION
+                    description = channelConfig.description
                 }
             manager.createNotificationChannel(channel)
         }
@@ -81,3 +82,19 @@ internal fun shouldSaveToken(
 }
 
 internal fun shouldRequestFcmToken(firebaseConfigured: Boolean): Boolean = firebaseConfigured
+
+internal data class NotificationChannelConfig(
+    val id: String,
+    val name: String,
+    val description: String,
+    val importance: Int,
+)
+
+internal fun updatesNotificationChannelConfig(): NotificationChannelConfig {
+    return NotificationChannelConfig(
+        id = PushNotificationChannels.UPDATES_CHANNEL_ID,
+        name = PushNotificationChannels.UPDATES_CHANNEL_NAME,
+        description = PushNotificationChannels.UPDATES_CHANNEL_DESCRIPTION,
+        importance = NotificationManager.IMPORTANCE_DEFAULT,
+    )
+}

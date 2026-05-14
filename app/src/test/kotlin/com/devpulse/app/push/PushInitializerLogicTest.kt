@@ -1,5 +1,7 @@
 package com.devpulse.app.push
 
+import android.app.NotificationManager
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,5 +30,15 @@ class PushInitializerLogicTest {
     @Test
     fun shouldSaveToken_returnsFalse_whenTokenBlank() {
         assertFalse(shouldSaveToken(taskSuccessful = true, token = "   "))
+    }
+
+    @Test
+    fun updatesNotificationChannelConfig_returnsStableUpdatesChannelContract() {
+        val channelConfig = updatesNotificationChannelConfig()
+
+        assertEquals(PushNotificationChannels.UPDATES_CHANNEL_ID, channelConfig.id)
+        assertEquals(PushNotificationChannels.UPDATES_CHANNEL_NAME, channelConfig.name)
+        assertEquals(PushNotificationChannels.UPDATES_CHANNEL_DESCRIPTION, channelConfig.description)
+        assertEquals(NotificationManager.IMPORTANCE_DEFAULT, channelConfig.importance)
     }
 }

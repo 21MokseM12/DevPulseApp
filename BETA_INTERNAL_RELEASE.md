@@ -2,9 +2,20 @@
 
 ## Версия beta
 
-- Версия приложения: `1.6.0`
+- Версия приложения: `1.12.0`
 - Тип сборки для внутреннего тестирования: `staging`
 - APK артефакт: `app/build/outputs/apk/staging/app-staging.apk`
+
+## Provisioning Firebase для QA и разработки
+
+- Получите `google-services.json` у владельца Firebase-проекта через закрытый канал доступа.
+- Разместите файл в одном из путей:
+  - `app/src/debug/google-services.json` для локальной разработки;
+  - `app/src/staging/google-services.json` для QA/внутреннего beta.
+- Убедитесь, что файл не попал в git (`.gitignore` уже включает стандартные пути).
+- После provisioning выполните smoke-проверку запуска:
+  - `./gradlew :app:testDebugUnitTest`
+  - `./gradlew :app:assembleDebug`
 
 ## Формальная приемка MVP (R-0)
 
