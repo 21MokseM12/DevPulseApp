@@ -43,6 +43,10 @@ class DefaultUpdatesRepository
         override suspend fun markAsRead(updateId: Long): Boolean {
             return pushUpdatesDao.markAsRead(updateId) > 0
         }
+
+        override suspend fun clearUpdates() {
+            pushUpdatesDao.clearAll()
+        }
     }
 
 private fun PushUpdateEntity.toDomain(): UpdateEvent {

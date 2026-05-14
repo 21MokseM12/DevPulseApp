@@ -13,4 +13,6 @@ interface UpdatesRepository {
     ): Boolean
 
     suspend fun markAsRead(updateId: Long): Boolean
+
+    suspend fun clearUpdates()
 }

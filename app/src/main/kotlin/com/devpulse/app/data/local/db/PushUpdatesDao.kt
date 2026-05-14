@@ -16,4 +16,7 @@ interface PushUpdatesDao {
 
     @Query("UPDATE updates_history SET isRead = 1 WHERE id = :updateId")
     suspend fun markAsRead(updateId: Long): Int
+
+    @Query("DELETE FROM updates_history")
+    suspend fun clearAll()
 }

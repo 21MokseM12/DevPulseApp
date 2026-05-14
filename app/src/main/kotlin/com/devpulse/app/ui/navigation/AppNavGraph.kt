@@ -87,9 +87,6 @@ fun AppNavGraph(
                 SettingsRoute(
                     onGoToSubscriptions = { navController.navigateToTopLevel(AppRoute.Subscriptions.route) },
                     onGoToUpdates = { navController.navigateToTopLevel(AppRoute.Updates.route) },
-                    onLogout = {
-                        onLogoutClick()
-                    },
                 )
             }
         }
