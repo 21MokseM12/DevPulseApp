@@ -80,6 +80,24 @@ class PushPayloadParserTest {
                 fallbackMessageId = null,
             )
 
+        requireNotNull(result)
+        assertEquals("Проверьте новые изменения по отслеживаемой ссылке.", result.content)
+    }
+
+    @Test
+    fun parse_invalidLink_returnsNull() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "url" to "not-a-url",
+                        "content" to "Body",
+                    ),
+                notificationTitle = "Title",
+                notificationBody = "Notification body",
+                fallbackMessageId = "msg-11",
+            )
+
         assertNull(result)
     }
 }

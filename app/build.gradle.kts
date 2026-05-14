@@ -15,6 +15,16 @@ plugins {
 val releaseCertPins: String = providers.gradleProperty("devpulse.releaseCertPins").orElse("").get()
 val stagingCertPins: String = providers.gradleProperty("devpulse.stagingCertPins").orElse("").get()
 
+val hasFirebaseConfig =
+    file("google-services.json").exists() ||
+        listOf("debug", "staging", "release").any { buildType ->
+            file("src/$buildType/google-services.json").exists()
+        }
+
+if (hasFirebaseConfig) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.devpulse.app"
     compileSdk = 36
@@ -25,6 +35,7 @@ android {
         targetSdk = 36
         versionCode = 28
         versionName = "1.4.0"
+        buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

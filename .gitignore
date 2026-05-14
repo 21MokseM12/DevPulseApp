@@ -18,5 +18,9 @@ local.properties
 /BACKLOG.md
 /app/build/
 /.kotlin/
+/app/google-services.json
+/app/src/debug/google-services.json
+/app/src/staging/google-services.json
+/app/src/release/google-services.json
 
 .worktrees/
