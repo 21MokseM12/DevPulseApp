@@ -18,3 +18,5 @@ local.properties
 /BACKLOG.md
 /app/build/
 /.kotlin/
+
+.worktrees/
