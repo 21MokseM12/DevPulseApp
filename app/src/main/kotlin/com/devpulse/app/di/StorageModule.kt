@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import com.devpulse.app.data.local.db.AppDatabase
+import com.devpulse.app.data.local.db.DatabaseMigrations
 import com.devpulse.app.data.local.db.PushUpdatesDao
 import com.devpulse.app.data.local.db.SubscriptionsCacheDao
 import dagger.Module
@@ -44,8 +45,7 @@ object StorageModule {
             AppDatabase::class.java,
             "devpulse.db",
         )
-            .addMigrations(AppDatabase.MIGRATION_3_4)
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .addMigrations(*DatabaseMigrations.ALL)
             .build()
     }
 

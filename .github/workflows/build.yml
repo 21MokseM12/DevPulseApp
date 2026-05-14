@@ -160,10 +160,11 @@ jobs:
           emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             set -eo pipefail
-            mkdir -p app/build/reports/androidTests app/build/outputs/androidTest-results
+            mkdir -p app/build/reports/androidTests app/build/outputs/androidTest-results ci-metadata
             max_attempts=2
             attempt=1
             status="failure"
+            start_epoch=$(date +%s)
             while [ $attempt -le $max_attempts ]; do
               echo "Running instrumented smoke (attempt $attempt/$max_attempts)"
               if ./gradlew --no-daemon --stacktrace :app:connectedDebugAndroidTest \
@@ -177,7 +178,35 @@ jobs:
               fi
               attempt=$((attempt + 1))
             done
+            end_epoch=$(date +%s)
+            duration_seconds=$((end_epoch - start_epoch))
             adb logcat -d > app/build/reports/androidTests/logcat-smoke.txt || true
+            ATTEMPTS_USED="$attempt" \
+            MAX_ATTEMPTS="$max_attempts" \
+            STATUS="$status" \
+            DURATION_SECONDS="$duration_seconds" \
+            python3 - <<'PY'
+            import json
+            import os
+            from pathlib import Path
+
+            gate_metadata = {
+                "gate_id": "instrumented-smoke",
+                "gate_name": "Instrumented Smoke (Compose)",
+                "gradle_task": ":app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest",
+                "merge_policy": "blocking",
+                "retry_enabled": True,
+                "attempts_used": int(os.environ["ATTEMPTS_USED"]),
+                "max_attempts": int(os.environ["MAX_ATTEMPTS"]),
+                "status": os.environ["STATUS"],
+                "duration_seconds": int(os.environ["DURATION_SECONDS"]),
+            }
+            Path("ci-metadata").mkdir(parents=True, exist_ok=True)
+            Path("ci-metadata/gate-instrumented-smoke.json").write_text(
+                json.dumps(gate_metadata, indent=2),
+                encoding="utf-8",
+            )
+            PY
             adb pull \
               /sdcard/Android/data/com.devpulse.app/files/smoke-screenshots \
               app/build/outputs/androidTest-results/smoke-screenshots || true
@@ -191,9 +220,118 @@ jobs:
         with:
           name: quality-instrumented-smoke
           path: |
+            ci-metadata/gate-instrumented-smoke.json
             app/build/outputs/androidTest-results/**
             app/build/reports/androidTests/**
             app/build/outputs/androidTest-results/smoke-screenshots/**
+          if-no-files-found: error
+
+  instrumented-migration:
+    name: Instrumented Migration (Room)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Run migration instrumented tests with retry
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            set -eo pipefail
+            mkdir -p app/build/reports/androidTests app/build/outputs/androidTest-results ci-metadata
+            max_attempts=2
+            attempt=1
+            status="failure"
+            gradle_task=":app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest"
+            start_epoch=$(date +%s)
+            while [ $attempt -le $max_attempts ]; do
+              echo "Running migration instrumented suite (attempt $attempt/$max_attempts)"
+              if ./gradlew --no-daemon --stacktrace :app:connectedDebugAndroidTest \
+                -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest; then
+                status="success"
+                break
+              fi
+              if [ $attempt -lt $max_attempts ]; then
+                echo "Retrying migration suite after failure..."
+                sleep 10
+              fi
+              attempt=$((attempt + 1))
+            done
+            end_epoch=$(date +%s)
+            duration_seconds=$((end_epoch - start_epoch))
+            adb logcat -d > app/build/reports/androidTests/logcat-migration.txt || true
+            cat <<EOF > app/build/reports/androidTests/migration-diagnostics.md
+            # Migration diagnostics
+
+            - Gate: Instrumented Migration (Room)
+            - Gradle task: \`$gradle_task\`
+            - Attempts: $attempt/$max_attempts
+            - Status: $status
+            - Duration seconds: $duration_seconds
+
+            ## Artifacts
+
+            - \`app/build/reports/androidTests/logcat-migration.txt\`
+            - \`app/build/outputs/androidTest-results/\` (JUnit XML + raw outputs)
+            - \`app/build/reports/androidTests/\` (connected test HTML report + diagnostics)
+            EOF
+            ATTEMPTS_USED="$attempt" \
+            MAX_ATTEMPTS="$max_attempts" \
+            STATUS="$status" \
+            DURATION_SECONDS="$duration_seconds" \
+            GRADLE_TASK="$gradle_task" \
+            python3 - <<'PY'
+            import json
+            import os
+            from pathlib import Path
+
+            gate_metadata = {
+                "gate_id": "instrumented-migration",
+                "gate_name": "Instrumented Migration (Room)",
+                "gradle_task": os.environ["GRADLE_TASK"],
+                "merge_policy": "blocking",
+                "retry_enabled": True,
+                "attempts_used": int(os.environ["ATTEMPTS_USED"]),
+                "max_attempts": int(os.environ["MAX_ATTEMPTS"]),
+                "status": os.environ["STATUS"],
+                "duration_seconds": int(os.environ["DURATION_SECONDS"]),
+            }
+            Path("ci-metadata").mkdir(parents=True, exist_ok=True)
+            Path("ci-metadata/gate-instrumented-migration.json").write_text(
+                json.dumps(gate_metadata, indent=2),
+                encoding="utf-8",
+            )
+            PY
+            if [ "$status" != "success" ]; then
+              exit 1
+            fi
+
+      - name: Upload migration instrumented artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-instrumented-migration
+          path: |
+            ci-metadata/gate-instrumented-migration.json
+            app/build/outputs/androidTest-results/**
+            app/build/reports/androidTests/**
           if-no-files-found: error
 
   quality-summary:
@@ -203,6 +341,7 @@ jobs:
     needs:
       - verify
       - instrumented-smoke
+      - instrumented-migration
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -220,9 +359,23 @@ jobs:
             --output ci-quality-summary.md
           cat ci-quality-summary.md >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Validate migration diagnostics policy
+        run: |
+          python3 scripts/ci/validate_migration_diagnostics.py \
+            --artifacts-dir artifacts \
+            --output ci-migration-diagnostics-check.md
+          cat ci-migration-diagnostics-check.md >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload quality summary
         uses: actions/upload-artifact@v4
         with:
           name: quality-summary
           path: ci-quality-summary.md
+          if-no-files-found: error
+
+      - name: Upload migration diagnostics validation
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-migration-diagnostics-validation
+          path: ci-migration-diagnostics-check.md
           if-no-files-found: error

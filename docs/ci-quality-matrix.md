@@ -11,6 +11,7 @@
 | `./gradlew :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"` | `Contract Check` | Blocking |
 | `./gradlew :app:assembleDebug` | `Assemble Debug` | Blocking |
 | `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest` | `Instrumented Smoke (Compose)` | Blocking |
+| `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest` | `Instrumented Migration (Room)` | Blocking |
 
 ## Merge policy
 
@@ -25,6 +26,8 @@
 - Lint/Ktlint отчеты: артефакт `quality-quality`.
 - Assemble APK: артефакт `quality-assemble`.
 - Instrumented smoke диагностика: артефакт `quality-instrumented-smoke` (JUnit XML, HTML-репорт, logcat, скриншоты).
+- Instrumented migration диагностика: артефакт `quality-instrumented-migration` (`migration-diagnostics.md`, `logcat-migration.txt`, JUnit XML + HTML reports).
+- Enforcement отчета диагностируемости: артефакт `quality-migration-diagnostics-validation` и блок `Migration diagnostics validation` в `GitHub Step Summary`.
 - Сводка quality pipeline: артефакт `quality-summary` и раздел в `GitHub Step Summary`.
 
 ## Рекомендуемая локальная последовательность перед PR
@@ -34,3 +37,4 @@
 3. `./gradlew :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"`
 4. `./gradlew :app:assembleDebug`
 5. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest`
+6. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest`
