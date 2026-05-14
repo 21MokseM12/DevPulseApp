@@ -1,5 +1,6 @@
 package com.devpulse.app.ui.settings
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
@@ -210,6 +211,50 @@ class SettingsViewModelTest {
         }
     }
 
+    @Test
+    fun onSystemNotificationCapabilityChanged_whenDenied_forcesDisabledPreference() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val preferencesStore = FakeNotificationPreferencesStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    preferencesStore,
+                    FakeAccountLifecycleUseCase(),
+                )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.notificationPreferences.enabled)
+            viewModel.onSystemNotificationCapabilityChanged(canPostNotifications = false)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.notificationPreferences.enabled)
+        }
+    }
+
+    @Test
+    fun onNotificationDigestModeToggled_updatesDigestMode() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val preferencesStore = FakeNotificationPreferencesStore()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    preferencesStore,
+                    FakeAccountLifecycleUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onNotificationDigestModeToggled(enabled = true)
+            advanceUntilIdle()
+            assertEquals(NotificationDigestMode.Daily, viewModel.uiState.value.notificationPreferences.digestMode)
+
+            viewModel.onNotificationDigestModeToggled(enabled = false)
+            advanceUntilIdle()
+            assertEquals(null, viewModel.uiState.value.notificationPreferences.digestMode)
+        }
+    }
+
     private class FakeNotificationPermissionStore : NotificationPermissionStore {
         private val requested = MutableStateFlow(false)
 
@@ -254,6 +299,10 @@ class SettingsViewModelTest {
 
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) {
             preferences.value = preferences.value.copy(presentationMode = mode)
+        }
+
+        override suspend fun setDigestMode(mode: NotificationDigestMode?) {
+            preferences.value = preferences.value.copy(digestMode = mode)
         }
 
         override suspend fun reset() {

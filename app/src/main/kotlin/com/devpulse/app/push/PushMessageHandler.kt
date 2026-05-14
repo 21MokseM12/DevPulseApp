@@ -1,5 +1,7 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
+import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.domain.repository.UpdatesRepository
@@ -17,6 +19,7 @@ data class PushHandleOutcome(
     val update: ParsedPushUpdate? = null,
     val shouldShowSystemNotification: Boolean = false,
     val presentationMode: NotificationPresentationMode = NotificationPresentationMode.Detailed,
+    val digestMode: NotificationDigestMode? = null,
 )
 
 @Singleton
@@ -48,12 +51,17 @@ class PushMessageHandler
                     receivedAtEpochMs = receivedAtEpochMs,
                 )
             return if (wasSaved) {
-                val preferences = notificationPreferencesStore.getPreferences()
+                val preferences =
+                    runCatching { notificationPreferencesStore.getPreferences() }
+                        .getOrDefault(
+                            FALLBACK_PREFERENCES_ON_ERROR,
+                        )
                 PushHandleOutcome(
                     result = PushHandleResult.Saved,
                     update = parsed,
                     shouldShowSystemNotification = preferences.enabled,
                     presentationMode = preferences.presentationMode,
+                    digestMode = preferences.digestMode,
                 )
             } else {
                 PushHandleOutcome(
@@ -61,5 +69,14 @@ class PushMessageHandler
                     update = parsed,
                 )
             }
+        }
+
+        private companion object {
+            val FALLBACK_PREFERENCES_ON_ERROR =
+                NotificationPreferences(
+                    enabled = false,
+                    presentationMode = NotificationPresentationMode.Detailed,
+                    digestMode = null,
+                )
         }
     }

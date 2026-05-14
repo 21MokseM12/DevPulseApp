@@ -1,5 +1,6 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -41,5 +42,23 @@ class PushNotificationTextResolverTest {
             )
 
         assertEquals(PushNotificationTextResolver.COMPACT_NOTIFICATION_BODY, result)
+    }
+
+    @Test
+    fun resolvePreviewBody_digestMode_returnsDigestSummaryText() {
+        val result =
+            resolver.resolvePreviewBody(
+                presentationMode = NotificationPresentationMode.Detailed,
+                digestMode = NotificationDigestMode.Daily,
+            )
+
+        assertEquals(PushNotificationTextResolver.DAILY_DIGEST_SUMMARY_BODY, result)
+    }
+
+    @Test
+    fun resolveDigestSummaryBody_dailyMode_returnsDigestDescription() {
+        val result = resolver.resolveDigestSummaryBody(NotificationDigestMode.Daily)
+
+        assertEquals(PushNotificationTextResolver.DAILY_DIGEST_SUMMARY_BODY, result)
     }
 }

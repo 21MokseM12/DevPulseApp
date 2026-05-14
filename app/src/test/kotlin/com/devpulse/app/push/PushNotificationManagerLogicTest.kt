@@ -1,6 +1,7 @@
 package com.devpulse.app.push
 
 import android.os.Build
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -74,5 +75,11 @@ class PushNotificationManagerLogicTest {
 
         assertFalse(denied)
         assertTrue(granted)
+    }
+
+    @Test
+    fun shouldPostIndividualNotification_returnsFalse_whenDigestEnabled() {
+        assertTrue(shouldPostIndividualNotification(null))
+        assertFalse(shouldPostIndividualNotification(NotificationDigestMode.Daily))
     }
 }

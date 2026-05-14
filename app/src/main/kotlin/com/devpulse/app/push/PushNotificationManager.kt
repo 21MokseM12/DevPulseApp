@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.devpulse.app.MainActivity
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -23,13 +24,14 @@ class PushNotificationManager
     constructor(
         @param:ApplicationContext private val context: Context,
         private val textResolver: PushNotificationTextResolver,
-    ) {
+    ) : PushNotifier {
         private val manager by lazy { NotificationManagerCompat.from(context) }
 
         @SuppressLint("MissingPermission")
-        fun showUpdateNotification(
+        override fun showUpdateNotification(
             update: ParsedPushUpdate,
             presentationMode: NotificationPresentationMode,
+            digestMode: NotificationDigestMode?,
         ) {
             if (!canPostNotifications()) return
 
@@ -58,10 +60,12 @@ class PushNotificationManager
                     .build()
 
             runCatching {
-                manager.notify(notificationId, notification)
+                if (shouldPostIndividualNotification(digestMode)) {
+                    manager.notify(notificationId, notification)
+                }
                 manager.notify(
                     SUMMARY_NOTIFICATION_ID,
-                    buildSummaryNotification(contentIntent, presentationMode),
+                    buildSummaryNotification(contentIntent, presentationMode, digestMode),
                 )
             }.onFailure { error ->
                 Log.w(LOG_TAG, "Не удалось показать системное уведомление", error)
@@ -71,12 +75,19 @@ class PushNotificationManager
         private fun buildSummaryNotification(
             contentIntent: PendingIntent,
             presentationMode: NotificationPresentationMode,
+            digestMode: NotificationDigestMode?,
         ): android.app.Notification {
+            val summaryBody =
+                if (digestMode == null) {
+                    textResolver.resolveSummaryBody(presentationMode)
+                } else {
+                    textResolver.resolveDigestSummaryBody(digestMode)
+                }
             return NotificationCompat
                 .Builder(context, PushNotificationChannels.UPDATES_CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_popup_reminder)
                 .setContentTitle("DevPulse")
-                .setContentText(textResolver.resolveSummaryBody(presentationMode))
+                .setContentText(summaryBody)
                 .setAutoCancel(true)
                 .setGroup(UPDATES_GROUP_KEY)
                 .setGroupSummary(true)
@@ -136,4 +147,8 @@ internal fun canPostNotifications(
     if (!areNotificationsEnabled) return false
     if (sdkInt < Build.VERSION_CODES.TIRAMISU) return true
     return permissionGranted
+}
+
+internal fun shouldPostIndividualNotification(digestMode: NotificationDigestMode?): Boolean {
+    return digestMode == null
 }

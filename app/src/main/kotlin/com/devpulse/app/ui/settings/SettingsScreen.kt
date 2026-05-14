@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -41,7 +42,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
+import com.devpulse.app.push.PushNotificationTextResolver
 
 @Composable
 fun SettingsRoute(
@@ -64,6 +67,8 @@ fun SettingsRoute(
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
         onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
         onNotificationPresentationModeSelected = viewModel::onNotificationPresentationModeSelected,
+        onNotificationDigestModeToggled = viewModel::onNotificationDigestModeToggled,
+        onSystemNotificationCapabilityChanged = viewModel::onSystemNotificationCapabilityChanged,
         onLogoutRequested = viewModel::onLogoutRequested,
         onUnregisterRequested = viewModel::onUnregisterRequested,
         onUnregisterDismissed = viewModel::onUnregisterDismissed,
@@ -72,13 +77,15 @@ fun SettingsRoute(
 }
 
 @Composable
-private fun SettingsScreen(
+internal fun SettingsScreen(
     uiState: SettingsUiState,
     onGoToSubscriptions: () -> Unit,
     onGoToUpdates: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
     onNotificationToggleChanged: (Boolean) -> Unit,
     onNotificationPresentationModeSelected: (NotificationPresentationMode) -> Unit,
+    onNotificationDigestModeToggled: (Boolean) -> Unit,
+    onSystemNotificationCapabilityChanged: (Boolean) -> Unit,
     onLogoutRequested: () -> Unit,
     onUnregisterRequested: () -> Unit,
     onUnregisterDismissed: () -> Unit,
@@ -134,6 +141,15 @@ private fun SettingsScreen(
             hasRequestedBefore = uiState.hasRequestedNotificationPermission,
             shouldShowRationale = shouldShowRationale,
         )
+    val canPostSystemNotifications =
+        permissionState == NotificationPermissionState.NotRequired ||
+            permissionState == NotificationPermissionState.Granted
+    val effectiveNotificationsEnabled = uiState.notificationPreferences.enabled && canPostSystemNotifications
+    val textResolver = remember { PushNotificationTextResolver() }
+
+    LaunchedEffect(canPostSystemNotifications) {
+        onSystemNotificationCapabilityChanged(canPostSystemNotifications)
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -151,8 +167,26 @@ private fun SettingsScreen(
                 style = MaterialTheme.typography.bodyLarge,
             )
             Switch(
-                checked = uiState.notificationPreferences.enabled,
-                onCheckedChange = onNotificationToggleChanged,
+                checked = effectiveNotificationsEnabled,
+                onCheckedChange = { isEnabled ->
+                    if (!isEnabled) {
+                        onNotificationToggleChanged(false)
+                    } else if (canPostSystemNotifications) {
+                        onNotificationToggleChanged(true)
+                    } else {
+                        when (permissionState) {
+                            NotificationPermissionState.NeedsRequest -> {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                    onPermissionRequestTriggered()
+                                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            }
+                            NotificationPermissionState.NeedsSettings -> context.openNotificationSettings()
+                            NotificationPermissionState.NotRequired -> onNotificationToggleChanged(true)
+                            NotificationPermissionState.Granted -> onNotificationToggleChanged(true)
+                        }
+                    }
+                },
             )
         }
         Row(
@@ -162,7 +196,7 @@ private fun SettingsScreen(
         ) {
             OutlinedButton(
                 onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Compact) },
-                enabled = uiState.notificationPreferences.enabled,
+                enabled = effectiveNotificationsEnabled,
                 modifier = Modifier,
             ) {
                 Text(
@@ -176,7 +210,7 @@ private fun SettingsScreen(
             }
             OutlinedButton(
                 onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Detailed) },
-                enabled = uiState.notificationPreferences.enabled,
+                enabled = effectiveNotificationsEnabled,
                 modifier = Modifier,
             ) {
                 Text(
@@ -199,6 +233,27 @@ private fun SettingsScreen(
                 },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Digest mode (daily)",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Switch(
+                checked = uiState.notificationPreferences.digestMode != null,
+                enabled = effectiveNotificationsEnabled,
+                onCheckedChange = onNotificationDigestModeToggled,
+            )
+        }
+        NotificationPreviewCard(
+            presentationMode = uiState.notificationPreferences.presentationMode,
+            digestMode = uiState.notificationPreferences.digestMode,
+            textResolver = textResolver,
+            notificationsEnabled = effectiveNotificationsEnabled,
         )
         Text(
             text = permissionDescription(permissionState),
@@ -290,6 +345,53 @@ private fun SettingsScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+internal fun NotificationPreviewCard(
+    presentationMode: NotificationPresentationMode,
+    digestMode: NotificationDigestMode?,
+    textResolver: PushNotificationTextResolver,
+    notificationsEnabled: Boolean,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = "Preview уведомления",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = PushNotificationTextResolver.DEFAULT_NOTIFICATION_TITLE,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text =
+                    if (!notificationsEnabled) {
+                        "Системные уведомления отключены."
+                    } else {
+                        textResolver.resolvePreviewBody(
+                            presentationMode = presentationMode,
+                            digestMode = digestMode,
+                        )
+                    },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text =
+                    if (digestMode == null) {
+                        "Режим: ${presentationMode.name.lowercase()}"
+                    } else {
+                        "Режим: digest (${digestMode.name.lowercase()})"
+                    },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

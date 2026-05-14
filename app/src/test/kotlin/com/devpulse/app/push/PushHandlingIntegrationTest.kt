@@ -1,5 +1,6 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
@@ -143,6 +144,43 @@ class PushHandlingIntegrationTest {
         }
     }
 
+    @Test
+    fun handle_digestModeEnabled_propagatesDigestModeToPipelineOutcome() {
+        runTest {
+            val repository = CapturingUpdatesRepository()
+            val handler =
+                PushMessageHandler(
+                    payloadParser = PushPayloadParser(),
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        StaticNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                presentationMode = NotificationPresentationMode.Compact,
+                                digestMode = NotificationDigestMode.Daily,
+                            ),
+                        ),
+                )
+
+            val outcome =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "url" to "https://example.com/contract",
+                            "content" to "Update body",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "evt-digest",
+                    receivedAtEpochMs = 100L,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals(NotificationDigestMode.Daily, outcome.digestMode)
+            assertEquals(true, outcome.shouldShowSystemNotification)
+        }
+    }
+
     private class CapturingUpdatesRepository : UpdatesRepository {
         var lastUpdate: ParsedPushUpdate? = null
             private set
@@ -172,6 +210,8 @@ class PushHandlingIntegrationTest {
         override suspend fun setEnabled(enabled: Boolean) = Unit
 
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
+
+        override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
 
         override suspend fun reset() = Unit
     }

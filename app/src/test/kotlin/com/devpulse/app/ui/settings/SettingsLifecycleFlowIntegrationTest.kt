@@ -1,5 +1,6 @@
 package com.devpulse.app.ui.settings
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
@@ -284,6 +285,10 @@ class SettingsLifecycleFlowIntegrationTest {
 
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) {
             preferences.value = preferences.value.copy(presentationMode = mode)
+        }
+
+        override suspend fun setDigestMode(mode: NotificationDigestMode?) {
+            preferences.value = preferences.value.copy(digestMode = mode)
         }
 
         override suspend fun reset() {

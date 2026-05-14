@@ -1,5 +1,6 @@
 package com.devpulse.app.push
 
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
@@ -126,6 +127,48 @@ class PushMessageHandlerTest {
         }
     }
 
+    @Test
+    fun handle_preferencesReadError_usesFailClosedFallbackWithoutLosingEvent() {
+        runTest {
+            val repository = FakeUpdatesRepository(saveResult = true)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(
+                                enabled = true,
+                                presentationMode = NotificationPresentationMode.Compact,
+                                digestMode = NotificationDigestMode.Daily,
+                            ),
+                            failOnGet = true,
+                        ),
+                )
+
+            val result =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-19",
+                            "url" to "https://example.com/news",
+                            "content" to "News body",
+                        ),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-4",
+                    receivedAtEpochMs = 1000L,
+                )
+
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertNotNull(result.update)
+            assertEquals(false, result.shouldShowSystemNotification)
+            assertEquals(NotificationPresentationMode.Detailed, result.presentationMode)
+            assertEquals(null, result.digestMode)
+            assertEquals(1, repository.saveCalls)
+        }
+    }
+
     private class FakeUpdatesRepository(
         private val saveResult: Boolean,
     ) : UpdatesRepository {
@@ -155,14 +198,20 @@ class PushMessageHandlerTest {
 
     private class FakeNotificationPreferencesStore(
         private val preferences: NotificationPreferences,
+        private val failOnGet: Boolean = false,
     ) : NotificationPreferencesStore {
         override fun observePreferences(): Flow<NotificationPreferences> = flowOf(preferences)
 
-        override suspend fun getPreferences(): NotificationPreferences = preferences
+        override suspend fun getPreferences(): NotificationPreferences {
+            if (failOnGet) error("datastore read failure")
+            return preferences
+        }
 
         override suspend fun setEnabled(enabled: Boolean) = Unit
 
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
+
+        override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
 
         override suspend fun reset() = Unit
     }

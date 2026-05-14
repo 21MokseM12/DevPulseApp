@@ -2,6 +2,7 @@ package com.devpulse.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
 import com.devpulse.app.data.local.preferences.NotificationPreferences
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
@@ -76,9 +77,28 @@ class SettingsViewModel
             }
         }
 
+        fun onSystemNotificationCapabilityChanged(canPostNotifications: Boolean) {
+            if (canPostNotifications) return
+            viewModelScope.launch {
+                runCatching { notificationPreferencesStore.getPreferences() }
+                    .onSuccess { current ->
+                        if (current.enabled) {
+                            notificationPreferencesStore.setEnabled(false)
+                        }
+                    }
+            }
+        }
+
         fun onNotificationPresentationModeSelected(mode: NotificationPresentationMode) {
             viewModelScope.launch {
                 notificationPreferencesStore.setPresentationMode(mode)
+            }
+        }
+
+        fun onNotificationDigestModeToggled(enabled: Boolean) {
+            viewModelScope.launch {
+                val mode = if (enabled) NotificationDigestMode.Daily else null
+                notificationPreferencesStore.setDigestMode(mode)
             }
         }
 

@@ -20,7 +20,7 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     lateinit var pushMessageHandler: PushMessageHandler
 
     @Inject
-    lateinit var pushNotificationManager: PushNotificationManager
+    lateinit var pushNotifier: PushNotifier
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -34,30 +34,75 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         scope.launch {
-            val outcome =
-                pushMessageHandler.handle(
-                    payload = message.data,
-                    notificationTitle = message.notification?.title,
-                    notificationBody = message.notification?.body,
-                    messageId = message.messageId,
-                    receivedAtEpochMs = System.currentTimeMillis(),
-                )
-            if (outcome.result == PushHandleResult.Saved && outcome.update != null) {
-                if (outcome.shouldShowSystemNotification) {
-                    pushNotificationManager.showUpdateNotification(
-                        update = outcome.update,
-                        presentationMode = outcome.presentationMode,
-                    )
-                }
-            }
-            Log.d(
-                LOG_TAG,
-                "Получен push: messageId=${message.messageId}, result=${outcome.result}, dataKeys=${message.data.keys}",
-            )
+            processIncomingMessage(message)
         }
+    }
+
+    internal suspend fun processIncomingMessage(
+        message: RemoteMessage,
+        receivedAtEpochMs: Long = System.currentTimeMillis(),
+    ): PushHandleOutcome {
+        return processIncomingPayload(
+            payload = message.data,
+            notificationTitle = message.notification?.title,
+            notificationBody = message.notification?.body,
+            messageId = message.messageId,
+            receivedAtEpochMs = receivedAtEpochMs,
+        )
+    }
+
+    internal suspend fun processIncomingPayload(
+        payload: Map<String, String>,
+        notificationTitle: String?,
+        notificationBody: String?,
+        messageId: String?,
+        receivedAtEpochMs: Long,
+    ): PushHandleOutcome {
+        val outcome =
+            processIncomingPush(
+                payload = payload,
+                notificationTitle = notificationTitle,
+                notificationBody = notificationBody,
+                messageId = messageId,
+                receivedAtEpochMs = receivedAtEpochMs,
+                pushMessageHandler = pushMessageHandler,
+                pushNotifier = pushNotifier,
+            )
+        Log.d(
+            LOG_TAG,
+            "Получен push: messageId=$messageId, result=${outcome.result}, dataKeys=${payload.keys}",
+        )
+        return outcome
     }
 
     private companion object {
         const val LOG_TAG = "DevPulseFcmService"
     }
+}
+
+internal suspend fun processIncomingPush(
+    payload: Map<String, String>,
+    notificationTitle: String?,
+    notificationBody: String?,
+    messageId: String?,
+    receivedAtEpochMs: Long,
+    pushMessageHandler: PushMessageHandler,
+    pushNotifier: PushNotifier,
+): PushHandleOutcome {
+    val outcome =
+        pushMessageHandler.handle(
+            payload = payload,
+            notificationTitle = notificationTitle,
+            notificationBody = notificationBody,
+            messageId = messageId,
+            receivedAtEpochMs = receivedAtEpochMs,
+        )
+    if (outcome.result == PushHandleResult.Saved && outcome.update != null && outcome.shouldShowSystemNotification) {
+        pushNotifier.showUpdateNotification(
+            update = outcome.update,
+            presentationMode = outcome.presentationMode,
+            digestMode = outcome.digestMode,
+        )
+    }
+    return outcome
 }
