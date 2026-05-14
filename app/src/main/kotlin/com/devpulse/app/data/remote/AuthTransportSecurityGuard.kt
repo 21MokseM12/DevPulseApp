@@ -19,6 +19,8 @@ class BuildConfigAuthTransportSecurityGuard
             return createAuthTransportViolation(
                 baseUrl = BuildConfig.BASE_URL,
                 environment = BuildConfig.ENVIRONMENT,
+                releasePinsConfig = BuildConfig.RELEASE_CERT_PINS,
+                stagingPinsConfig = BuildConfig.STAGING_CERT_PINS,
             )
         }
     }
@@ -26,18 +28,40 @@ class BuildConfigAuthTransportSecurityGuard
 internal fun createAuthTransportViolation(
     baseUrl: String,
     environment: String,
+    releasePinsConfig: String,
+    stagingPinsConfig: String,
 ): ApiError? {
     val scheme = baseUrl.toHttpUrlOrNull()?.scheme
     val isSecure = scheme == "https"
     val isDebugEnvironment = environment.equals(DEBUG_ENVIRONMENT, ignoreCase = true)
-    if (isSecure || isDebugEnvironment) {
+    if (!isSecure && !isDebugEnvironment) {
+        return ApiError(
+            kind = ApiErrorKind.Configuration,
+            userMessage = "Авторизация недоступна: небезопасный адрес сервера.",
+            technicalDescription = "Auth over non-HTTPS base URL is blocked for $environment.",
+        )
+    }
+
+    if (isDebugEnvironment) {
         return null
     }
-    return ApiError(
-        kind = ApiErrorKind.Configuration,
-        userMessage = "Авторизация недоступна: небезопасный адрес сервера.",
-        technicalDescription = "Auth over non-HTTPS base URL is blocked for $environment.",
-    )
+
+    val hasPinsConfigured =
+        when {
+            environment.equals(STAGING_ENVIRONMENT, ignoreCase = true) -> stagingPinsConfig.isNotBlank()
+            environment.equals(RELEASE_ENVIRONMENT, ignoreCase = true) -> releasePinsConfig.isNotBlank()
+            else -> false
+        }
+    if (!hasPinsConfigured) {
+        return ApiError(
+            kind = ApiErrorKind.Configuration,
+            userMessage = "Авторизация недоступна: не настроены TLS pin-ы.",
+            technicalDescription = "Auth is blocked for $environment: no TLS pins configured.",
+        )
+    }
+    return null
 }
 
 private const val DEBUG_ENVIRONMENT = "debug"
+private const val STAGING_ENVIRONMENT = "staging"
+private const val RELEASE_ENVIRONMENT = "release"

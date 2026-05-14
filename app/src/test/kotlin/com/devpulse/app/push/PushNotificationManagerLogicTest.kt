@@ -12,6 +12,9 @@ class PushNotificationManagerLogicTest {
         val first =
             ParsedPushUpdate(
                 remoteEventId = "evt-1",
+                linkUpdateId = null,
+                updateOwner = "unknown",
+                creationDate = "",
                 linkUrl = "https://example.com/a",
                 title = "title",
                 content = "body",
@@ -19,6 +22,9 @@ class PushNotificationManagerLogicTest {
         val second =
             ParsedPushUpdate(
                 remoteEventId = "evt-1",
+                linkUpdateId = null,
+                updateOwner = "unknown",
+                creationDate = "",
                 linkUrl = "https://example.com/b",
                 title = "other",
                 content = "text",

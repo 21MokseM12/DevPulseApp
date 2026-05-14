@@ -18,7 +18,7 @@ class ClientLoginHeaderInterceptor : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        if (!request.url.encodedPath.startsWith("/api/v1/links")) {
+        if (!requiresClientLoginHeader(request.url.encodedPath)) {
             return chain.proceed(request)
         }
 
@@ -32,6 +32,10 @@ class ClientLoginHeaderInterceptor : Interceptor {
                 .header(CLIENT_LOGIN_HEADER, login)
                 .build()
         return chain.proceed(updatedRequest)
+    }
+
+    private fun requiresClientLoginHeader(path: String): Boolean {
+        return path.startsWith("/api/v1/links") || path.startsWith("/api/v1/notifications")
     }
 
     private companion object {

@@ -1,6 +1,7 @@
 package com.devpulse.app.data.remote
 
 import com.devpulse.app.data.remote.dto.ApiErrorResponseDto
+import com.devpulse.app.di.redactSensitiveLogData
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import java.io.IOException
@@ -31,7 +32,7 @@ class ApiErrorMapper {
             userMessage = rawError?.description?.takeIf { it.isNotBlank() } ?: fallbackMessage,
             statusCode = statusCode,
             code = rawError?.code,
-            technicalDescription = rawError?.exceptionMessage,
+            technicalDescription = rawError?.exceptionMessage?.let(::redactSensitiveLogData),
         )
     }
 
@@ -52,7 +53,7 @@ class ApiErrorMapper {
         return ApiError(
             kind = kind,
             userMessage = message,
-            technicalDescription = throwable.message,
+            technicalDescription = throwable.message?.let(::redactSensitiveLogData),
         )
     }
 }

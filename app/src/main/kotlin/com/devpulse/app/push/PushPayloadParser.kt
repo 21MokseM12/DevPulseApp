@@ -6,6 +6,9 @@ import javax.inject.Singleton
 
 data class ParsedPushUpdate(
     val remoteEventId: String?,
+    val linkUpdateId: Long?,
+    val updateOwner: String,
+    val creationDate: String,
     val linkUrl: String,
     val title: String,
     val content: String,
@@ -35,9 +38,21 @@ class PushPayloadParser
             val remoteEventId =
                 payload.firstNotBlank("event_id", "eventId", "id")
                     ?: fallbackMessageId?.trim()
+            val linkUpdateId =
+                payload.firstNotBlank("id", "update_id")
+                    ?.toLongOrNull()
+            val updateOwner =
+                payload.firstNotBlank("updateOwner", "update_owner")
+                    ?: DEFAULT_UPDATE_OWNER
+            val creationDate =
+                payload.firstNotBlank("creationDate", "creation_date")
+                    ?: DEFAULT_CREATION_DATE
 
             return ParsedPushUpdate(
                 remoteEventId = remoteEventId,
+                linkUpdateId = linkUpdateId,
+                updateOwner = updateOwner,
+                creationDate = creationDate,
                 linkUrl = linkUrl.trim(),
                 title = title,
                 content = content,
@@ -60,5 +75,7 @@ class PushPayloadParser
 
         private companion object {
             const val DEFAULT_TITLE = "Новое обновление подписки"
+            const val DEFAULT_UPDATE_OWNER = "unknown"
+            const val DEFAULT_CREATION_DATE = ""
         }
     }

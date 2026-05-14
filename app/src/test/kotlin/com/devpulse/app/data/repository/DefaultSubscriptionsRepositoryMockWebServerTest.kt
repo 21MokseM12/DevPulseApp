@@ -149,6 +149,29 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
             }
         }
 
+    @Test
+    fun removeSubscription_acceptsBotMessageResponseAndSendsClientLoginHeader() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""{"message":"removed"}"""),
+                )
+                val repository =
+                    createRepository(
+                        server = server,
+                        sessionStore = FakeSessionStore(login = "moksem"),
+                    )
+
+                val result = repository.removeSubscription(link = "https://example.org/remove")
+
+                assertTrue(result is SubscriptionsResult.Success)
+                assertTrue((result as SubscriptionsResult.Success).links.isEmpty())
+                assertEquals("moksem", server.takeRequest().getHeader("Client-Login"))
+            }
+        }
+
     private fun createRepository(
         server: MockWebServer,
         sessionStore: SessionStore,

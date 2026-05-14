@@ -64,7 +64,7 @@ class DefaultSubscriptionsRepository
         override suspend fun removeSubscription(link: String): SubscriptionsResult {
             return when (val result = remoteDataSource.removeLink(RemoveLinkRequestDto(link = link))) {
                 is RemoteCallResult.Success -> {
-                    SubscriptionsResult.Success(links = listOf(result.data.toDomain()))
+                    SubscriptionsResult.Success(links = emptyList())
                 }
 
                 is RemoteCallResult.ApiFailure -> {

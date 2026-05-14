@@ -2,9 +2,17 @@
 
 ## Версия beta
 
-- Версия приложения: `0.17.0`
+- Версия приложения: `1.1.0`
 - Тип сборки для внутреннего тестирования: `staging`
 - APK артефакт: `app/build/outputs/apk/staging/app-staging.apk`
+
+## Формальная приемка MVP (R-0)
+
+- Чеклист приемки: `release/android-mvp-acceptance-checklist.md`
+- Отчет приемки: `release/android-mvp-acceptance-report.md`
+- Решение `go/no-go`: `release/android-mvp-go-no-go.md`
+
+Текущее решение для MVP: предварительный `NO-GO` до закрытия обязательных ручных gate на физическом устройстве.
 
 ## Release Notes (MVP beta)
 

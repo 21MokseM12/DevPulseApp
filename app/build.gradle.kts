@@ -12,6 +12,9 @@ plugins {
     id("jacoco")
 }
 
+val releaseCertPins: String = providers.gradleProperty("devpulse.releaseCertPins").orElse("").get()
+val stagingCertPins: String = providers.gradleProperty("devpulse.stagingCertPins").orElse("").get()
+
 android {
     namespace = "com.devpulse.app"
     compileSdk = 36
@@ -20,8 +23,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.1.0"
+        versionCode = 26
+        versionName = "1.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +33,8 @@ android {
         debug {
             buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
             buildConfigField("String", "ENVIRONMENT", "\"debug\"")
+            buildConfigField("String", "RELEASE_CERT_PINS", "\"\"")
+            buildConfigField("String", "STAGING_CERT_PINS", "\"\"")
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
@@ -38,6 +43,8 @@ android {
             matchingFallbacks += listOf("debug")
             buildConfigField("String", "BASE_URL", "\"https://staging-api.devpulse.example/\"")
             buildConfigField("String", "ENVIRONMENT", "\"staging\"")
+            buildConfigField("String", "RELEASE_CERT_PINS", "\"$releaseCertPins\"")
+            buildConfigField("String", "STAGING_CERT_PINS", "\"$stagingCertPins\"")
             manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
 
@@ -49,6 +56,8 @@ android {
             )
             buildConfigField("String", "BASE_URL", "\"https://api.devpulse.example/\"")
             buildConfigField("String", "ENVIRONMENT", "\"release\"")
+            buildConfigField("String", "RELEASE_CERT_PINS", "\"$releaseCertPins\"")
+            buildConfigField("String", "STAGING_CERT_PINS", "\"$stagingCertPins\"")
             manifestPlaceholders["usesCleartextTraffic"] = "false"
         }
     }
@@ -194,6 +203,7 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")

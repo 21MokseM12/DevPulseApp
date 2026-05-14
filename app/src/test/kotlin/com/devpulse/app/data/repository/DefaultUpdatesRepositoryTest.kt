@@ -24,6 +24,9 @@ class DefaultUpdatesRepositoryTest {
                     update =
                         ParsedPushUpdate(
                             remoteEventId = "evt-1",
+                            linkUpdateId = 1L,
+                            updateOwner = "bot",
+                            creationDate = "2026-05-13T20:00:00Z",
                             linkUrl = "https://example.com/post",
                             title = "Title",
                             content = "Body",
@@ -50,6 +53,9 @@ class DefaultUpdatesRepositoryTest {
                     update =
                         ParsedPushUpdate(
                             remoteEventId = "evt-dup",
+                            linkUpdateId = null,
+                            updateOwner = "unknown",
+                            creationDate = "",
                             linkUrl = "https://example.com/post",
                             title = "Title",
                             content = "Body",
@@ -147,6 +153,10 @@ class DefaultUpdatesRepositoryTest {
                     }
             }
             return markAsReadResult
+        }
+
+        override suspend fun clearAll() {
+            data.value = emptyList()
         }
     }
 }
