@@ -95,4 +95,56 @@ class ContractDtoTest {
         assertEquals("401", errorDomain.code)
         assertEquals(null, errorDomain.statusCode)
     }
+
+    @Test
+    fun markReadRequest_serializesIdsAndMarkAllByContract() {
+        val adapter = moshi.adapter(MarkReadRequestDto::class.java)
+
+        val idsJson = adapter.toJson(MarkReadRequestDto(ids = listOf(1L, 2L)))
+        val markAllJson = adapter.toJson(MarkReadRequestDto(markAll = true))
+
+        assertEquals("""{"ids":[1,2]}""", idsJson)
+        assertEquals("""{"markAll":true}""", markAllJson)
+    }
+
+    @Test
+    fun markReadResponse_deserializesUpdatedCount() {
+        val adapter = moshi.adapter(MarkReadResponseDto::class.java)
+        val dto = requireNotNull(adapter.fromJson("""{"updatedCount":5}"""))
+
+        assertEquals(5, dto.updatedCount)
+    }
+
+    @Test
+    fun notificationListResponse_deserializesRequiredPagingFields() {
+        val adapter = moshi.adapter(NotificationListResponseDto::class.java)
+        val dto =
+            requireNotNull(
+                adapter.fromJson(
+                    """
+                    {
+                      "notifications": [
+                        {
+                          "id": 10,
+                          "title": "Title",
+                          "description": "Body",
+                          "url": "https://example.org/a",
+                          "unread": true,
+                          "linkId": 77,
+                          "receivedAt": "2026-05-14T10:00:00Z",
+                          "readAt": null
+                        }
+                      ],
+                      "limit": 20,
+                      "offset": 0
+                    }
+                    """.trimIndent(),
+                ),
+            )
+
+        assertEquals(1, dto.notifications.size)
+        assertEquals(20, dto.limit)
+        assertEquals(0, dto.offset)
+        assertEquals("https://example.org/a", dto.notifications.first().url)
+    }
 }

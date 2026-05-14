@@ -58,22 +58,22 @@ class UpdatesNotificationsFlowIntegrationTest {
                 NotificationDto(
                     id = 10L,
                     title = "Unread",
-                    content = "Body A",
-                    link = "https://example.com/a",
-                    tags = listOf("updates"),
-                    isRead = false,
-                    updateOwner = "bot",
-                    creationDate = "2026-05-14T10:00:00Z",
+                    description = "Body A",
+                    url = "https://example.com/a",
+                    unread = true,
+                    linkId = 101L,
+                    receivedAt = "2026-05-14T10:00:00Z",
+                    readAt = null,
                 ),
                 NotificationDto(
                     id = 11L,
                     title = "Unread 2",
-                    content = "Body B",
-                    link = "https://example.com/b",
-                    tags = listOf("updates"),
-                    isRead = false,
-                    updateOwner = "bot",
-                    creationDate = "2026-05-14T11:00:00Z",
+                    description = "Body B",
+                    url = "https://example.com/b",
+                    unread = true,
+                    linkId = 102L,
+                    receivedAt = "2026-05-14T11:00:00Z",
+                    readAt = null,
                 ),
             )
         var lastMarkReadIds: List<Long>? = null
@@ -105,13 +105,18 @@ class UpdatesNotificationsFlowIntegrationTest {
             tags: List<String>,
         ): RemoteCallResult<NotificationListResponseDto> {
             return RemoteCallResult.Success(
-                data = NotificationListResponseDto(notifications = notifications.toList()),
+                data =
+                    NotificationListResponseDto(
+                        notifications = notifications.toList(),
+                        limit = limit,
+                        offset = offset,
+                    ),
                 statusCode = 200,
             )
         }
 
         override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
-            val unread = notifications.count { it.isRead != true }
+            val unread = notifications.count { it.unread == true }
             return RemoteCallResult.Success(
                 data = UnreadCountResponseDto(unreadCount = unread),
                 statusCode = 200,
@@ -119,13 +124,21 @@ class UpdatesNotificationsFlowIntegrationTest {
         }
 
         override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
-            lastMarkReadIds = request.notificationIds
-            val ids = request.notificationIds.toSet()
+            val ids = request.ids.orEmpty()
+            lastMarkReadIds = ids
+            val idsSet = ids.toSet()
             notifications.replaceAll { dto ->
-                if (dto.id in ids) dto.copy(isRead = true) else dto
+                if (dto.id in idsSet) {
+                    dto.copy(
+                        unread = false,
+                        readAt = "2026-05-14T12:00:00Z",
+                    )
+                } else {
+                    dto
+                }
             }
             return RemoteCallResult.Success(
-                data = MarkReadResponseDto(message = "ok"),
+                data = MarkReadResponseDto(updatedCount = ids.size),
                 statusCode = 200,
             )
         }

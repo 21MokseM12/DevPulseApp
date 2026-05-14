@@ -4,5 +4,6 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class MarkReadRequestDto(
-    val notificationIds: List<Long>,
+    val ids: List<Long>? = null,
+    val markAll: Boolean? = null,
 )

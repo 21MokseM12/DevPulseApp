@@ -106,7 +106,7 @@ class UpdatesViewModelTest {
                                 ),
                         ),
                     unreadResult = UnreadCountResult.Success(unreadCount = 2),
-                    markReadResult = MarkReadResult.Success(message = "ok"),
+                    markReadResult = MarkReadResult.Success(updatedCount = 1),
                 )
             val viewModel = UpdatesViewModel(repository)
             advanceUntilIdle()
@@ -240,7 +240,7 @@ class UpdatesViewModelTest {
     private class FakeNotificationsRepository(
         private val notificationsResult: NotificationsResult,
         private val unreadResult: UnreadCountResult,
-        private val markReadResult: MarkReadResult = MarkReadResult.Success(message = "ok"),
+        private val markReadResult: MarkReadResult = MarkReadResult.Success(updatedCount = 1),
         private val markGate: CompletableDeferred<Unit>? = null,
     ) : NotificationsRepository {
         var lastMarkedIds: List<Long>? = null

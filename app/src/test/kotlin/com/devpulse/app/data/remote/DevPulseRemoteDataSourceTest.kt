@@ -248,7 +248,7 @@ class DevPulseRemoteDataSourceTest {
                 server.enqueue(
                     MockResponse()
                         .setResponseCode(200)
-                        .setBody("""{"notifications":[]}"""),
+                        .setBody("""{"notifications":[],"limit":50,"offset":20}"""),
                 )
 
                 val dataSource = createDataSource(server)
@@ -257,6 +257,29 @@ class DevPulseRemoteDataSourceTest {
                 assertTrue(result is RemoteCallResult.Success)
                 val request = server.takeRequest()
                 assertEquals("/api/v1/notifications?limit=50&offset=20&tags=kotlin&tags=android", request.path)
+            }
+        }
+
+    @Test
+    fun markNotificationsRead_postsIdsAndParsesUpdatedCount() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""{"updatedCount":2}"""),
+                )
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.markNotificationsRead(
+                        MarkReadRequestDto(ids = listOf(3L, 4L)),
+                    )
+
+                assertTrue(result is RemoteCallResult.Success)
+                assertEquals(2, (result as RemoteCallResult.Success).data.updatedCount)
+                val request = server.takeRequest()
+                assertEquals("""{"ids":[3,4]}""", request.body.readUtf8())
             }
         }
 

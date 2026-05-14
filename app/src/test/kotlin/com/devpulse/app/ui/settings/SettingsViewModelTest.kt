@@ -157,7 +157,11 @@ class SettingsViewModelTest {
             tags: List<String>,
         ): RemoteCallResult<NotificationListResponseDto> =
             RemoteCallResult.Success(
-                NotificationListResponseDto(emptyList()),
+                NotificationListResponseDto(
+                    notifications = emptyList(),
+                    limit = limit,
+                    offset = offset,
+                ),
                 200,
             )
 
@@ -165,7 +169,7 @@ class SettingsViewModelTest {
             RemoteCallResult.Success(UnreadCountResponseDto(0), 200)
 
         override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> =
-            RemoteCallResult.Success(MarkReadResponseDto("ok"), 200)
+            RemoteCallResult.Success(MarkReadResponseDto(updatedCount = request.ids?.size ?: 0), 200)
     }
 
     private class FakeSessionStore : SessionStore {

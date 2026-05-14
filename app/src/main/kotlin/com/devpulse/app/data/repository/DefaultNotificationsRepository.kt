@@ -32,7 +32,7 @@ class DefaultNotificationsRepository
             ) {
                 is RemoteCallResult.Success -> {
                     NotificationsResult.Success(
-                        notifications = result.data.notifications.orEmpty().map { it.toDomain() },
+                        notifications = result.data.notifications.map { it.toDomain() },
                     )
                 }
 
@@ -56,10 +56,10 @@ class DefaultNotificationsRepository
             return when (
                 val result =
                     remoteDataSource.markNotificationsRead(
-                        request = MarkReadRequestDto(notificationIds = notificationIds),
+                        request = MarkReadRequestDto(ids = notificationIds),
                     )
             ) {
-                is RemoteCallResult.Success -> MarkReadResult.Success(message = result.data.message)
+                is RemoteCallResult.Success -> MarkReadResult.Success(updatedCount = result.data.updatedCount)
                 is RemoteCallResult.ApiFailure -> MarkReadResult.Failure(error = result.error)
                 is RemoteCallResult.NetworkFailure -> MarkReadResult.Failure(error = result.error)
             }

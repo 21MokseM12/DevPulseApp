@@ -39,14 +39,16 @@ class DefaultNotificationsRepositoryTest {
                                                     NotificationDto(
                                                         id = 10L,
                                                         title = "Title",
-                                                        content = "Body",
-                                                        link = "https://example.org",
-                                                        tags = listOf("news"),
-                                                        isRead = true,
-                                                        updateOwner = "bot",
-                                                        creationDate = "2026-05-13T20:00:00Z",
+                                                        description = "Body",
+                                                        url = "https://example.org",
+                                                        unread = false,
+                                                        linkId = 777L,
+                                                        receivedAt = "2026-05-13T20:00:00Z",
+                                                        readAt = "2026-05-13T20:10:00Z",
                                                     ),
                                                 ),
+                                            limit = 20,
+                                            offset = 0,
                                         ),
                                     statusCode = 200,
                                 ),
@@ -58,7 +60,7 @@ class DefaultNotificationsRepositoryTest {
             assertTrue(result is NotificationsResult.Success)
             val notification = (result as NotificationsResult.Success).notifications.first()
             assertEquals(10L, notification.id)
-            assertEquals("bot", notification.updateOwner)
+            assertEquals("777", notification.updateOwner)
         }
 
     @Test
@@ -109,11 +111,19 @@ class DefaultNotificationsRepositoryTest {
 
     private class FakeRemoteDataSource(
         private val notificationsResult: RemoteCallResult<NotificationListResponseDto> =
-            RemoteCallResult.Success(data = NotificationListResponseDto(notifications = emptyList()), statusCode = 200),
+            RemoteCallResult.Success(
+                data =
+                    NotificationListResponseDto(
+                        notifications = emptyList(),
+                        limit = 20,
+                        offset = 0,
+                    ),
+                statusCode = 200,
+            ),
         private val unreadCountResult: RemoteCallResult<UnreadCountResponseDto> =
             RemoteCallResult.Success(data = UnreadCountResponseDto(unreadCount = 0), statusCode = 200),
         private val markReadResult: RemoteCallResult<MarkReadResponseDto> =
-            RemoteCallResult.Success(data = MarkReadResponseDto(message = "ok"), statusCode = 200),
+            RemoteCallResult.Success(data = MarkReadResponseDto(updatedCount = 1), statusCode = 200),
     ) : DevPulseRemoteDataSource {
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             throw UnsupportedOperationException()

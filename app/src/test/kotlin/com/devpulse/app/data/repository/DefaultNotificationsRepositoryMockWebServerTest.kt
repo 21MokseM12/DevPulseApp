@@ -45,12 +45,16 @@ class DefaultNotificationsRepositoryMockWebServerTest {
                                 {
                                   "id": 9,
                                   "title": "Title",
-                                  "content": "Body",
-                                  "link": "https://example.org/x",
-                                  "tags": ["android"],
-                                  "isRead": false
+                                  "description": "Body",
+                                  "url": "https://example.org/x",
+                                  "unread": true,
+                                  "linkId": 501,
+                                  "receivedAt": "2026-05-14T10:00:00Z",
+                                  "readAt": null
                                 }
-                              ]
+                              ],
+                              "limit": 30,
+                              "offset": 10
                             }
                             """.trimIndent(),
                         ),
@@ -86,23 +90,23 @@ class DefaultNotificationsRepositoryMockWebServerTest {
         }
 
     @Test
-    fun markRead_postsNotificationIdsAndReturnsMessage() =
+    fun markRead_postsIdsAndReturnsUpdatedCount() =
         runTest {
             MockWebServer().use { server ->
                 server.enqueue(
                     MockResponse()
                         .setResponseCode(200)
-                        .setBody("""{"message":"Marked"}"""),
+                        .setBody("""{"updatedCount":2}"""),
                 )
                 val repository = createRepository(server = server, sessionStore = FakeSessionStore(login = "moksem"))
 
                 val result = repository.markRead(notificationIds = listOf(1L, 2L))
 
                 assertTrue(result is MarkReadResult.Success)
-                assertEquals("Marked", (result as MarkReadResult.Success).message)
+                assertEquals(2, (result as MarkReadResult.Success).updatedCount)
                 val request = server.takeRequest()
                 val body = request.body.readUtf8()
-                assertTrue(body.contains(""""notificationIds":[1,2]"""))
+                assertTrue(body.contains(""""ids":[1,2]"""))
                 assertEquals("moksem", request.getHeader("Client-Login"))
             }
         }

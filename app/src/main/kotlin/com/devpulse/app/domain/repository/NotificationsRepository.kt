@@ -25,7 +25,7 @@ sealed interface UnreadCountResult {
 
 sealed interface MarkReadResult {
     data class Success(
-        val message: String,
+        val updatedCount: Int,
     ) : MarkReadResult
 
     data class Failure(

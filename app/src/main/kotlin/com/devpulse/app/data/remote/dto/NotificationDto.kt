@@ -7,23 +7,23 @@ import com.squareup.moshi.JsonClass
 data class NotificationDto(
     val id: Long?,
     val title: String?,
-    val content: String?,
-    val link: String?,
-    val tags: List<String>?,
-    val isRead: Boolean?,
-    val updateOwner: String?,
-    val creationDate: String?,
+    val description: String?,
+    val url: String?,
+    val unread: Boolean?,
+    val linkId: Long?,
+    val receivedAt: String?,
+    val readAt: String?,
 )
 
 fun NotificationDto.toDomain(): RemoteNotification {
     return RemoteNotification(
         id = id ?: 0L,
         title = title.orEmpty(),
-        content = content.orEmpty(),
-        link = link.orEmpty(),
-        tags = tags.orEmpty(),
-        isRead = isRead ?: false,
-        updateOwner = updateOwner ?: "unknown",
-        creationDate = creationDate.orEmpty(),
+        content = description.orEmpty(),
+        link = url.orEmpty(),
+        tags = emptyList(),
+        isRead = unread?.not() ?: (readAt != null),
+        updateOwner = linkId?.toString() ?: "unknown",
+        creationDate = receivedAt.orEmpty(),
     )
 }
