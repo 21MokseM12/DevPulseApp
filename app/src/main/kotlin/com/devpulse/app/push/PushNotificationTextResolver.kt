@@ -41,14 +41,18 @@ class PushNotificationTextResolver
         }
 
         fun resolveDigestBody(summary: DigestSummaryPayload): String {
+            val topSources = DigestDeliveryContract.topSourcesForDigestBody(summary.sourceBreakdown)
+            val hiddenSourcesCount = (summary.sourceBreakdown.size - topSources.size).coerceAtLeast(0)
             val sources =
-                summary.sourceBreakdown.entries.joinToString(separator = ", ") { (source, count) ->
+                topSources.joinToString(separator = ", ") { (source, count) ->
                     "$source: $count"
                 }
             return if (sources.isBlank()) {
                 "Найдено ${summary.updatesCount} новых событий."
-            } else {
+            } else if (hiddenSourcesCount == 0) {
                 "Найдено ${summary.updatesCount} новых событий. Источники: $sources."
+            } else {
+                "Найдено ${summary.updatesCount} новых событий. Источники: $sources и еще $hiddenSourcesCount."
             }
         }
 

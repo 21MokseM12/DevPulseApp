@@ -32,6 +32,8 @@ class ApplyUpdatesFiltersUseCase
                     UpdatesPeriodFilter.LAST_7_DAYS -> max(0L, startOfTodayEpochMs - DAYS_7_MS)
                     UpdatesPeriodFilter.LAST_30_DAYS -> max(0L, startOfTodayEpochMs - DAYS_30_MS)
                 }
+            val effectivePeriodStartEpochMs = max(periodStartEpochMs, state.periodStartEpochMs ?: Long.MIN_VALUE)
+            val effectivePeriodEndEpochMs = state.periodEndEpochMs ?: Long.MAX_VALUE
             val selectedTags = state.selectedTags.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
             val normalizedSource = state.source?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 
@@ -59,7 +61,10 @@ class ApplyUpdatesFiltersUseCase
                     }
                 }
 
-                if (state.period != UpdatesPeriodFilter.ALL && event.receivedAtEpochMs < periodStartEpochMs) {
+                if (event.receivedAtEpochMs < effectivePeriodStartEpochMs) {
+                    return@filter false
+                }
+                if (event.receivedAtEpochMs > effectivePeriodEndEpochMs) {
                     return@filter false
                 }
 

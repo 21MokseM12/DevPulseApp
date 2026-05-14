@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.ui.main.MainViewModel
 import com.devpulse.app.ui.navigation.AppNavGraph
 import com.devpulse.app.ui.theme.DevPulseTheme
@@ -15,9 +16,9 @@ import com.devpulse.app.ui.theme.DevPulseTheme
 @Composable
 fun DevPulseApp(
     openUpdatesRequest: Boolean = false,
-    openUpdatesUnreadOnlyRequest: Boolean = false,
+    openUpdatesDigestContextRequest: OpenUpdatesDigestContextRequest? = null,
     onOpenUpdatesHandled: () -> Unit = {},
-    onOpenUpdatesUnreadOnlyHandled: () -> Unit = {},
+    onOpenUpdatesDigestContextHandled: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -32,9 +33,9 @@ fun DevPulseApp(
                 onLoginClick = viewModel::onLoginSucceeded,
                 onLogoutClick = viewModel::onLogout,
                 openUpdatesRequest = openUpdatesRequest,
-                openUpdatesUnreadFilterRequest = openUpdatesUnreadOnlyRequest,
+                openUpdatesDigestContextRequest = openUpdatesDigestContextRequest,
                 onOpenUpdatesHandled = onOpenUpdatesHandled,
-                onOpenUpdatesUnreadFilterHandled = onOpenUpdatesUnreadOnlyHandled,
+                onOpenUpdatesDigestContextHandled = onOpenUpdatesDigestContextHandled,
             )
         }
     }

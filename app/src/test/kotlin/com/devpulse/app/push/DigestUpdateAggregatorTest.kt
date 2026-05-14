@@ -47,6 +47,24 @@ class DigestUpdateAggregatorTest {
         assertEquals(150L, result.periodEndEpochMs)
     }
 
+    @Test
+    fun aggregate_normalizesSourceNames_beforeGrouping() {
+        val result =
+            requireNotNull(
+                aggregator.aggregate(
+                    updates =
+                        listOf(
+                            update(id = 1L, source = " GitHub ", receivedAt = 101L),
+                            update(id = 2L, source = "github", receivedAt = 110L),
+                        ),
+                    periodStartExclusiveEpochMs = 100L,
+                    periodEndInclusiveEpochMs = 200L,
+                ),
+            )
+
+        assertEquals(mapOf("github" to 2), result.sourceBreakdown)
+    }
+
     private fun update(
         id: Long,
         source: String,

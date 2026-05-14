@@ -3,6 +3,8 @@ package com.devpulse.app.push
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ListenableWorker
+import androidx.work.PeriodicWorkRequest
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -28,31 +30,36 @@ interface DigestScheduler {
 
 @Singleton
 class WorkManagerDigestScheduler
-    @Inject
-    constructor(
-        @ApplicationContext private val context: Context,
+    private constructor(
+        private val context: Context?,
+        private val gatewayOverride: DigestWorkManagerGateway?,
     ) : DigestScheduler {
-        private val workManager: WorkManager by lazy { WorkManager.getInstance(context) }
+        @Inject
+        constructor(
+            @ApplicationContext context: Context,
+        ) : this(context = context, gatewayOverride = null)
+
+        internal constructor(gateway: DigestWorkManagerGateway) : this(context = null, gatewayOverride = gateway)
+
+        private val gateway: DigestWorkManagerGateway by lazy {
+            gatewayOverride ?: AndroidDigestWorkManagerGatewayFactory.create(requireNotNull(context))
+        }
 
         override fun sync(preferences: NotificationPreferences) {
             val mode = preferences.digestMode
             if (!preferences.enabled || mode == null) {
-                workManager.cancelUniqueWork(DIGEST_WORK_NAME)
+                gateway.cancelUniqueWork(DIGEST_WORK_NAME)
                 return
             }
             val repeatMinutes = digestRepeatMinutes(mode)
             val flexMinutes = digestFlexMinutes(repeatMinutes)
-            val request =
-                PeriodicWorkRequestBuilder<DigestWorker>(
-                    repeatInterval = repeatMinutes,
-                    repeatIntervalTimeUnit = TimeUnit.MINUTES,
-                    flexTimeInterval = flexMinutes,
-                    flexTimeIntervalUnit = TimeUnit.MINUTES,
-                ).build()
-            workManager.enqueueUniquePeriodicWork(
+            gateway.enqueueUniquePeriodicWork(
                 DIGEST_WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
-                request,
+                buildDigestWorkRequest(
+                    repeatMinutes = repeatMinutes,
+                    flexMinutes = flexMinutes,
+                ),
             )
         }
     }
@@ -68,38 +75,12 @@ class DigestWorker
                     applicationContext,
                     DigestWorkerDependencies::class.java,
                 )
-            val updatesRepository = entryPoint.updatesRepository()
-            val notificationPreferencesStore = entryPoint.notificationPreferencesStore()
-            val digestUpdateAggregator = entryPoint.digestUpdateAggregator()
-            val pushNotifier = entryPoint.pushNotifier()
-            val preferences =
-                runCatching { notificationPreferencesStore.getPreferences() }
-                    .getOrElse { return Result.retry() }
-            val digestMode = preferences.digestMode ?: return Result.success()
-            if (!preferences.enabled) return Result.success()
-
-            val now = System.currentTimeMillis()
-            val updates =
-                runCatching { updatesRepository.observeUpdates().first() }
-                    .getOrElse { return Result.retry() }
-            val summary =
-                digestUpdateAggregator.aggregate(
-                    updates = updates,
-                    periodStartExclusiveEpochMs = preferences.digestLastProcessedAtEpochMs,
-                    periodEndInclusiveEpochMs = now,
-                )
-            if (summary != null) {
-                pushNotifier.showDigestNotification(
-                    summary = summary,
-                    digestMode = digestMode,
-                )
-            }
-            runCatching {
-                notificationPreferencesStore.setDigestLastProcessedAt(now)
-            }.getOrElse {
-                return Result.retry()
-            }
-            return Result.success()
+            return runDigestWorkerCycle(
+                updatesRepository = entryPoint.updatesRepository(),
+                notificationPreferencesStore = entryPoint.notificationPreferencesStore(),
+                digestUpdateAggregator = entryPoint.digestUpdateAggregator(),
+                pushNotifier = entryPoint.pushNotifier(),
+            )
         }
     }
 
@@ -123,4 +104,85 @@ internal fun digestRepeatMinutes(mode: NotificationDigestMode): Long {
 
 internal fun digestFlexMinutes(repeatMinutes: Long): Long {
     return max(15L, repeatMinutes / 4L)
+}
+
+internal suspend fun runDigestWorkerCycle(
+    updatesRepository: UpdatesRepository,
+    notificationPreferencesStore: NotificationPreferencesStore,
+    digestUpdateAggregator: DigestUpdateAggregator,
+    pushNotifier: PushNotifier,
+    nowEpochMs: Long = System.currentTimeMillis(),
+): ListenableWorker.Result {
+    val preferences =
+        runCatching { notificationPreferencesStore.getPreferences() }
+            .getOrElse { return ListenableWorker.Result.retry() }
+    val digestMode = preferences.digestMode ?: return ListenableWorker.Result.success()
+    if (!preferences.enabled) return ListenableWorker.Result.success()
+
+    val updates =
+        runCatching { updatesRepository.observeUpdates().first() }
+            .getOrElse { return ListenableWorker.Result.retry() }
+    val summary =
+        digestUpdateAggregator.aggregate(
+            updates = updates,
+            periodStartExclusiveEpochMs = preferences.digestLastProcessedAtEpochMs,
+            periodEndInclusiveEpochMs = nowEpochMs,
+        )
+    if (summary != null) {
+        pushNotifier.showDigestNotification(
+            summary = summary,
+            digestMode = digestMode,
+        )
+    }
+    runCatching {
+        notificationPreferencesStore.setDigestLastProcessedAt(nowEpochMs)
+    }.getOrElse {
+        return ListenableWorker.Result.retry()
+    }
+    return ListenableWorker.Result.success()
+}
+
+internal fun buildDigestWorkRequest(
+    repeatMinutes: Long,
+    flexMinutes: Long,
+): PeriodicWorkRequest {
+    return PeriodicWorkRequestBuilder<DigestWorker>(
+        repeatInterval = repeatMinutes,
+        repeatIntervalTimeUnit = TimeUnit.MINUTES,
+        flexTimeInterval = flexMinutes,
+        flexTimeIntervalUnit = TimeUnit.MINUTES,
+    ).build()
+}
+
+internal interface DigestWorkManagerGateway {
+    fun cancelUniqueWork(workName: String)
+
+    fun enqueueUniquePeriodicWork(
+        workName: String,
+        policy: ExistingPeriodicWorkPolicy,
+        request: PeriodicWorkRequest,
+    )
+}
+
+internal fun interface DigestWorkManagerGatewayFactory {
+    fun create(context: Context): DigestWorkManagerGateway
+}
+
+internal object AndroidDigestWorkManagerGatewayFactory : DigestWorkManagerGatewayFactory {
+    override fun create(context: Context): DigestWorkManagerGateway {
+        val workManager = WorkManager.getInstance(context)
+        return object : DigestWorkManagerGateway {
+            override fun cancelUniqueWork(workName: String) {
+                workManager.cancelUniqueWork(workName)
+            }
+
+            override fun enqueueUniquePeriodicWork(
+                workName: String,
+                policy: ExistingPeriodicWorkPolicy,
+                request: PeriodicWorkRequest,
+            ) {
+                workManager.enqueueUniquePeriodicWork(workName, policy, request)
+            }
+        }
+    }
 }

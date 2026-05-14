@@ -16,6 +16,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.ui.auth.AuthRoute
 import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
@@ -30,9 +31,9 @@ fun AppNavGraph(
     onLoginClick: (String) -> Unit,
     onLogoutClick: () -> Unit,
     openUpdatesRequest: Boolean,
-    openUpdatesUnreadFilterRequest: Boolean,
+    openUpdatesDigestContextRequest: OpenUpdatesDigestContextRequest?,
     onOpenUpdatesHandled: () -> Unit,
-    onOpenUpdatesUnreadFilterHandled: () -> Unit,
+    onOpenUpdatesDigestContextHandled: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
     LaunchedEffect(uiState.startupDestination, openUpdatesRequest) {
@@ -83,8 +84,8 @@ fun AppNavGraph(
                     onLogout = {
                         onLogoutClick()
                     },
-                    applyUnreadFilterRequest = openUpdatesUnreadFilterRequest,
-                    onUnreadFilterRequestHandled = onOpenUpdatesUnreadFilterHandled,
+                    digestContextRequest = openUpdatesDigestContextRequest,
+                    onDigestContextRequestHandled = onOpenUpdatesDigestContextHandled,
                 )
             }
 

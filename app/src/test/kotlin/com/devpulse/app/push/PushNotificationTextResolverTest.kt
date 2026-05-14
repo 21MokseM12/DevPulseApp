@@ -83,4 +83,19 @@ class PushNotificationTextResolverTest {
 
         assertEquals("Найдено 3 новых событий. Источники: github: 2, jira: 1.", result)
     }
+
+    @Test
+    fun resolveDigestBody_limitsSourcesByContract() {
+        val result =
+            resolver.resolveDigestBody(
+                DigestSummaryPayload(
+                    updatesCount = 8,
+                    periodStartEpochMs = 10L,
+                    periodEndEpochMs = 20L,
+                    sourceBreakdown = mapOf("bot" to 4, "github" to 2, "jira" to 1, "gitlab" to 1),
+                ),
+            )
+
+        assertEquals("Найдено 8 новых событий. Источники: bot: 4, github: 2, gitlab: 1 и еще 1.", result)
+    }
 }

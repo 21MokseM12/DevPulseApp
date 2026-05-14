@@ -448,7 +448,7 @@ class UpdatesViewModelTest {
     }
 
     @Test
-    fun applyDigestUnreadFilter_enablesUnreadOnlyFilter() {
+    fun applyDigestContext_enablesUnreadOnlyFilter() {
         runTest {
             val repository =
                 FakeNotificationsRepository(
@@ -465,11 +465,61 @@ class UpdatesViewModelTest {
             val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
             advanceUntilIdle()
 
-            viewModel.applyDigestUnreadFilter()
+            viewModel.applyDigestContext(
+                unreadOnly = true,
+                periodStartEpochMs = null,
+                periodEndEpochMs = null,
+            )
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.filterState.unreadOnly)
             assertEquals(listOf(61L), viewModel.uiState.value.events.map { it.id })
+        }
+    }
+
+    @Test
+    fun applyDigestContext_appliesUnreadAndDigestPeriodWindow() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 71L,
+                                        creationDate = "2026-05-14T09:30:00Z",
+                                        isRead = false,
+                                    ),
+                                    remoteNotification(
+                                        id = 72L,
+                                        creationDate = "2026-05-14T08:30:00Z",
+                                        isRead = false,
+                                    ),
+                                    remoteNotification(
+                                        id = 73L,
+                                        creationDate = "2026-05-14T09:10:00Z",
+                                        isRead = true,
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.applyDigestContext(
+                unreadOnly = true,
+                // 2026-05-14T08:40:00Z
+                periodStartEpochMs = 1778750400000L,
+                // 2026-05-14T09:10:00Z
+                periodEndEpochMs = 1778752200000L,
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf(71L), viewModel.uiState.value.events.map { it.id })
+            assertEquals(1778750400000L, viewModel.uiState.value.filterState.periodStartEpochMs)
+            assertEquals(1778752200000L, viewModel.uiState.value.filterState.periodEndEpochMs)
         }
     }
 

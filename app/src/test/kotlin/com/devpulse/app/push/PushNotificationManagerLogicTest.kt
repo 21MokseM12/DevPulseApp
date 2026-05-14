@@ -4,6 +4,7 @@ import android.os.Build
 import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -81,5 +82,27 @@ class PushNotificationManagerLogicTest {
     fun shouldPostIndividualNotification_returnsFalse_whenDigestEnabled() {
         assertTrue(shouldPostIndividualNotification(null))
         assertFalse(shouldPostIndividualNotification(NotificationDigestMode.Daily))
+    }
+
+    @Test
+    fun digestWindowOrNull_returnsPair_whenBothBoundsPresent() {
+        val window =
+            digestWindowOrNull(
+                periodStartEpochMs = 100L,
+                periodEndEpochMs = 200L,
+            )
+
+        assertEquals(100L to 200L, window)
+    }
+
+    @Test
+    fun digestWindowOrNull_returnsNull_whenWindowIncomplete() {
+        val window =
+            digestWindowOrNull(
+                periodStartEpochMs = 100L,
+                periodEndEpochMs = null,
+            )
+
+        assertNull(window)
     }
 }

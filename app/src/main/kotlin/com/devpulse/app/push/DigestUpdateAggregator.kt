@@ -31,7 +31,7 @@ class DigestUpdateAggregator
             val sourceBreakdown =
                 windowed
                     .groupingBy { update ->
-                        update.source.trim().ifBlank { "unknown" }
+                        DigestDeliveryContract.normalizeSource(update.source)
                     }.eachCount()
                     .toSortedMap()
 

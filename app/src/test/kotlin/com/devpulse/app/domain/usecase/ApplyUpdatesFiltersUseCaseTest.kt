@@ -128,6 +128,15 @@ class ApplyUpdatesFiltersUseCaseTest {
                         ),
                     expectedIds = emptyList(),
                 ),
+                FilterCase(
+                    name = "explicit digest window",
+                    state =
+                        UpdatesFilterState(
+                            periodStartEpochMs = 1778712000001L,
+                            periodEndEpochMs = 1778724000000L,
+                        ),
+                    expectedIds = listOf(3L),
+                ),
             )
 
         cases.forEach { case ->

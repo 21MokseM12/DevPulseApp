@@ -89,7 +89,14 @@ class UpdatesViewModel
 
         fun onPeriodChanged(period: UpdatesPeriodFilter) {
             _uiState.update { state ->
-                state.copy(filterState = state.filterState.copy(period = period))
+                state.copy(
+                    filterState =
+                        state.filterState.copy(
+                            period = period,
+                            periodStartEpochMs = null,
+                            periodEndEpochMs = null,
+                        ),
+                )
             }
             applyFilters()
         }
@@ -114,13 +121,16 @@ class UpdatesViewModel
                         UpdatesQuickFilter.UNREAD ->
                             state.filterState.copy(
                                 unreadOnly = true,
+                                periodStartEpochMs = null,
+                                periodEndEpochMs = null,
                             )
                         UpdatesQuickFilter.TODAY ->
                             state.filterState.copy(
                                 period = UpdatesPeriodFilter.TODAY,
+                                periodStartEpochMs = null,
+                                periodEndEpochMs = null,
                             )
-                        UpdatesQuickFilter.GITHUB_ONLY ->
-                            state.filterState.copy(source = SOURCE_GITHUB)
+                        UpdatesQuickFilter.GITHUB_ONLY -> state.filterState.copy(source = SOURCE_GITHUB)
                     }
                 state.copy(filterState = nextState)
             }
@@ -135,12 +145,18 @@ class UpdatesViewModel
             applyFilters()
         }
 
-        fun applyDigestUnreadFilter() {
+        fun applyDigestContext(
+            unreadOnly: Boolean,
+            periodStartEpochMs: Long?,
+            periodEndEpochMs: Long?,
+        ) {
             _uiState.update { state ->
                 state.copy(
                     filterState =
                         state.filterState.copy(
-                            unreadOnly = true,
+                            unreadOnly = unreadOnly,
+                            periodStartEpochMs = periodStartEpochMs,
+                            periodEndEpochMs = periodEndEpochMs,
                         ),
                 )
             }

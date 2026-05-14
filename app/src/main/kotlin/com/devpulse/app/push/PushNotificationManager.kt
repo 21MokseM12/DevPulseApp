@@ -81,7 +81,12 @@ class PushNotificationManager
         ) {
             if (!canPostNotifications()) return
 
-            val contentIntent = buildOpenUpdatesPendingIntent(filterUnreadOnly = true)
+            val contentIntent =
+                buildOpenUpdatesPendingIntent(
+                    filterUnreadOnly = true,
+                    digestPeriodStartEpochMs = summary.periodStartEpochMs,
+                    digestPeriodEndEpochMs = summary.periodEndEpochMs,
+                )
             val title = textResolver.resolveDigestSummaryBody(digestMode)
             val body = textResolver.resolveDigestBody(summary)
             val notification =
@@ -129,11 +134,30 @@ class PushNotificationManager
 
         private fun buildOpenUpdatesPendingIntent(filterUnreadOnly: Boolean): PendingIntent {
             val intent =
-                Intent(context, MainActivity::class.java).apply {
-                    putExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, true)
-                    putExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, filterUnreadOnly)
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                }
+                buildOpenUpdatesIntent(
+                    context = context,
+                    filterUnreadOnly = filterUnreadOnly,
+                )
+            return PendingIntent.getActivity(
+                context,
+                if (filterUnreadOnly) DIGEST_UPDATES_INTENT_REQUEST_CODE else UPDATES_INTENT_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun buildOpenUpdatesPendingIntent(
+            filterUnreadOnly: Boolean,
+            digestPeriodStartEpochMs: Long?,
+            digestPeriodEndEpochMs: Long?,
+        ): PendingIntent {
+            val intent =
+                buildOpenUpdatesIntent(
+                    context = context,
+                    filterUnreadOnly = filterUnreadOnly,
+                    digestPeriodStartEpochMs = digestPeriodStartEpochMs,
+                    digestPeriodEndEpochMs = digestPeriodEndEpochMs,
+                )
             return PendingIntent.getActivity(
                 context,
                 if (filterUnreadOnly) DIGEST_UPDATES_INTENT_REQUEST_CODE else UPDATES_INTENT_REQUEST_CODE,
@@ -185,5 +209,46 @@ internal fun canPostNotifications(
 }
 
 internal fun shouldPostIndividualNotification(digestMode: NotificationDigestMode?): Boolean {
-    return digestMode == null
+    return DigestDeliveryContract.shouldDeliverInstantNotification(digestMode)
+}
+
+internal fun buildOpenUpdatesIntent(
+    context: Context,
+    filterUnreadOnly: Boolean,
+    digestPeriodStartEpochMs: Long? = null,
+    digestPeriodEndEpochMs: Long? = null,
+): Intent {
+    return Intent(context, MainActivity::class.java).applyOpenUpdatesExtras(
+        filterUnreadOnly = filterUnreadOnly,
+        digestPeriodStartEpochMs = digestPeriodStartEpochMs,
+        digestPeriodEndEpochMs = digestPeriodEndEpochMs,
+    )
+}
+
+internal fun Intent.applyOpenUpdatesExtras(
+    filterUnreadOnly: Boolean,
+    digestPeriodStartEpochMs: Long? = null,
+    digestPeriodEndEpochMs: Long? = null,
+): Intent {
+    putExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, true)
+    putExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, filterUnreadOnly)
+    val digestWindow =
+        digestWindowOrNull(
+            periodStartEpochMs = digestPeriodStartEpochMs,
+            periodEndEpochMs = digestPeriodEndEpochMs,
+        )
+    if (digestWindow != null) {
+        putExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_START_EPOCH_MS, digestWindow.first)
+        putExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_END_EPOCH_MS, digestWindow.second)
+    }
+    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    return this
+}
+
+internal fun digestWindowOrNull(
+    periodStartEpochMs: Long?,
+    periodEndEpochMs: Long?,
+): Pair<Long, Long>? {
+    if (periodStartEpochMs == null || periodEndEpochMs == null) return null
+    return periodStartEpochMs to periodEndEpochMs
 }

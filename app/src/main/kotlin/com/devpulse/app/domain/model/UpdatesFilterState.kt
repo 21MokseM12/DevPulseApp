@@ -12,6 +12,8 @@ data class UpdatesFilterState(
     val unreadOnly: Boolean = false,
     val source: String? = null,
     val period: UpdatesPeriodFilter = UpdatesPeriodFilter.ALL,
+    val periodStartEpochMs: Long? = null,
+    val periodEndEpochMs: Long? = null,
     val selectedTags: Set<String> = emptySet(),
 ) {
     val hasActiveFilters: Boolean
@@ -20,6 +22,8 @@ data class UpdatesFilterState(
                 unreadOnly ||
                 source != null ||
                 period != UpdatesPeriodFilter.ALL ||
+                periodStartEpochMs != null ||
+                periodEndEpochMs != null ||
                 selectedTags.isNotEmpty()
 }
 

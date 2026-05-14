@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
 import com.devpulse.app.domain.model.UpdatesQuickFilter
@@ -34,15 +35,18 @@ fun UpdatesRoute(
     onGoToSubscriptions: () -> Unit,
     onGoToSettings: () -> Unit,
     onLogout: () -> Unit,
-    applyUnreadFilterRequest: Boolean = false,
-    onUnreadFilterRequestHandled: () -> Unit = {},
+    digestContextRequest: OpenUpdatesDigestContextRequest? = null,
+    onDigestContextRequestHandled: () -> Unit = {},
     viewModel: UpdatesViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(applyUnreadFilterRequest) {
-        if (applyUnreadFilterRequest) {
-            viewModel.applyDigestUnreadFilter()
-            onUnreadFilterRequestHandled()
-        }
+    LaunchedEffect(digestContextRequest) {
+        val request = digestContextRequest ?: return@LaunchedEffect
+        viewModel.applyDigestContext(
+            unreadOnly = request.unreadOnly,
+            periodStartEpochMs = request.periodStartEpochMs,
+            periodEndEpochMs = request.periodEndEpochMs,
+        )
+        onDigestContextRequestHandled()
     }
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
     UpdatesScreen(

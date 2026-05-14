@@ -12,7 +12,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val openUpdatesRequest = mutableStateOf(false)
-    private val openUpdatesUnreadOnlyRequest = mutableStateOf(false)
+    private val openUpdatesDigestContextRequest = mutableStateOf<OpenUpdatesDigestContextRequest?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,9 +20,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             DevPulseApp(
                 openUpdatesRequest = openUpdatesRequest.value,
-                openUpdatesUnreadOnlyRequest = openUpdatesUnreadOnlyRequest.value,
+                openUpdatesDigestContextRequest = openUpdatesDigestContextRequest.value,
                 onOpenUpdatesHandled = { openUpdatesRequest.value = false },
-                onOpenUpdatesUnreadOnlyHandled = { openUpdatesUnreadOnlyRequest.value = false },
+                onOpenUpdatesDigestContextHandled = { openUpdatesDigestContextRequest.value = null },
             )
         }
     }
@@ -39,10 +39,10 @@ class MainActivity : ComponentActivity() {
                 current = openUpdatesRequest.value,
                 hasOpenUpdatesExtra = intent?.hasOpenUpdatesExtra() == true,
             )
-        openUpdatesUnreadOnlyRequest.value =
-            mergeOpenUpdatesRequest(
-                current = openUpdatesUnreadOnlyRequest.value,
-                hasOpenUpdatesExtra = intent?.hasUnreadFilterExtra() == true,
+        openUpdatesDigestContextRequest.value =
+            mergeDigestContextRequest(
+                current = openUpdatesDigestContextRequest.value,
+                incoming = intent?.toDigestContextRequest(),
             )
     }
 }
@@ -60,4 +60,60 @@ internal fun Intent.hasOpenUpdatesExtra(): Boolean {
 
 internal fun Intent.hasUnreadFilterExtra(): Boolean {
     return getBooleanExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, false)
+}
+
+data class OpenUpdatesDigestContextRequest(
+    val unreadOnly: Boolean,
+    val periodStartEpochMs: Long?,
+    val periodEndEpochMs: Long?,
+)
+
+internal fun Intent.toDigestContextRequest(): OpenUpdatesDigestContextRequest? {
+    val hasDigestWindow =
+        hasExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_START_EPOCH_MS) &&
+            hasExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_END_EPOCH_MS)
+    val periodStart = getDigestPeriodStartEpochMs(hasDigestWindow)
+    val periodEnd = getDigestPeriodEndEpochMs(hasDigestWindow)
+    return digestContextRequestFromExtras(
+        unreadOnly = hasUnreadFilterExtra(),
+        periodStartEpochMs = periodStart,
+        periodEndEpochMs = periodEnd,
+    )
+}
+
+internal fun digestContextRequestFromExtras(
+    unreadOnly: Boolean,
+    periodStartEpochMs: Long?,
+    periodEndEpochMs: Long?,
+): OpenUpdatesDigestContextRequest? {
+    if (!unreadOnly && periodStartEpochMs == null && periodEndEpochMs == null) return null
+    return OpenUpdatesDigestContextRequest(
+        unreadOnly = unreadOnly,
+        periodStartEpochMs = periodStartEpochMs,
+        periodEndEpochMs = periodEndEpochMs,
+    )
+}
+
+internal fun Intent.getDigestPeriodStartEpochMs(hasDigestWindow: Boolean): Long? {
+    return if (hasDigestWindow) {
+        getLongExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_START_EPOCH_MS, 0L)
+    } else {
+        null
+    }
+}
+
+internal fun Intent.getDigestPeriodEndEpochMs(hasDigestWindow: Boolean): Long? {
+    return if (hasDigestWindow) {
+        getLongExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_END_EPOCH_MS, 0L)
+    } else {
+        null
+    }
+}
+
+internal fun mergeDigestContextRequest(
+    current: OpenUpdatesDigestContextRequest?,
+    incoming: OpenUpdatesDigestContextRequest?,
+): OpenUpdatesDigestContextRequest? {
+    if (incoming == null) return current
+    return incoming
 }
