@@ -34,6 +34,23 @@ class DevPulseAppTest {
         composeRule.waitUntilNodeWithTextExists("Auth")
         composeRule.onNodeWithText("Auth").assertIsDisplayed()
     }
+
+    @Test
+    fun logoutFromUpdates_navigatesToAuth() {
+        composeRule.waitUntilNodeWithTextExists("Войти")
+        composeRule.onNodeWithText("Логин").performTextInput("moksem")
+        composeRule.onNodeWithText("Пароль").performTextInput("secret")
+        composeRule.onNodeWithText("Войти").performClick()
+        composeRule.waitUntilNodeWithTextExists("Subscriptions")
+
+        composeRule.onNodeWithText("Открыть Updates").performClick()
+        composeRule.waitUntilNodeWithTextExists("Updates")
+        composeRule.onNodeWithText("Updates").assertIsDisplayed()
+
+        composeRule.onNodeWithText("Выйти").performClick()
+        composeRule.waitUntilNodeWithTextExists("Auth")
+        composeRule.onNodeWithText("Auth").assertIsDisplayed()
+    }
 }
 
 private fun ComposeContentTestRule.waitUntilNodeWithTextExists(text: String) {

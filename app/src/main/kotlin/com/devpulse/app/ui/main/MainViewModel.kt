@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.domain.repository.AppBootstrapRepository
+import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,7 @@ class MainViewModel
     constructor(
         private val appBootstrapRepository: AppBootstrapRepository,
         private val sessionStore: SessionStore,
+        private val accountLifecycleUseCase: AccountLifecycleUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MainUiState())
         val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -78,7 +80,7 @@ class MainViewModel
 
         fun onLogout() {
             viewModelScope.launch {
-                sessionStore.clearSession()
+                accountLifecycleUseCase.logout()
             }
         }
 

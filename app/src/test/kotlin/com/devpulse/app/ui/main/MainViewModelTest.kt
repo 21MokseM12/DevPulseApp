@@ -1,9 +1,26 @@
 package com.devpulse.app.ui.main
 
+import com.devpulse.app.data.local.preferences.NotificationPermissionStore
+import com.devpulse.app.data.local.preferences.PushTokenStore
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
+import com.devpulse.app.data.remote.DevPulseRemoteDataSource
+import com.devpulse.app.data.remote.RemoteCallResult
+import com.devpulse.app.data.remote.dto.AddLinkRequestDto
+import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
+import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
+import com.devpulse.app.data.remote.dto.LinkResponseDto
+import com.devpulse.app.data.remote.dto.MarkReadRequestDto
+import com.devpulse.app.data.remote.dto.MarkReadResponseDto
+import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
+import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
+import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.AppBootstrapInfo
 import com.devpulse.app.domain.repository.AppBootstrapRepository
+import com.devpulse.app.domain.repository.UpdatesRepository
+import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
+import com.devpulse.app.push.ParsedPushUpdate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +70,7 @@ class MainViewModelTest {
                                 updatedAtEpochMs = 1_000L,
                             ),
                     ),
+                    createAccountLifecycleUseCase(),
                 )
             advanceUntilIdle()
 
@@ -77,7 +95,7 @@ class MainViewModelTest {
                             hasCachedSession = false,
                         ),
                 )
-            val viewModel = MainViewModel(repository, FakeSessionStore())
+            val viewModel = MainViewModel(repository, FakeSessionStore(), createAccountLifecycleUseCase())
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.hasCachedSession)
@@ -99,7 +117,7 @@ class MainViewModelTest {
                 )
 
             val sessionStore = FakeSessionStore()
-            val viewModel = MainViewModel(repository, sessionStore)
+            val viewModel = MainViewModel(repository, sessionStore, createAccountLifecycleUseCase())
             advanceUntilIdle()
             viewModel.onLoginSucceeded(login = "moksem")
             advanceUntilIdle()
@@ -132,7 +150,12 @@ class MainViewModelTest {
                             updatedAtEpochMs = 1_000L,
                         ),
                 )
-            val viewModel = MainViewModel(repository, sessionStore)
+            val viewModel =
+                MainViewModel(
+                    repository,
+                    sessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sessionStore),
+                )
             advanceUntilIdle()
             viewModel.onLogout()
             advanceUntilIdle()
@@ -166,7 +189,12 @@ class MainViewModelTest {
                             updatedAtEpochMs = 1_000L,
                         ),
                 )
-            val viewModel = MainViewModel(repository, sessionStore)
+            val viewModel =
+                MainViewModel(
+                    repository,
+                    sessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sessionStore),
+                )
             advanceUntilIdle()
 
             viewModel.onLogout()
@@ -188,6 +216,18 @@ class MainViewModelTest {
             gate?.await()
             return info
         }
+    }
+
+    private fun createAccountLifecycleUseCase(
+        sessionStore: SessionStore = FakeSessionStore(),
+    ): AccountLifecycleUseCase {
+        return AccountLifecycleUseCase(
+            remoteDataSource = FakeRemoteDataSource(),
+            sessionStore = sessionStore,
+            updatesRepository = FakeUpdatesRepository(),
+            pushTokenStore = FakePushTokenStore(),
+            notificationPermissionStore = FakeNotificationPermissionStore(),
+        )
     }
 
     private class FakeSessionStore(
@@ -216,6 +256,77 @@ class MainViewModelTest {
         override suspend fun clearSession() {
             state.value = null
         }
+    }
+
+    private class FakeRemoteDataSource : DevPulseRemoteDataSource {
+        override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
+        override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
+        override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {
+            return RemoteCallResult.Success(emptyList(), 200)
+        }
+
+        override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> {
+            error("Not used in MainViewModel tests")
+        }
+
+        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> {
+            error("Not used in MainViewModel tests")
+        }
+
+        override suspend fun getNotifications(
+            limit: Int,
+            offset: Int,
+            tags: List<String>,
+        ): RemoteCallResult<NotificationListResponseDto> {
+            error("Not used in MainViewModel tests")
+        }
+
+        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
+            error("Not used in MainViewModel tests")
+        }
+
+        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
+            error("Not used in MainViewModel tests")
+        }
+    }
+
+    private class FakeUpdatesRepository : UpdatesRepository {
+        override fun observeUpdates(): Flow<List<UpdateEvent>> = MutableStateFlow(emptyList())
+
+        override suspend fun saveIncomingUpdate(
+            update: ParsedPushUpdate,
+            receivedAtEpochMs: Long,
+        ): Boolean = true
+
+        override suspend fun markAsRead(updateId: Long): Boolean = true
+
+        override suspend fun clearUpdates() = Unit
+    }
+
+    private class FakePushTokenStore : PushTokenStore {
+        override fun observeToken(): Flow<String?> = MutableStateFlow(null)
+
+        override suspend fun getToken(): String? = null
+
+        override suspend fun saveToken(token: String) = Unit
+
+        override suspend fun clearToken() = Unit
+    }
+
+    private class FakeNotificationPermissionStore : NotificationPermissionStore {
+        override fun observeHasRequested(): Flow<Boolean> = MutableStateFlow(false)
+
+        override suspend fun hasRequested(): Boolean = false
+
+        override suspend fun markRequested() = Unit
+
+        override suspend fun clearRequestedFlag() = Unit
     }
 }
 
