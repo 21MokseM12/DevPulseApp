@@ -20,6 +20,8 @@ data class SubscriptionsUiState(
     val isAdding: Boolean = false,
     val isRemoving: Boolean = false,
     val links: List<TrackedLink> = emptyList(),
+    val isStaleData: Boolean = false,
+    val lastSyncAtEpochMs: Long? = null,
     val errorMessage: String? = null,
     val removeErrorMessage: String? = null,
     val addLinkInput: String = "",
@@ -110,6 +112,8 @@ class SubscriptionsViewModel
                         _uiState.update { state ->
                             state.copy(
                                 isRemoving = false,
+                                isStaleData = result.isStale,
+                                lastSyncAtEpochMs = result.lastSyncAtEpochMs,
                             )
                         }
                     }
@@ -170,6 +174,8 @@ class SubscriptionsViewModel
                                 addTagsInput = "",
                                 addFiltersInput = "",
                                 addErrorMessage = null,
+                                isStaleData = result.isStale,
+                                lastSyncAtEpochMs = result.lastSyncAtEpochMs,
                             )
                         }
                     }
@@ -200,15 +206,20 @@ class SubscriptionsViewModel
             }
 
             viewModelScope.launch {
-                when (val result = subscriptionsRepository.getSubscriptions()) {
+                when (val result = subscriptionsRepository.getSubscriptions(forceRefresh = isRefresh)) {
                     is SubscriptionsResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 isLoading = false,
                                 isRefreshing = false,
                                 links = result.links,
+                                isStaleData = result.isStale,
+                                lastSyncAtEpochMs = result.lastSyncAtEpochMs,
                                 errorMessage = null,
                             )
+                        }
+                        if (!isRefresh && result.isStale) {
+                            load(isRefresh = true)
                         }
                     }
 

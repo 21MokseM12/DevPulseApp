@@ -1,5 +1,8 @@
 package com.devpulse.app.data.repository
 
+import com.devpulse.app.data.local.db.CachedSubscriptionEntity
+import com.devpulse.app.data.local.db.SubscriptionsCacheDao
+import com.devpulse.app.data.local.db.SubscriptionsSyncStateEntity
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
@@ -39,9 +42,9 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 200,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
-            val result = repository.getSubscriptions()
+            val result = repository.getSubscriptions(forceRefresh = true)
 
             assertTrue(result is SubscriptionsResult.Success)
             val links = (result as SubscriptionsResult.Success).links
@@ -66,9 +69,9 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 400,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
-            val result = repository.getSubscriptions()
+            val result = repository.getSubscriptions(forceRefresh = true)
 
             assertTrue(result is SubscriptionsResult.Failure)
             assertEquals("Некорректный запрос", (result as SubscriptionsResult.Failure).error.userMessage)
@@ -94,9 +97,9 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 200,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
-            val result = repository.getSubscriptions()
+            val result = repository.getSubscriptions(forceRefresh = true)
 
             assertTrue(result is SubscriptionsResult.Success)
             val link = (result as SubscriptionsResult.Success).links.first()
@@ -120,9 +123,9 @@ class DefaultSubscriptionsRepositoryTest {
                             throwable = IllegalStateException("network"),
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
-            val result = repository.getSubscriptions()
+            val result = repository.getSubscriptions(forceRefresh = true)
 
             assertTrue(result is SubscriptionsResult.Failure)
             assertEquals(ApiErrorKind.Network, (result as SubscriptionsResult.Failure).error.kind)
@@ -148,7 +151,7 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 200,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
             val result =
                 repository.addSubscription(
@@ -178,7 +181,7 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 400,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
             val result =
                 repository.addSubscription(
@@ -204,7 +207,7 @@ class DefaultSubscriptionsRepositoryTest {
                             statusCode = 200,
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
             val result = repository.removeSubscription("https://example.com/remove")
 
@@ -229,12 +232,188 @@ class DefaultSubscriptionsRepositoryTest {
                             throwable = IllegalStateException("network"),
                         ),
                 )
-            val repository = DefaultSubscriptionsRepository(remote)
+            val repository = DefaultSubscriptionsRepository(remote, FakeSubscriptionsCacheDao())
 
             val result = repository.removeSubscription("https://example.com/remove")
 
             assertTrue(result is SubscriptionsResult.Failure)
             assertEquals("Сеть недоступна", (result as SubscriptionsResult.Failure).error.userMessage)
+        }
+    }
+
+    @Test
+    fun getSubscriptions_withoutForceRefresh_returnsCachedSnapshotAsStale() {
+        runTest {
+            val cacheDao =
+                FakeSubscriptionsCacheDao(
+                    cached =
+                        mutableListOf(
+                            CachedSubscriptionEntity(
+                                id = 3L,
+                                url = "https://cached.example",
+                                tagsSerialized = "android",
+                                filtersSerialized = "contains:room",
+                            ),
+                        ),
+                    syncState =
+                        SubscriptionsSyncStateEntity(
+                            lastSyncAtEpochMs = 123_456L,
+                            isStale = false,
+                        ),
+                )
+            val repository =
+                DefaultSubscriptionsRepository(
+                    remoteDataSource = FakeRemoteDataSource(linksResult = RemoteCallResult.Success(emptyList(), 200)),
+                    subscriptionsCacheDao = cacheDao,
+                )
+
+            val result = repository.getSubscriptions(forceRefresh = false)
+
+            assertTrue(result is SubscriptionsResult.Success)
+            val success = result as SubscriptionsResult.Success
+            assertTrue(success.isStale)
+            assertEquals(123_456L, success.lastSyncAtEpochMs)
+            assertEquals("https://cached.example", success.links.first().url)
+        }
+    }
+
+    @Test
+    fun getSubscriptions_onNetworkFailure_usesCachedDataAndMarksStateAsStale() {
+        runTest {
+            val cacheDao =
+                FakeSubscriptionsCacheDao(
+                    cached =
+                        mutableListOf(
+                            CachedSubscriptionEntity(
+                                id = 10L,
+                                url = "https://offline.example",
+                                tagsSerialized = "",
+                                filtersSerialized = "",
+                            ),
+                        ),
+                    syncState =
+                        SubscriptionsSyncStateEntity(
+                            lastSyncAtEpochMs = 999L,
+                            isStale = false,
+                        ),
+                )
+            val repository =
+                DefaultSubscriptionsRepository(
+                    remoteDataSource =
+                        FakeRemoteDataSource(
+                            linksResult =
+                                RemoteCallResult.NetworkFailure(
+                                    error = ApiError(ApiErrorKind.Network, "Ошибка сети"),
+                                    throwable = IllegalStateException("offline"),
+                                ),
+                        ),
+                    subscriptionsCacheDao = cacheDao,
+                )
+
+            val result = repository.getSubscriptions(forceRefresh = true)
+
+            assertTrue(result is SubscriptionsResult.Success)
+            val success = result as SubscriptionsResult.Success
+            assertTrue(success.isStale)
+            assertEquals("https://offline.example", success.links.first().url)
+            assertTrue(cacheDao.syncState?.isStale == true)
+        }
+    }
+
+    @Test
+    fun getSubscriptions_forceRefresh_deduplicatesByUrl() {
+        runTest {
+            val repository =
+                DefaultSubscriptionsRepository(
+                    remoteDataSource =
+                        FakeRemoteDataSource(
+                            linksResult =
+                                RemoteCallResult.Success(
+                                    data =
+                                        listOf(
+                                            LinkResponseDto(
+                                                id = 1L,
+                                                url = "https://dup.example/path",
+                                                tags = listOf("old"),
+                                                filters = emptyList(),
+                                            ),
+                                            LinkResponseDto(
+                                                id = 2L,
+                                                url = "https://dup.example/path",
+                                                tags = listOf("new"),
+                                                filters = emptyList(),
+                                            ),
+                                        ),
+                                    statusCode = 200,
+                                ),
+                        ),
+                    subscriptionsCacheDao = FakeSubscriptionsCacheDao(),
+                )
+
+            val result = repository.getSubscriptions(forceRefresh = true)
+
+            assertTrue(result is SubscriptionsResult.Success)
+            val links = (result as SubscriptionsResult.Success).links
+            assertEquals(1, links.size)
+            assertEquals(2L, links.first().id)
+            assertEquals("new", links.first().tags.first())
+        }
+    }
+
+    @Test
+    fun getSubscriptions_forceRefresh_partialSync_resolvesConflictsAndKeepsUniqueLinks() {
+        runTest {
+            val cacheDao = FakeSubscriptionsCacheDao()
+            val repository =
+                DefaultSubscriptionsRepository(
+                    remoteDataSource =
+                        FakeRemoteDataSource(
+                            linksResult =
+                                RemoteCallResult.Success(
+                                    data =
+                                        listOf(
+                                            LinkResponseDto(
+                                                id = 10L,
+                                                url = "https://keep.example/path",
+                                                tags = listOf("keep"),
+                                                filters = emptyList(),
+                                            ),
+                                            LinkResponseDto(
+                                                id = 20L,
+                                                url = " https://conflict.example/path ",
+                                                tags = listOf("old"),
+                                                filters = emptyList(),
+                                            ),
+                                            LinkResponseDto(
+                                                id = 21L,
+                                                url = "https://CONFLICT.example/path",
+                                                tags = listOf("resolved"),
+                                                filters = listOf("contains:final"),
+                                            ),
+                                            LinkResponseDto(
+                                                id = 30L,
+                                                url = "https://new.example/path",
+                                                tags = listOf("new"),
+                                                filters = emptyList(),
+                                            ),
+                                        ),
+                                    statusCode = 200,
+                                ),
+                        ),
+                    subscriptionsCacheDao = cacheDao,
+                )
+
+            val result = repository.getSubscriptions(forceRefresh = true)
+
+            assertTrue(result is SubscriptionsResult.Success)
+            val success = result as SubscriptionsResult.Success
+            assertEquals(3, success.links.size)
+            assertEquals(10L, success.links[0].id)
+            assertEquals(21L, success.links[1].id)
+            assertEquals("resolved", success.links[1].tags.first())
+            assertEquals(30L, success.links[2].id)
+            assertEquals(3, cacheDao.getAll().size)
+            assertTrue(cacheDao.syncState?.isStale == false)
         }
     }
 
@@ -286,6 +465,35 @@ class DefaultSubscriptionsRepositoryTest {
 
         override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
             throw UnsupportedOperationException()
+        }
+    }
+
+    private class FakeSubscriptionsCacheDao(
+        private val cached: MutableList<CachedSubscriptionEntity> = mutableListOf(),
+        var syncState: SubscriptionsSyncStateEntity? = null,
+    ) : SubscriptionsCacheDao {
+        override suspend fun getAll(): List<CachedSubscriptionEntity> = cached.toList()
+
+        override suspend fun upsertAll(entities: List<CachedSubscriptionEntity>) {
+            entities.forEach { entity ->
+                cached.removeAll { it.id == entity.id }
+                cached.add(entity)
+            }
+        }
+
+        override suspend fun clearAll() {
+            cached.clear()
+        }
+
+        override suspend fun replaceAll(entities: List<CachedSubscriptionEntity>) {
+            cached.clear()
+            cached.addAll(entities)
+        }
+
+        override suspend fun getSyncState(id: Int): SubscriptionsSyncStateEntity? = syncState
+
+        override suspend fun upsertSyncState(entity: SubscriptionsSyncStateEntity) {
+            syncState = entity
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.devpulse.app.data.repository
 
+import com.devpulse.app.data.local.db.CachedSubscriptionEntity
+import com.devpulse.app.data.local.db.SubscriptionsCacheDao
+import com.devpulse.app.data.local.db.SubscriptionsSyncStateEntity
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.data.remote.ApiErrorMapper
@@ -18,6 +21,7 @@ import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -52,7 +56,7 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
                         sessionStore = FakeSessionStore(login = "moksem"),
                     )
 
-                val result = repository.getSubscriptions()
+                val result = repository.getSubscriptions(forceRefresh = true)
 
                 assertTrue(result is SubscriptionsResult.Success)
                 val links = (result as SubscriptionsResult.Success).links
@@ -84,7 +88,7 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
                         sessionStore = FakeSessionStore(login = "moksem"),
                     )
 
-                val result = repository.getSubscriptions()
+                val result = repository.getSubscriptions(forceRefresh = true)
 
                 assertTrue(result is SubscriptionsResult.Failure)
                 val failure = result as SubscriptionsResult.Failure
@@ -141,7 +145,7 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
                         timeoutMs = 200,
                     )
 
-                val result = repository.getSubscriptions()
+                val result = repository.getSubscriptions(forceRefresh = true)
 
                 assertTrue(result is SubscriptionsResult.Failure)
                 val failure = result as SubscriptionsResult.Failure
@@ -172,10 +176,80 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
             }
         }
 
+    @Test
+    fun getSubscriptions_returnsCachedDataWhenOfflineAfterSync() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""[{"id": 8, "url": "https://example.org/cached", "tags": [], "filters": []}]"""),
+                )
+                server.enqueue(
+                    MockResponse()
+                        .setSocketPolicy(SocketPolicy.DISCONNECT_AT_START),
+                )
+                val cacheDao = FakeSubscriptionsCacheDao()
+                val repository =
+                    createRepository(
+                        server = server,
+                        sessionStore = FakeSessionStore(login = "moksem"),
+                        cacheDao = cacheDao,
+                    )
+
+                val first = repository.getSubscriptions(forceRefresh = true)
+                val second = repository.getSubscriptions(forceRefresh = true)
+
+                assertTrue(first is SubscriptionsResult.Success)
+                assertTrue(second is SubscriptionsResult.Success)
+                val staleSnapshot = second as SubscriptionsResult.Success
+                assertTrue(staleSnapshot.isStale)
+                assertEquals("https://example.org/cached", staleSnapshot.links.first().url)
+                assertTrue(cacheDao.syncState?.isStale == true)
+            }
+        }
+
+    @Test
+    fun getSubscriptions_forceRefresh_replacesCacheSnapshot() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody("""[{"id": 2, "url": "https://example.org/new", "tags": [], "filters": []}]"""),
+                )
+                val cacheDao =
+                    FakeSubscriptionsCacheDao(
+                        cached =
+                            mutableListOf(
+                                CachedSubscriptionEntity(
+                                    id = 1L,
+                                    url = "https://example.org/old",
+                                    tagsSerialized = "",
+                                    filtersSerialized = "",
+                                ),
+                            ),
+                    )
+                val repository =
+                    createRepository(
+                        server = server,
+                        sessionStore = FakeSessionStore(login = "moksem"),
+                        cacheDao = cacheDao,
+                    )
+
+                val result = repository.getSubscriptions(forceRefresh = true)
+
+                assertTrue(result is SubscriptionsResult.Success)
+                assertEquals(1, cacheDao.cached.size)
+                assertEquals("https://example.org/new", cacheDao.cached.first().url)
+            }
+        }
+
     private fun createRepository(
         server: MockWebServer,
         sessionStore: SessionStore,
         timeoutMs: Long = 1_000,
+        cacheDao: SubscriptionsCacheDao = FakeSubscriptionsCacheDao(),
     ): DefaultSubscriptionsRepository {
         val client =
             OkHttpClient.Builder()
@@ -196,7 +270,10 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
                 apiErrorMapper = ApiErrorMapper(),
                 authTransportSecurityGuard = AllowAllAuthTransportSecurityGuard,
             )
-        return DefaultSubscriptionsRepository(remoteDataSource = remoteDataSource)
+        return DefaultSubscriptionsRepository(
+            remoteDataSource = remoteDataSource,
+            subscriptionsCacheDao = cacheDao,
+        )
     }
 
     private object AllowAllAuthTransportSecurityGuard : AuthTransportSecurityGuard {
@@ -235,6 +312,35 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
 
         override suspend fun clearSession() {
             state.value = null
+        }
+    }
+
+    private class FakeSubscriptionsCacheDao(
+        val cached: MutableList<CachedSubscriptionEntity> = mutableListOf(),
+        var syncState: SubscriptionsSyncStateEntity? = null,
+    ) : SubscriptionsCacheDao {
+        override suspend fun getAll(): List<CachedSubscriptionEntity> = cached.toList()
+
+        override suspend fun upsertAll(entities: List<CachedSubscriptionEntity>) {
+            entities.forEach { entity ->
+                cached.removeAll { it.id == entity.id }
+                cached.add(entity)
+            }
+        }
+
+        override suspend fun clearAll() {
+            cached.clear()
+        }
+
+        override suspend fun replaceAll(entities: List<CachedSubscriptionEntity>) {
+            cached.clear()
+            cached.addAll(entities)
+        }
+
+        override suspend fun getSyncState(id: Int): SubscriptionsSyncStateEntity? = syncState
+
+        override suspend fun upsertSyncState(entity: SubscriptionsSyncStateEntity) {
+            syncState = entity
         }
     }
 }

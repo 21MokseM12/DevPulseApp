@@ -208,6 +208,55 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun init_withCachedStaleData_triggersBackgroundRefreshAndClearsStaleFlag() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results =
+                        ArrayDeque(
+                            listOf(
+                                SubscriptionsResult.Success(
+                                    links =
+                                        listOf(
+                                            TrackedLink(
+                                                id = 1L,
+                                                url = "https://cached.example",
+                                                tags = emptyList(),
+                                                filters = emptyList(),
+                                            ),
+                                        ),
+                                    isStale = true,
+                                    lastSyncAtEpochMs = 100L,
+                                ),
+                                SubscriptionsResult.Success(
+                                    links =
+                                        listOf(
+                                            TrackedLink(
+                                                id = 2L,
+                                                url = "https://fresh.example",
+                                                tags = emptyList(),
+                                                filters = emptyList(),
+                                            ),
+                                        ),
+                                    isStale = false,
+                                    lastSyncAtEpochMs = 200L,
+                                ),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(2L, state.links.first().id)
+            assertFalse(state.isStaleData)
+            assertEquals(2, repository.calls)
+            assertEquals(1, repository.forceRefreshCalls)
+        }
+    }
+
+    @Test
     fun addSubscription_withInvalidUrl_showsValidationError() {
         runTest {
             val repository =
@@ -396,8 +445,14 @@ class SubscriptionsViewModelTest {
         var removeCalls: Int = 0
             private set
 
-        override suspend fun getSubscriptions(): SubscriptionsResult {
+        var forceRefreshCalls: Int = 0
+            private set
+
+        override suspend fun getSubscriptions(forceRefresh: Boolean): SubscriptionsResult {
             calls += 1
+            if (forceRefresh) {
+                forceRefreshCalls += 1
+            }
             gate?.await()
             return results.removeFirstOrNull() ?: SubscriptionsResult.Success(links = emptyList())
         }

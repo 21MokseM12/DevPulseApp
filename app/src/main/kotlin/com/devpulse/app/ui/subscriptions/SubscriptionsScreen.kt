@@ -27,6 +27,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.ui.testing.SmokeTestTags
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun SubscriptionsRoute(
@@ -100,6 +102,13 @@ private fun SubscriptionsScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
+        if (uiState.isStaleData) {
+            Text(
+                text = staleDataMessage(uiState.lastSyncAtEpochMs),
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
 
         if (uiState.isLoading) {
             Column(
@@ -161,6 +170,17 @@ private fun SubscriptionsScreen(
             },
         )
     }
+}
+
+private fun staleDataMessage(lastSyncAtEpochMs: Long?): String {
+    if (lastSyncAtEpochMs == null) {
+        return "Показаны оффлайн-данные. Синхронизация еще не выполнялась."
+    }
+    val formattedDate =
+        DateFormat
+            .getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+            .format(Date(lastSyncAtEpochMs))
+    return "Показаны оффлайн-данные. Последняя синхронизация: $formattedDate"
 }
 
 @Composable

@@ -9,6 +9,7 @@ import androidx.room.Room
 import com.devpulse.app.data.local.db.AppDatabase
 import com.devpulse.app.data.local.db.PushUpdatesDao
 import com.devpulse.app.data.local.db.SessionDao
+import com.devpulse.app.data.local.db.SubscriptionsCacheDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -53,4 +54,8 @@ object StorageModule {
     @Provides
     @Singleton
     fun providePushUpdatesDao(database: AppDatabase): PushUpdatesDao = database.pushUpdatesDao()
+
+    @Provides
+    @Singleton
+    fun provideSubscriptionsCacheDao(database: AppDatabase): SubscriptionsCacheDao = database.subscriptionsCacheDao()
 }
