@@ -47,21 +47,17 @@ internal fun createAuthTransportViolation(
     }
 
     val hasPinsConfigured =
-        when {
-            environment.equals(STAGING_ENVIRONMENT, ignoreCase = true) -> stagingPinsConfig.isNotBlank()
-            environment.equals(RELEASE_ENVIRONMENT, ignoreCase = true) -> releasePinsConfig.isNotBlank()
-            else -> false
-        }
+        resolveTransportPinsForEnvironment(
+            environment = environment,
+            releasePinsConfig = releasePinsConfig,
+            stagingPinsConfig = stagingPinsConfig,
+        ).isNotEmpty()
     if (!hasPinsConfigured) {
         return ApiError(
             kind = ApiErrorKind.Configuration,
             userMessage = "Авторизация недоступна: не настроены TLS pin-ы.",
-            technicalDescription = "Auth is blocked for $environment: no TLS pins configured.",
+            technicalDescription = "Auth is blocked for $environment: no valid TLS pins configured.",
         )
     }
     return null
 }
-
-private const val DEBUG_ENVIRONMENT = "debug"
-private const val STAGING_ENVIRONMENT = "staging"
-private const val RELEASE_ENVIRONMENT = "release"

@@ -67,7 +67,27 @@ class AuthTransportSecurityGuardTest {
         assertEquals(ApiErrorKind.Configuration, violation.kind)
         assertEquals("Авторизация недоступна: не настроены TLS pin-ы.", violation.userMessage)
         assertEquals(
-            "Auth is blocked for release: no TLS pins configured.",
+            "Auth is blocked for release: no valid TLS pins configured.",
+            violation.technicalDescription,
+        )
+    }
+
+    @Test
+    fun createAuthTransportViolation_returnsConfigurationError_whenPinsAreMalformedInStaging() {
+        val violation =
+            requireNotNull(
+                createAuthTransportViolation(
+                    baseUrl = "https://staging-api.devpulse.example/",
+                    environment = "staging",
+                    releasePinsConfig = "sha1/not-supported",
+                    stagingPinsConfig = "not-a-pin,sha1/legacy",
+                ),
+            )
+
+        assertEquals(ApiErrorKind.Configuration, violation.kind)
+        assertEquals("Авторизация недоступна: не настроены TLS pin-ы.", violation.userMessage)
+        assertEquals(
+            "Auth is blocked for staging: no valid TLS pins configured.",
             violation.technicalDescription,
         )
     }

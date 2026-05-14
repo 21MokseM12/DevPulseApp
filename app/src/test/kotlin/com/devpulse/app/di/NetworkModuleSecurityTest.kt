@@ -54,6 +54,20 @@ class NetworkModuleSecurityTest {
     }
 
     @Test
+    fun createCertificatePinner_ignoresMalformedPins() {
+        val pinner =
+            createCertificatePinner(
+                baseUrl = "https://api.devpulse.example/",
+                environment = "release",
+                releasePinsConfig =
+                    "not-a-pin,sha1/legacy,sha256/afwiKY3RxoMmL1+gD2Q2T6f1V3l0Y7S4A5kZZgwyUrw=",
+                stagingPinsConfig = "",
+            )
+
+        assertNotNull(pinner)
+    }
+
+    @Test
     fun createCertificatePinner_returnsNull_forMissingPins() {
         val pinner =
             createCertificatePinner(
@@ -87,6 +101,15 @@ class NetworkModuleSecurityTest {
             baseUrl = "https://api.devpulse.example/",
             environment = "release",
             hasCertificatePinner = false,
+        )
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun enforceProductionPinningPolicy_throws_forHttpRelease() {
+        enforceProductionPinningPolicy(
+            baseUrl = "http://api.devpulse.example/",
+            environment = "release",
+            hasCertificatePinner = true,
         )
     }
 

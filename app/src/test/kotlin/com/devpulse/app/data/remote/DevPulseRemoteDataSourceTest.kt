@@ -373,6 +373,46 @@ class DevPulseRemoteDataSourceTest {
             }
         }
 
+    @Test
+    fun unregisterClient_withTransportViolation_doesNotSendHttpRequest() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200))
+                val violatingGuard =
+                    object : AuthTransportSecurityGuard {
+                        override fun getAuthTransportViolation() =
+                            com.devpulse.app.domain.model.ApiError(
+                                kind = ApiErrorKind.Configuration,
+                                userMessage = "blocked",
+                            )
+                    }
+                val retrofit =
+                    Retrofit.Builder()
+                        .baseUrl(server.url("/"))
+                        .addConverterFactory(MoshiConverterFactory.create(moshi))
+                        .build()
+                val api = retrofit.create(DevPulseApi::class.java)
+                val dataSource =
+                    DefaultDevPulseRemoteDataSource(
+                        api = api,
+                        moshi = moshi,
+                        apiErrorMapper = apiErrorMapper,
+                        authTransportSecurityGuard = violatingGuard,
+                    )
+
+                val result =
+                    dataSource.unregisterClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.NetworkFailure)
+                assertEquals(0, server.requestCount)
+            }
+        }
+
     private fun createDataSource(server: MockWebServer): DefaultDevPulseRemoteDataSource {
         val retrofit =
             Retrofit.Builder()
