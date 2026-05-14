@@ -1,6 +1,6 @@
 # Android MVP Release Acceptance Checklist (R-0)
 
-Дата обновления: 2026-05-13
+Дата обновления: 2026-05-14
 Владелец: Android команда DevPulse
 Область: только Android MVP
 
@@ -29,6 +29,7 @@
 | AC-07 | Runtime permission (Android 13+) | `POST_NOTIFICATIONS` запрашивается корректно | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
 | AC-08 | Smoke на Android <13 (если доступно) | Базовые сценарии без runtime запроса уведомлений | PENDING_MANUAL | Опциональный gate, но рекомендован |
 | AC-09 | Regression build gate | Команда `./gradlew build` завершается успешно | PASS | Лог локального прогона в acceptance report |
+| AC-10 | Release decision policy regression | Unit + integration тесты release decision проходят | PASS | `ReleaseAcceptanceDeciderTest`, `ReleaseAcceptanceDocsIntegrationTest` |
 
 ## Порядок ручного прогона
 

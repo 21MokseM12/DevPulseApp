@@ -1,9 +1,9 @@
 # Android MVP Acceptance Report (R-0)
 
-Дата отчета: 2026-05-13
-Ветка: `p0-r0-release-acceptance`
+Дата отчета: 2026-05-14
+Ветка: `main`
 Релиз-кандидат: Android MVP (`staging`)
-Версия приложения: `1.1.0` (текущая в `app/build.gradle.kts`)
+Версия приложения: `1.15.0` (текущая в `app/build.gradle.kts`)
 
 ## Объем приемки
 
@@ -20,6 +20,7 @@
 | Gate | Команда | Результат |
 | --- | --- | --- |
 | Build gate | `./gradlew build` | PASS (см. локальный прогон в рамках задачи R-0) |
+| Release decision policy | `./gradlew :app:testDebugUnitTest --tests "*ReleaseAcceptance*"` | PASS |
 
 ## Manual gates (physical device required)
 

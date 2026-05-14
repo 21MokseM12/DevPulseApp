@@ -1,6 +1,6 @@
 # Android MVP Go/No-Go Decision (R-0)
 
-Дата: 2026-05-13
+Дата: 2026-05-14
 Решение: `NO-GO`
 Статус решения: предварительное, до закрытия manual gates
 
@@ -12,7 +12,10 @@
    - `release/android-mvp-acceptance-report.md`
 3. Автоматизируемый build gate выполнен:
    - `./gradlew build` -> PASS
-4. Обязательные ручные проверки на физическом устройстве еще не закрыты:
+4. Автоматизирована формальная проверка release decision:
+   - `ReleaseAcceptanceDeciderTest` (unit) -> PASS
+   - `ReleaseAcceptanceDocsIntegrationTest` (integration) -> PASS
+5. Обязательные ручные проверки на физическом устройстве еще не закрыты:
    - Android 13+ smoke;
    - push e2e + deep-link;
    - (опционально) Android <13 smoke.
