@@ -152,7 +152,10 @@ private fun FiltersSection(
         OutlinedTextField(
             value = filterState.query,
             onValueChange = onQueryChanged,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.UPDATES_SEARCH_INPUT),
             singleLine = true,
             label = { Text(text = "Поиск по событиям") },
             placeholder = { Text(text = "Текст, ссылка или источник") },
@@ -267,7 +270,10 @@ private fun FiltersSection(
                     text = "Активные фильтры применены",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                Button(onClick = onResetFilters) {
+                Button(
+                    onClick = onResetFilters,
+                    modifier = Modifier.testTag(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON),
+                ) {
                     Text("Сбросить")
                 }
             }

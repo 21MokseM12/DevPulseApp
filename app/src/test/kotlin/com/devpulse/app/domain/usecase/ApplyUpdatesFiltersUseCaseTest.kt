@@ -10,67 +10,136 @@ class ApplyUpdatesFiltersUseCaseTest {
     private val useCase = ApplyUpdatesFiltersUseCase()
 
     @Test
-    fun invoke_queryAndUnreadOnly_filtersByIntersection() {
+    fun invoke_filterCombinationsAndConflicts_returnsExpectedIds() {
         val events = testEvents()
-
-        val result =
-            useCase(
-                events = events,
-                state =
-                    UpdatesFilterState(
-                        query = "deploy",
-                        unreadOnly = true,
-                    ),
-                nowEpochMs = NOW_EPOCH_MS,
+        val cases =
+            listOf(
+                FilterCase(
+                    name = "no filters",
+                    state = UpdatesFilterState(),
+                    expectedIds = listOf(1L, 2L, 3L, 4L),
+                ),
+                FilterCase(
+                    name = "query only",
+                    state = UpdatesFilterState(query = "deploy"),
+                    expectedIds = listOf(1L, 2L),
+                ),
+                FilterCase(
+                    name = "unread only",
+                    state = UpdatesFilterState(unreadOnly = true),
+                    expectedIds = listOf(1L, 3L, 4L),
+                ),
+                FilterCase(
+                    name = "source only",
+                    state = UpdatesFilterState(source = "bot"),
+                    expectedIds = listOf(3L, 4L),
+                ),
+                FilterCase(
+                    name = "period today",
+                    state = UpdatesFilterState(period = UpdatesPeriodFilter.TODAY),
+                    expectedIds = listOf(3L),
+                ),
+                FilterCase(
+                    name = "period last 7 days",
+                    state = UpdatesFilterState(period = UpdatesPeriodFilter.LAST_7_DAYS),
+                    expectedIds = listOf(1L, 2L, 3L),
+                ),
+                FilterCase(
+                    name = "single tag",
+                    state = UpdatesFilterState(selectedTags = setOf("backend")),
+                    expectedIds = listOf(1L),
+                ),
+                FilterCase(
+                    name = "multiple tags intersection",
+                    state = UpdatesFilterState(selectedTags = setOf("backend", "release")),
+                    expectedIds = listOf(1L),
+                ),
+                FilterCase(
+                    name = "query + unread",
+                    state =
+                        UpdatesFilterState(
+                            query = "deploy",
+                            unreadOnly = true,
+                        ),
+                    expectedIds = listOf(1L),
+                ),
+                FilterCase(
+                    name = "source + tags",
+                    state =
+                        UpdatesFilterState(
+                            source = "github",
+                            selectedTags = setOf("backend", "release"),
+                        ),
+                    expectedIds = listOf(1L),
+                ),
+                FilterCase(
+                    name = "source + period",
+                    state =
+                        UpdatesFilterState(
+                            source = "bot",
+                            period = UpdatesPeriodFilter.LAST_30_DAYS,
+                        ),
+                    expectedIds = listOf(3L),
+                ),
+                FilterCase(
+                    name = "source + period conflict",
+                    state =
+                        UpdatesFilterState(
+                            source = "jira",
+                            period = UpdatesPeriodFilter.TODAY,
+                        ),
+                    expectedIds = emptyList(),
+                ),
+                FilterCase(
+                    name = "tags conflict",
+                    state = UpdatesFilterState(selectedTags = setOf("backend", "summary")),
+                    expectedIds = emptyList(),
+                ),
+                FilterCase(
+                    name = "query + source conflict",
+                    state =
+                        UpdatesFilterState(
+                            query = "deploy",
+                            source = "bot",
+                        ),
+                    expectedIds = emptyList(),
+                ),
+                FilterCase(
+                    name = "all filters success",
+                    state =
+                        UpdatesFilterState(
+                            query = "nightly",
+                            unreadOnly = true,
+                            source = "bot",
+                            period = UpdatesPeriodFilter.TODAY,
+                            selectedTags = setOf("summary"),
+                        ),
+                    expectedIds = listOf(3L),
+                ),
+                FilterCase(
+                    name = "all filters conflict",
+                    state =
+                        UpdatesFilterState(
+                            query = "deploy",
+                            unreadOnly = true,
+                            source = "jira",
+                            period = UpdatesPeriodFilter.TODAY,
+                            selectedTags = setOf("incident"),
+                        ),
+                    expectedIds = emptyList(),
+                ),
             )
 
-        assertEquals(listOf(1L), result.map { it.id })
-    }
+        cases.forEach { case ->
+            val result =
+                useCase(
+                    events = events,
+                    state = case.state,
+                    nowEpochMs = NOW_EPOCH_MS,
+                )
 
-    @Test
-    fun invoke_sourceAndTags_filtersByBothConditions() {
-        val events = testEvents()
-
-        val result =
-            useCase(
-                events = events,
-                state =
-                    UpdatesFilterState(
-                        source = "github",
-                        selectedTags = setOf("backend", "release"),
-                    ),
-                nowEpochMs = NOW_EPOCH_MS,
-            )
-
-        assertEquals(listOf(1L), result.map { it.id })
-    }
-
-    @Test
-    fun invoke_todayPeriod_keepsOnlyTodayEvents() {
-        val events = testEvents()
-
-        val result =
-            useCase(
-                events = events,
-                state = UpdatesFilterState(period = UpdatesPeriodFilter.TODAY),
-                nowEpochMs = NOW_EPOCH_MS,
-            )
-
-        assertEquals(listOf(3L), result.map { it.id })
-    }
-
-    @Test
-    fun invoke_lastSevenDays_excludesOldEvents() {
-        val events = testEvents()
-
-        val result =
-            useCase(
-                events = events,
-                state = UpdatesFilterState(period = UpdatesPeriodFilter.LAST_7_DAYS),
-                nowEpochMs = NOW_EPOCH_MS,
-            )
-
-        assertEquals(listOf(1L, 2L, 3L), result.map { it.id })
+            assertEquals(case.name, case.expectedIds, result.map { it.id })
+        }
     }
 
     @Test
@@ -143,4 +212,10 @@ class ApplyUpdatesFiltersUseCaseTest {
     private companion object {
         const val NOW_EPOCH_MS = 1778774400000L // 2026-05-14T15:00:00Z
     }
+
+    private data class FilterCase(
+        val name: String,
+        val state: UpdatesFilterState,
+        val expectedIds: List<Long>,
+    )
 }

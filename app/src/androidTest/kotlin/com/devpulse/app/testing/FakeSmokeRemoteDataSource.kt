@@ -57,6 +57,12 @@ class FakeSmokeRemoteDataSource
             }
         }
 
+        fun setNotificationsForTesting(nextNotifications: List<NotificationDto>) {
+            synchronized(lock) {
+                notifications = nextNotifications.toMutableList()
+            }
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }

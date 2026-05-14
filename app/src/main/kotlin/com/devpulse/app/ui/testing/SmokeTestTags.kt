@@ -19,6 +19,8 @@ object SmokeTestTags {
     const val UPDATES_UNREAD_COUNT = "updates_unread_count"
     const val UPDATES_OPEN_SUBSCRIPTIONS_BUTTON = "updates_open_subscriptions_button"
     const val UPDATES_LOGOUT_BUTTON = "updates_logout_button"
+    const val UPDATES_SEARCH_INPUT = "updates_search_input"
+    const val UPDATES_RESET_FILTERS_BUTTON = "updates_reset_filters_button"
 
     fun subscriptionRow(id: Long): String = "subscriptions_row_$id"
 

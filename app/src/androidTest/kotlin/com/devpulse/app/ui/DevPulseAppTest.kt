@@ -2,16 +2,22 @@ package com.devpulse.app.ui
 
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.devpulse.app.MainActivity
+import com.devpulse.app.data.remote.dto.NotificationDto
 import com.devpulse.app.testing.FakeSmokeRemoteDataSource
 import com.devpulse.app.ui.testing.SmokeTestTags
 import dagger.hilt.android.testing.HiltAndroidRule
@@ -84,11 +90,90 @@ class DevPulseAppTest {
         captureScreenshot("smoke_updates_mark_read", SmokeTestTags.UPDATES_TITLE)
     }
 
+    @Test
+    fun updatesEmptyState_showsMicrocopy() {
+        smokeDataSource.setNotificationsForTesting(emptyList())
+
+        login()
+        openUpdates()
+        composeRule.waitUntilNodeWithTextExists("Пока нет событий")
+        composeRule.waitUntilNodeWithTextExists("Новые уведомления из Bot API появятся здесь")
+    }
+
+    @Test
+    fun updatesNoResultsAndReset_restoresFeed() {
+        smokeDataSource.setNotificationsForTesting(
+            listOf(
+                NotificationDto(
+                    id = 2001L,
+                    title = "Backend release",
+                    description = "Prod deploy",
+                    url = "https://devpulse.app/backend",
+                    unread = true,
+                    linkId = 301L,
+                    receivedAt = "2026-05-14T10:00:00Z",
+                    readAt = null,
+                ),
+                NotificationDto(
+                    id = 2002L,
+                    title = "Frontend release",
+                    description = "UI deploy",
+                    url = "https://devpulse.app/frontend",
+                    unread = true,
+                    linkId = 302L,
+                    receivedAt = "2026-05-14T11:00:00Z",
+                    readAt = null,
+                ),
+            ),
+        )
+
+        login()
+        openUpdates()
+        composeRule.onNodeWithTag(SmokeTestTags.UPDATES_SEARCH_INPUT).performTextInput("missing-token")
+        composeRule.waitUntilNodeWithTextExists("Ничего не найдено")
+        composeRule.waitUntilNodeWithTextExists("Измените фильтры или сбросьте их")
+
+        composeRule.onNodeWithTag(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTextExists("Backend release")
+        composeRule.waitUntilNodeWithTextExists("Frontend release")
+    }
+
+    @Test
+    fun updatesControls_haveMinimumTapTarget() {
+        login()
+        openUpdates()
+
+        composeRule.onNodeWithText("Quick: unread").performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON)
+
+        composeRule
+            .onNodeWithText("Quick: unread")
+            .assertHasClickAction()
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+        composeRule
+            .onNodeWithText("Непрочитанные")
+            .assertHasClickAction()
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+        composeRule
+            .onNodeWithTag(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON)
+            .assertHasClickAction()
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+    }
+
     private fun login() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_SUBMIT_BUTTON).performClick()
+    }
+
+    private fun openUpdates() {
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.UPDATES_TITLE)
     }
 
     private fun captureScreenshot(

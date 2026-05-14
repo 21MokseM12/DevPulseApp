@@ -103,6 +103,36 @@ class UpdatesNotificationsFlowIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(listOf(13L), viewModel.uiState.value.events.map { it.id })
+            assertEquals(2, remote.requestHistory.size)
+            assertEquals(100, remote.requestHistory[0].limit)
+            assertEquals(0, remote.requestHistory[0].offset)
+            assertEquals(emptyList<String>(), remote.requestHistory[0].tags)
+            assertEquals(100, remote.requestHistory[1].limit)
+            assertEquals(0, remote.requestHistory[1].offset)
+            assertEquals(emptyList<String>(), remote.requestHistory[1].tags)
+        }
+
+    @Test
+    fun updatesViewModel_refreshWithSelectedTag_forwardsTagsAndPreservesPagingRequest() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onTagToggled("backend")
+            advanceUntilIdle()
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            val lastRequest = remote.requestHistory.last()
+            assertEquals(listOf("backend"), lastRequest.tags)
+            assertEquals(100, lastRequest.limit)
+            assertEquals(0, lastRequest.offset)
         }
 
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
@@ -131,6 +161,7 @@ class UpdatesNotificationsFlowIntegrationTest {
             )
         var lastMarkReadIds: List<Long>? = null
             private set
+        val requestHistory = mutableListOf<NotificationsRequest>()
 
         fun replaceNotifications(next: List<NotificationDto>) {
             notifications.clear()
@@ -162,6 +193,7 @@ class UpdatesNotificationsFlowIntegrationTest {
             offset: Int,
             tags: List<String>,
         ): RemoteCallResult<NotificationListResponseDto> {
+            requestHistory += NotificationsRequest(limit = limit, offset = offset, tags = tags)
             return RemoteCallResult.Success(
                 data =
                     NotificationListResponseDto(
@@ -201,4 +233,10 @@ class UpdatesNotificationsFlowIntegrationTest {
             )
         }
     }
+
+    private data class NotificationsRequest(
+        val limit: Int,
+        val offset: Int,
+        val tags: List<String>,
+    )
 }

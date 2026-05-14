@@ -138,11 +138,12 @@ class UpdatesViewModel
         private fun loadUpdates() {
             viewModelScope.launch {
                 _uiState.update { it.copy(isLoading = true) }
+                val requestTags = _uiState.value.filterState.selectedTags.toList().sorted()
                 val notificationsResult =
                     notificationsRepository.getNotifications(
                         limit = FEED_LIMIT,
                         offset = FEED_OFFSET,
-                        tags = emptyList(),
+                        tags = requestTags,
                     )
                 val unreadResult = notificationsRepository.getUnreadCount()
 

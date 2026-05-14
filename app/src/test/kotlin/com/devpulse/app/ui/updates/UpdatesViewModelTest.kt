@@ -317,6 +317,136 @@ class UpdatesViewModelTest {
         }
     }
 
+    @Test
+    fun sourceAndTagsSwitching_thenReset_restoresFullList() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 31L,
+                                        source = "github",
+                                        title = "Backend deploy",
+                                        tags = listOf("backend"),
+                                    ),
+                                    remoteNotification(
+                                        id = 32L,
+                                        source = "github",
+                                        title = "Frontend deploy",
+                                        tags = listOf("frontend"),
+                                    ),
+                                    remoteNotification(
+                                        id = 33L,
+                                        source = "jira",
+                                        title = "Issue update",
+                                        tags = listOf("backend"),
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 3),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+            assertEquals(listOf(31L, 32L, 33L), viewModel.uiState.value.events.map { it.id })
+
+            viewModel.onSourceChanged("github")
+            advanceUntilIdle()
+            assertEquals(listOf(31L, 32L), viewModel.uiState.value.events.map { it.id })
+
+            viewModel.onTagToggled("backend")
+            advanceUntilIdle()
+            assertEquals(listOf(31L), viewModel.uiState.value.events.map { it.id })
+            assertTrue(viewModel.uiState.value.filterState.hasActiveFilters)
+
+            viewModel.resetFilters()
+            advanceUntilIdle()
+            assertEquals(listOf(31L, 32L, 33L), viewModel.uiState.value.events.map { it.id })
+            assertFalse(viewModel.uiState.value.filterState.hasActiveFilters)
+        }
+    }
+
+    @Test
+    fun emptyResultAfterFilter_thenReset_clearsNoResultsState() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 41L,
+                                        title = "GitHub deploy",
+                                        source = "github",
+                                        tags = listOf("backend"),
+                                    ),
+                                    remoteNotification(
+                                        id = 42L,
+                                        title = "Jira incident",
+                                        source = "jira",
+                                        tags = listOf("incident"),
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.onSourceChanged("github")
+            viewModel.onTagToggled("incident")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+            assertTrue(viewModel.uiState.value.filterState.hasActiveFilters)
+
+            viewModel.resetFilters()
+            advanceUntilIdle()
+            assertEquals(listOf(41L, 42L), viewModel.uiState.value.events.map { it.id })
+            assertFalse(viewModel.uiState.value.filterState.hasActiveFilters)
+        }
+    }
+
+    @Test
+    fun refresh_withSelectedTag_sendsTagToRepository() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 51L,
+                                        source = "github",
+                                        tags = listOf("backend"),
+                                    ),
+                                    remoteNotification(
+                                        id = 52L,
+                                        source = "jira",
+                                        tags = listOf("incident"),
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+            assertEquals(emptyList<String>(), repository.notificationRequests.last().tags)
+
+            viewModel.onTagToggled("backend")
+            advanceUntilIdle()
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(listOf("backend"), repository.notificationRequests.last().tags)
+            assertEquals(100, repository.notificationRequests.last().limit)
+            assertEquals(0, repository.notificationRequests.last().offset)
+        }
+    }
+
     private fun remoteNotification(
         id: Long,
         title: String = "Update$id",
@@ -324,13 +454,14 @@ class UpdatesViewModelTest {
         source: String = "bot",
         creationDate: String = "2026-05-14T10:00:00Z",
         isRead: Boolean = false,
+        tags: List<String> = emptyList(),
     ): RemoteNotification {
         return RemoteNotification(
             id = id,
             title = title,
             content = content,
             link = "https://example.com/$id",
-            tags = emptyList(),
+            tags = tags,
             isRead = isRead,
             updateOwner = source,
             creationDate = creationDate,
@@ -347,12 +478,16 @@ class UpdatesViewModelTest {
             private set
         var markReadCalls: Int = 0
             private set
+        val notificationRequests = mutableListOf<NotificationRequest>()
 
         override suspend fun getNotifications(
             limit: Int,
             offset: Int,
             tags: List<String>,
-        ): NotificationsResult = notificationsResult
+        ): NotificationsResult {
+            notificationRequests += NotificationRequest(limit = limit, offset = offset, tags = tags)
+            return notificationsResult
+        }
 
         override suspend fun getUnreadCount(): UnreadCountResult = unreadResult
 
@@ -363,4 +498,10 @@ class UpdatesViewModelTest {
             return markReadResult
         }
     }
+
+    private data class NotificationRequest(
+        val limit: Int,
+        val offset: Int,
+        val tags: List<String>,
+    )
 }
