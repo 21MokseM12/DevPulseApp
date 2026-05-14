@@ -147,6 +147,8 @@ class QuietHoursTimezoneChangeRuntimeE2eTest {
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
 
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) = Unit
+
         override suspend fun setQuietHoursPolicy(policy: QuietHoursPolicy) = Unit
 
         override suspend fun reset() = Unit

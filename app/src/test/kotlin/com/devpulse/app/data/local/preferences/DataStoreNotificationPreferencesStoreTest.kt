@@ -86,9 +86,20 @@ class DataStoreNotificationPreferencesStoreTest {
         runTest {
             val store = createStore()
 
-            store.setDigestMode(NotificationDigestMode.Daily)
+            store.setDigestMode(NotificationDigestMode.EverySixHours)
 
-            assertEquals(NotificationDigestMode.Daily, store.getPreferences().digestMode)
+            assertEquals(NotificationDigestMode.EverySixHours, store.getPreferences().digestMode)
+        }
+    }
+
+    @Test
+    fun setDigestLastProcessedAt_updatesStoredTimestamp() {
+        runTest {
+            val store = createStore()
+
+            store.setDigestLastProcessedAt(1_700_000_000_000L)
+
+            assertEquals(1_700_000_000_000L, store.getPreferences().digestLastProcessedAtEpochMs)
         }
     }
 

@@ -447,6 +447,32 @@ class UpdatesViewModelTest {
         }
     }
 
+    @Test
+    fun applyDigestUnreadFilter_enablesUnreadOnlyFilter() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(id = 61L, isRead = false),
+                                    remoteNotification(id = 62L, isRead = true),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 1),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.applyDigestUnreadFilter()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.filterState.unreadOnly)
+            assertEquals(listOf(61L), viewModel.uiState.value.events.map { it.id })
+        }
+    }
+
     private fun remoteNotification(
         id: Long,
         title: String = "Update$id",

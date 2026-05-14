@@ -34,7 +34,21 @@ class PushNotificationTextResolver
 
         fun resolveDigestSummaryBody(mode: NotificationDigestMode): String {
             return when (mode) {
+                NotificationDigestMode.Hourly -> HOURLY_DIGEST_SUMMARY_BODY
+                NotificationDigestMode.EverySixHours -> SIX_HOURS_DIGEST_SUMMARY_BODY
                 NotificationDigestMode.Daily -> DAILY_DIGEST_SUMMARY_BODY
+            }
+        }
+
+        fun resolveDigestBody(summary: DigestSummaryPayload): String {
+            val sources =
+                summary.sourceBreakdown.entries.joinToString(separator = ", ") { (source, count) ->
+                    "$source: $count"
+                }
+            return if (sources.isBlank()) {
+                "Найдено ${summary.updatesCount} новых событий."
+            } else {
+                "Найдено ${summary.updatesCount} новых событий. Источники: $sources."
             }
         }
 
@@ -57,6 +71,8 @@ class PushNotificationTextResolver
             const val COMPACT_NOTIFICATION_BODY = "Откройте Updates, чтобы увидеть детали."
             const val DETAILED_SUMMARY_BODY = "Новые обновления по подпискам"
             const val COMPACT_SUMMARY_BODY = "Есть новые события в Updates"
+            const val HOURLY_DIGEST_SUMMARY_BODY = "Дайджест: одно уведомление в час."
+            const val SIX_HOURS_DIGEST_SUMMARY_BODY = "Дайджест: одно уведомление раз в 6 часов."
             const val DAILY_DIGEST_SUMMARY_BODY = "Дайджест: соберем обновления за день в одно уведомление."
             const val PREVIEW_DETAILED_BODY = "Новый пост: Kotlin 2.2 вышел. Нажмите, чтобы открыть детали."
         }

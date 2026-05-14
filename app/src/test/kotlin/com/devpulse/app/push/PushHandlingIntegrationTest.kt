@@ -262,6 +262,8 @@ class PushHandlingIntegrationTest {
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
 
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) = Unit
+
         override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) =
             Unit
 

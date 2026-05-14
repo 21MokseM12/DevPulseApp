@@ -15,7 +15,9 @@ import com.devpulse.app.ui.theme.DevPulseTheme
 @Composable
 fun DevPulseApp(
     openUpdatesRequest: Boolean = false,
+    openUpdatesUnreadOnlyRequest: Boolean = false,
     onOpenUpdatesHandled: () -> Unit = {},
+    onOpenUpdatesUnreadOnlyHandled: () -> Unit = {},
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -30,7 +32,9 @@ fun DevPulseApp(
                 onLoginClick = viewModel::onLoginSucceeded,
                 onLogoutClick = viewModel::onLogout,
                 openUpdatesRequest = openUpdatesRequest,
+                openUpdatesUnreadFilterRequest = openUpdatesUnreadOnlyRequest,
                 onOpenUpdatesHandled = onOpenUpdatesHandled,
+                onOpenUpdatesUnreadFilterHandled = onOpenUpdatesUnreadOnlyHandled,
             )
         }
     }

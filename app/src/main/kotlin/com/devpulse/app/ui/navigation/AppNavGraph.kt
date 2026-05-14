@@ -30,7 +30,9 @@ fun AppNavGraph(
     onLoginClick: (String) -> Unit,
     onLogoutClick: () -> Unit,
     openUpdatesRequest: Boolean,
+    openUpdatesUnreadFilterRequest: Boolean,
     onOpenUpdatesHandled: () -> Unit,
+    onOpenUpdatesUnreadFilterHandled: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
     LaunchedEffect(uiState.startupDestination, openUpdatesRequest) {
@@ -81,6 +83,8 @@ fun AppNavGraph(
                     onLogout = {
                         onLogoutClick()
                     },
+                    applyUnreadFilterRequest = openUpdatesUnreadFilterRequest,
+                    onUnreadFilterRequestHandled = onOpenUpdatesUnreadFilterHandled,
                 )
             }
 

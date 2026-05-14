@@ -98,7 +98,12 @@ internal suspend fun processIncomingPush(
             messageId = messageId,
             receivedAtEpochMs = receivedAtEpochMs,
         )
-    if (outcome.result == PushHandleResult.Saved && outcome.update != null && outcome.shouldShowSystemNotification) {
+    if (
+        outcome.result == PushHandleResult.Saved &&
+        outcome.update != null &&
+        outcome.shouldShowSystemNotification &&
+        outcome.digestMode == null
+    ) {
         pushNotifier.showUpdateNotification(
             update = outcome.update,
             presentationMode = outcome.presentationMode,

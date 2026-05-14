@@ -72,6 +72,7 @@ fun SettingsRoute(
         onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
         onNotificationPresentationModeSelected = viewModel::onNotificationPresentationModeSelected,
         onNotificationDigestModeToggled = viewModel::onNotificationDigestModeToggled,
+        onNotificationDigestModeSelected = viewModel::onNotificationDigestModeSelected,
         onQuietHoursEnabledChanged = viewModel::onQuietHoursEnabledChanged,
         onSystemNotificationCapabilityChanged = viewModel::onSystemNotificationCapabilityChanged,
         onLogoutRequested = viewModel::onLogoutRequested,
@@ -91,6 +92,7 @@ internal fun SettingsScreen(
     onNotificationToggleChanged: (Boolean) -> Unit,
     onNotificationPresentationModeSelected: (NotificationPresentationMode) -> Unit,
     onNotificationDigestModeToggled: (Boolean) -> Unit,
+    onNotificationDigestModeSelected: (NotificationDigestMode) -> Unit,
     onQuietHoursEnabledChanged: (Boolean) -> Unit,
     onSystemNotificationCapabilityChanged: (Boolean) -> Unit,
     onLogoutRequested: () -> Unit,
@@ -247,7 +249,7 @@ internal fun SettingsScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Digest mode (daily)",
+                text = "Digest mode",
                 style = MaterialTheme.typography.bodyLarge,
             )
             Switch(
@@ -255,6 +257,32 @@ internal fun SettingsScreen(
                 enabled = effectiveNotificationsEnabled,
                 onCheckedChange = onNotificationDigestModeToggled,
             )
+        }
+        if (uiState.notificationPreferences.digestMode != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                DigestModeButton(
+                    title = "Каждый час",
+                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Hourly,
+                    enabled = effectiveNotificationsEnabled,
+                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Hourly) },
+                )
+                DigestModeButton(
+                    title = "Раз в 6ч",
+                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.EverySixHours,
+                    enabled = effectiveNotificationsEnabled,
+                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.EverySixHours) },
+                )
+                DigestModeButton(
+                    title = "Раз в день",
+                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Daily,
+                    enabled = effectiveNotificationsEnabled,
+                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Daily) },
+                )
+            }
         }
         NotificationPreviewCard(
             presentationMode = uiState.notificationPreferences.presentationMode,
@@ -357,6 +385,23 @@ internal fun SettingsScreen(
                     Text(text = "Отмена")
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun DigestModeButton(
+    title: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+    ) {
+        Text(
+            text = if (selected) "$title ✓" else title,
         )
     }
 }

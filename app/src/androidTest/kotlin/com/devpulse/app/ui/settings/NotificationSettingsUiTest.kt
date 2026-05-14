@@ -31,6 +31,7 @@ class NotificationSettingsUiTest {
                 onNotificationToggleChanged = {},
                 onNotificationPresentationModeSelected = {},
                 onNotificationDigestModeToggled = {},
+                onNotificationDigestModeSelected = {},
                 onQuietHoursEnabledChanged = {},
                 onSystemNotificationCapabilityChanged = {},
                 onLogoutRequested = {},
@@ -41,7 +42,7 @@ class NotificationSettingsUiTest {
         }
 
         composeRule.onNodeWithText("Показывать системные уведомления").assertIsDisplayed()
-        composeRule.onNodeWithText("Digest mode (daily)").assertIsDisplayed()
+        composeRule.onNodeWithText("Digest mode").assertIsDisplayed()
         composeRule.onNodeWithText("Preview уведомления").assertIsDisplayed()
         composeRule.onNodeWithText("Quiet hours").assertIsDisplayed()
     }
@@ -72,6 +73,7 @@ class NotificationSettingsUiTest {
                 onNotificationToggleChanged = {},
                 onNotificationPresentationModeSelected = {},
                 onNotificationDigestModeToggled = {},
+                onNotificationDigestModeSelected = {},
                 onQuietHoursEnabledChanged = {},
                 onSystemNotificationCapabilityChanged = {},
                 onLogoutRequested = {},
@@ -99,6 +101,7 @@ class NotificationSettingsUiTest {
                 onNotificationToggleChanged = {},
                 onNotificationPresentationModeSelected = {},
                 onNotificationDigestModeToggled = {},
+                onNotificationDigestModeSelected = {},
                 onQuietHoursEnabledChanged = {},
                 onSystemNotificationCapabilityChanged = {},
                 onLogoutRequested = {},

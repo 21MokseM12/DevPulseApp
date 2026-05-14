@@ -9,4 +9,9 @@ interface PushNotifier {
         presentationMode: NotificationPresentationMode,
         digestMode: NotificationDigestMode?,
     )
+
+    fun showDigestNotification(
+        summary: DigestSummaryPayload,
+        digestMode: NotificationDigestMode,
+    )
 }

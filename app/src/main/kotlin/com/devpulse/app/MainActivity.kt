@@ -12,6 +12,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val openUpdatesRequest = mutableStateOf(false)
+    private val openUpdatesUnreadOnlyRequest = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -19,7 +20,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             DevPulseApp(
                 openUpdatesRequest = openUpdatesRequest.value,
+                openUpdatesUnreadOnlyRequest = openUpdatesUnreadOnlyRequest.value,
                 onOpenUpdatesHandled = { openUpdatesRequest.value = false },
+                onOpenUpdatesUnreadOnlyHandled = { openUpdatesUnreadOnlyRequest.value = false },
             )
         }
     }
@@ -36,6 +39,11 @@ class MainActivity : ComponentActivity() {
                 current = openUpdatesRequest.value,
                 hasOpenUpdatesExtra = intent?.hasOpenUpdatesExtra() == true,
             )
+        openUpdatesUnreadOnlyRequest.value =
+            mergeOpenUpdatesRequest(
+                current = openUpdatesUnreadOnlyRequest.value,
+                hasOpenUpdatesExtra = intent?.hasUnreadFilterExtra() == true,
+            )
     }
 }
 
@@ -48,4 +56,8 @@ internal fun mergeOpenUpdatesRequest(
 
 internal fun Intent.hasOpenUpdatesExtra(): Boolean {
     return getBooleanExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, false)
+}
+
+internal fun Intent.hasUnreadFilterExtra(): Boolean {
+    return getBooleanExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, false)
 }

@@ -126,8 +126,7 @@ class FcmNotificationPipelineIntegrationTest {
                 )
 
             assertEquals(PushHandleResult.Saved, outcome.result)
-            assertEquals(1, notifier.calls.size)
-            assertEquals(NotificationDigestMode.Daily, notifier.calls.single().digestMode)
+            assertEquals(0, notifier.calls.size)
         }
     }
 
@@ -251,6 +250,11 @@ class FcmNotificationPipelineIntegrationTest {
         ) {
             calls += NotificationCall(update, presentationMode, digestMode)
         }
+
+        override fun showDigestNotification(
+            summary: DigestSummaryPayload,
+            digestMode: NotificationDigestMode,
+        ) = Unit
     }
 
     private class StaticPreferencesStore(
@@ -269,6 +273,8 @@ class FcmNotificationPipelineIntegrationTest {
         override suspend fun setPresentationMode(mode: NotificationPresentationMode) = Unit
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) = Unit
+
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) = Unit
 
         override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) =
             Unit

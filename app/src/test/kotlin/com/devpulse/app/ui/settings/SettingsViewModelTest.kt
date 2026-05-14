@@ -26,6 +26,7 @@ import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
+import com.devpulse.app.push.DigestScheduler
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +56,7 @@ class SettingsViewModelTest {
                     store,
                     FakeNotificationPreferencesStore(),
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -83,6 +85,7 @@ class SettingsViewModelTest {
                                 ),
                             ),
                     ),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -108,6 +111,7 @@ class SettingsViewModelTest {
                     FakeAccountLifecycleUseCase(
                         logoutResult = AccountLifecycleResult.Cancelled,
                     ),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -131,6 +135,7 @@ class SettingsViewModelTest {
                     FakeAccountLifecycleUseCase(
                         logoutResult = AccountLifecycleResult.Success,
                     ),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -154,6 +159,7 @@ class SettingsViewModelTest {
                     FakeAccountLifecycleUseCase(
                         unregisterResult = AccountLifecycleResult.Success,
                     ),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -177,6 +183,7 @@ class SettingsViewModelTest {
                     store,
                     preferencesStore,
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -198,6 +205,7 @@ class SettingsViewModelTest {
                     store,
                     preferencesStore,
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -223,6 +231,7 @@ class SettingsViewModelTest {
                     store,
                     preferencesStore,
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -244,12 +253,20 @@ class SettingsViewModelTest {
                     store,
                     preferencesStore,
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
             viewModel.onNotificationDigestModeToggled(enabled = true)
             advanceUntilIdle()
             assertEquals(NotificationDigestMode.Daily, viewModel.uiState.value.notificationPreferences.digestMode)
+
+            viewModel.onNotificationDigestModeSelected(NotificationDigestMode.EverySixHours)
+            advanceUntilIdle()
+            assertEquals(
+                NotificationDigestMode.EverySixHours,
+                viewModel.uiState.value.notificationPreferences.digestMode,
+            )
 
             viewModel.onNotificationDigestModeToggled(enabled = false)
             advanceUntilIdle()
@@ -267,6 +284,7 @@ class SettingsViewModelTest {
                     store,
                     preferencesStore,
                     FakeAccountLifecycleUseCase(),
+                    FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
@@ -334,6 +352,10 @@ class SettingsViewModelTest {
 
         override suspend fun setDigestMode(mode: NotificationDigestMode?) {
             preferences.value = preferences.value.copy(digestMode = mode)
+        }
+
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) {
+            preferences.value = preferences.value.copy(digestLastProcessedAtEpochMs = epochMs)
         }
 
         override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) {
@@ -417,5 +439,9 @@ class SettingsViewModelTest {
         override suspend fun saveToken(token: String) = Unit
 
         override suspend fun clearToken() = Unit
+    }
+
+    private class FakeDigestScheduler : DigestScheduler {
+        override fun sync(preferences: NotificationPreferences) = Unit
     }
 }

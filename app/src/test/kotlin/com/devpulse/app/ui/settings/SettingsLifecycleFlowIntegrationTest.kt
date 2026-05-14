@@ -24,6 +24,7 @@ import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
+import com.devpulse.app.push.DigestScheduler
 import com.devpulse.app.push.ParsedPushUpdate
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,7 +62,13 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
+            val viewModel =
+                SettingsViewModel(
+                    permissionStore,
+                    RecordingNotificationPreferencesStore(),
+                    useCase,
+                    RecordingDigestScheduler(),
+                )
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
@@ -98,7 +105,13 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
+            val viewModel =
+                SettingsViewModel(
+                    permissionStore,
+                    RecordingNotificationPreferencesStore(),
+                    useCase,
+                    RecordingDigestScheduler(),
+                )
             advanceUntilIdle()
 
             viewModel.onLogoutRequested()
@@ -138,7 +151,13 @@ class SettingsLifecycleFlowIntegrationTest {
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
                 )
-            val viewModel = SettingsViewModel(permissionStore, RecordingNotificationPreferencesStore(), useCase)
+            val viewModel =
+                SettingsViewModel(
+                    permissionStore,
+                    RecordingNotificationPreferencesStore(),
+                    useCase,
+                    RecordingDigestScheduler(),
+                )
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
@@ -291,6 +310,10 @@ class SettingsLifecycleFlowIntegrationTest {
             preferences.value = preferences.value.copy(digestMode = mode)
         }
 
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) {
+            preferences.value = preferences.value.copy(digestLastProcessedAtEpochMs = epochMs)
+        }
+
         override suspend fun setQuietHoursPolicy(policy: com.devpulse.app.data.local.preferences.QuietHoursPolicy) {
             preferences.value = preferences.value.copy(quietHoursPolicy = policy)
         }
@@ -298,5 +321,9 @@ class SettingsLifecycleFlowIntegrationTest {
         override suspend fun reset() {
             preferences.value = NotificationPreferences()
         }
+    }
+
+    private class RecordingDigestScheduler : DigestScheduler {
+        override fun sync(preferences: NotificationPreferences) = Unit
     }
 }

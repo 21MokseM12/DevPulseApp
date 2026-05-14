@@ -135,6 +135,18 @@ class UpdatesViewModel
             applyFilters()
         }
 
+        fun applyDigestUnreadFilter() {
+            _uiState.update { state ->
+                state.copy(
+                    filterState =
+                        state.filterState.copy(
+                            unreadOnly = true,
+                        ),
+                )
+            }
+            applyFilters()
+        }
+
         private fun loadUpdates() {
             viewModelScope.launch {
                 _uiState.update { it.copy(isLoading = true) }

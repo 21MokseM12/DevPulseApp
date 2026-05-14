@@ -11,6 +11,7 @@ import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
+import com.devpulse.app.push.DigestScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +48,7 @@ class SettingsViewModel
         private val notificationPermissionStore: NotificationPermissionStore,
         private val notificationPreferencesStore: NotificationPreferencesStore,
         private val accountLifecycleUseCase: AccountLifecycleUseCase,
+        private val digestScheduler: DigestScheduler,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -77,6 +79,7 @@ class SettingsViewModel
         fun onNotificationToggleChanged(enabled: Boolean) {
             viewModelScope.launch {
                 notificationPreferencesStore.setEnabled(enabled)
+                syncDigestScheduler()
             }
         }
 
@@ -87,6 +90,7 @@ class SettingsViewModel
                     .onSuccess { current ->
                         if (current.enabled) {
                             notificationPreferencesStore.setEnabled(false)
+                            syncDigestScheduler()
                         }
                     }
             }
@@ -102,6 +106,14 @@ class SettingsViewModel
             viewModelScope.launch {
                 val mode = if (enabled) NotificationDigestMode.Daily else null
                 notificationPreferencesStore.setDigestMode(mode)
+                syncDigestScheduler()
+            }
+        }
+
+        fun onNotificationDigestModeSelected(mode: NotificationDigestMode) {
+            viewModelScope.launch {
+                notificationPreferencesStore.setDigestMode(mode)
+                syncDigestScheduler()
             }
         }
 
@@ -261,5 +273,10 @@ class SettingsViewModel
             val total = 24 * 60
             val next = (current + delta) % total
             return if (next < 0) next + total else next
+        }
+
+        private suspend fun syncDigestScheduler() {
+            runCatching { notificationPreferencesStore.getPreferences() }
+                .onSuccess { preferences -> digestScheduler.sync(preferences) }
         }
     }

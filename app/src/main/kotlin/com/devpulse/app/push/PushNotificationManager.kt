@@ -36,7 +36,7 @@ class PushNotificationManager
             if (!canPostNotifications()) return
 
             val notificationId = notificationIdForUpdate(update)
-            val contentIntent = buildOpenUpdatesPendingIntent()
+            val contentIntent = buildOpenUpdatesPendingIntent(filterUnreadOnly = false)
             val title = textResolver.resolveTitle(update.title)
             val body = textResolver.resolveBody(update.content, presentationMode)
             val notification =
@@ -63,12 +63,44 @@ class PushNotificationManager
                 if (shouldPostIndividualNotification(digestMode)) {
                     manager.notify(notificationId, notification)
                 }
-                manager.notify(
-                    SUMMARY_NOTIFICATION_ID,
-                    buildSummaryNotification(contentIntent, presentationMode, digestMode),
-                )
+                if (digestMode == null) {
+                    manager.notify(
+                        SUMMARY_NOTIFICATION_ID,
+                        buildSummaryNotification(contentIntent, presentationMode, digestMode),
+                    )
+                }
             }.onFailure { error ->
                 Log.w(LOG_TAG, "Не удалось показать системное уведомление", error)
+            }
+        }
+
+        @SuppressLint("MissingPermission")
+        override fun showDigestNotification(
+            summary: DigestSummaryPayload,
+            digestMode: NotificationDigestMode,
+        ) {
+            if (!canPostNotifications()) return
+
+            val contentIntent = buildOpenUpdatesPendingIntent(filterUnreadOnly = true)
+            val title = textResolver.resolveDigestSummaryBody(digestMode)
+            val body = textResolver.resolveDigestBody(summary)
+            val notification =
+                NotificationCompat
+                    .Builder(context, PushNotificationChannels.UPDATES_CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_popup_reminder)
+                    .setContentTitle(title)
+                    .setContentText(body)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+                    .setAutoCancel(true)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+                    .setGroup(UPDATES_GROUP_KEY)
+                    .setContentIntent(contentIntent)
+                    .build()
+            runCatching {
+                manager.notify(DIGEST_NOTIFICATION_ID, notification)
+            }.onFailure { error ->
+                Log.w(LOG_TAG, "Не удалось показать digest-уведомление", error)
             }
         }
 
@@ -95,15 +127,16 @@ class PushNotificationManager
                 .build()
         }
 
-        private fun buildOpenUpdatesPendingIntent(): PendingIntent {
+        private fun buildOpenUpdatesPendingIntent(filterUnreadOnly: Boolean): PendingIntent {
             val intent =
                 Intent(context, MainActivity::class.java).apply {
                     putExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, true)
+                    putExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, filterUnreadOnly)
                     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
                 }
             return PendingIntent.getActivity(
                 context,
-                UPDATES_INTENT_REQUEST_CODE,
+                if (filterUnreadOnly) DIGEST_UPDATES_INTENT_REQUEST_CODE else UPDATES_INTENT_REQUEST_CODE,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
@@ -130,7 +163,9 @@ class PushNotificationManager
             const val LOG_TAG = "PushNotificationManager"
             const val UPDATES_GROUP_KEY = "devpulse_updates_group"
             const val SUMMARY_NOTIFICATION_ID = 1001
+            const val DIGEST_NOTIFICATION_ID = 1002
             const val UPDATES_INTENT_REQUEST_CODE = 2001
+            const val DIGEST_UPDATES_INTENT_REQUEST_CODE = 2002
         }
     }
 

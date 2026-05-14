@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -22,8 +23,18 @@ enum class NotificationPresentationMode {
 }
 
 enum class NotificationDigestMode {
+    Hourly,
+    EverySixHours,
     Daily,
 }
+
+val NotificationDigestMode.intervalMinutes: Long
+    get() =
+        when (this) {
+            NotificationDigestMode.Hourly -> 60L
+            NotificationDigestMode.EverySixHours -> 6L * 60L
+            NotificationDigestMode.Daily -> 24L * 60L
+        }
 
 enum class QuietHoursTimezoneMode {
     Device,
@@ -55,6 +66,7 @@ data class NotificationPreferences(
     val enabled: Boolean = true,
     val presentationMode: NotificationPresentationMode = NotificationPresentationMode.Detailed,
     val digestMode: NotificationDigestMode? = null,
+    val digestLastProcessedAtEpochMs: Long = 0L,
     val quietHoursPolicy: QuietHoursPolicy = QuietHoursPolicy(),
 )
 
@@ -68,6 +80,8 @@ interface NotificationPreferencesStore {
     suspend fun setPresentationMode(mode: NotificationPresentationMode)
 
     suspend fun setDigestMode(mode: NotificationDigestMode?)
+
+    suspend fun setDigestLastProcessedAt(epochMs: Long)
 
     suspend fun setQuietHoursPolicy(policy: QuietHoursPolicy)
 
@@ -137,6 +151,20 @@ class DataStoreNotificationPreferencesStore
             }
         }
 
+        override suspend fun setDigestLastProcessedAt(epochMs: Long) {
+            val normalized = epochMs.coerceAtLeast(0L)
+            val current = runCatching { getPreferences() }.getOrDefault(NotificationPreferences())
+            val next = current.copy(digestLastProcessedAtEpochMs = normalized)
+            runCatching {
+                dataStore.edit { preferences ->
+                    preferences[DIGEST_LAST_PROCESSED_AT_KEY] = normalized
+                }
+                inMemoryFallback = null
+            }.onFailure { error ->
+                inMemoryFallback = next
+            }
+        }
+
         override suspend fun setQuietHoursPolicy(policy: QuietHoursPolicy) {
             val current = runCatching { getPreferences() }.getOrDefault(NotificationPreferences())
             val next = current.copy(quietHoursPolicy = normalizePolicy(policy))
@@ -167,6 +195,7 @@ class DataStoreNotificationPreferencesStore
                     preferences.remove(ENABLED_KEY)
                     preferences.remove(PRESENTATION_MODE_KEY)
                     preferences.remove(DIGEST_MODE_KEY)
+                    preferences.remove(DIGEST_LAST_PROCESSED_AT_KEY)
                     preferences.remove(QUIET_HOURS_ENABLED_KEY)
                     preferences.remove(QUIET_HOURS_FROM_KEY)
                     preferences.remove(QUIET_HOURS_TO_KEY)
@@ -185,6 +214,7 @@ class DataStoreNotificationPreferencesStore
                 enabled = preferences[ENABLED_KEY] ?: true,
                 presentationMode = parseMode(preferences[PRESENTATION_MODE_KEY]),
                 digestMode = parseDigestMode(preferences[DIGEST_MODE_KEY]),
+                digestLastProcessedAtEpochMs = (preferences[DIGEST_LAST_PROCESSED_AT_KEY] ?: 0L).coerceAtLeast(0L),
                 quietHoursPolicy =
                     parseQuietHoursPolicy(
                         enabled = preferences[QUIET_HOURS_ENABLED_KEY],
@@ -272,6 +302,8 @@ class DataStoreNotificationPreferencesStore
             private val ENABLED_KEY = booleanPreferencesKey("notification_preferences_enabled")
             private val PRESENTATION_MODE_KEY = stringPreferencesKey("notification_preferences_presentation_mode")
             private val DIGEST_MODE_KEY = stringPreferencesKey("notification_preferences_digest_mode")
+            private val DIGEST_LAST_PROCESSED_AT_KEY =
+                longPreferencesKey("notification_preferences_digest_last_processed_at")
             private val QUIET_HOURS_ENABLED_KEY = booleanPreferencesKey("notification_preferences_quiet_enabled")
             private val QUIET_HOURS_FROM_KEY =
                 intPreferencesKey(

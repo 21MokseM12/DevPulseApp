@@ -61,4 +61,26 @@ class PushNotificationTextResolverTest {
 
         assertEquals(PushNotificationTextResolver.DAILY_DIGEST_SUMMARY_BODY, result)
     }
+
+    @Test
+    fun resolveDigestSummaryBody_hourlyMode_returnsDigestDescription() {
+        val result = resolver.resolveDigestSummaryBody(NotificationDigestMode.Hourly)
+
+        assertEquals(PushNotificationTextResolver.HOURLY_DIGEST_SUMMARY_BODY, result)
+    }
+
+    @Test
+    fun resolveDigestBody_rendersCountAndSources() {
+        val result =
+            resolver.resolveDigestBody(
+                DigestSummaryPayload(
+                    updatesCount = 3,
+                    periodStartEpochMs = 10L,
+                    periodEndEpochMs = 20L,
+                    sourceBreakdown = mapOf("github" to 2, "jira" to 1),
+                ),
+            )
+
+        assertEquals("Найдено 3 новых событий. Источники: github: 2, jira: 1.", result)
+    }
 }

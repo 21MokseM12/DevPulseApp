@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.util.Log
 import com.devpulse.app.BuildConfig
+import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.PushTokenStore
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,11 +22,14 @@ class PushInitializer
     constructor(
         @param:ApplicationContext private val context: Context,
         private val pushTokenStore: PushTokenStore,
+        private val notificationPreferencesStore: NotificationPreferencesStore,
+        private val digestScheduler: DigestScheduler,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         fun initialize() {
             ensureNotificationChannel()
+            syncDigestScheduler()
             requestAndStoreToken()
         }
 
@@ -66,6 +70,16 @@ class PushInitializer
                     pushTokenStore.saveToken(token)
                 }
                 Log.d(LOG_TAG, "FCM token получен и сохранен")
+            }
+        }
+
+        private fun syncDigestScheduler() {
+            scope.launch {
+                runCatching { notificationPreferencesStore.getPreferences() }
+                    .onSuccess { preferences -> digestScheduler.sync(preferences) }
+                    .onFailure { error ->
+                        Log.w(LOG_TAG, "Не удалось синхронизировать digest scheduler", error)
+                    }
             }
         }
 
