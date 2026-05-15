@@ -18,6 +18,7 @@ object SmokeTestTags {
     const val SUBSCRIPTIONS_FILTERS_INPUT = "subscriptions_filters_input"
     const val SUBSCRIPTIONS_ADD_BUTTON = "subscriptions_add_button"
     const val SUBSCRIPTIONS_OPEN_UPDATES_BUTTON = "subscriptions_open_updates_button"
+    const val SUBSCRIPTIONS_OPEN_SETTINGS_BUTTON = "subscriptions_open_settings_button"
     const val SUBSCRIPTIONS_LOGOUT_BUTTON = "subscriptions_logout_button"
     const val SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON = "subscriptions_remove_confirm_button"
     const val SUBSCRIPTIONS_SEARCH_INPUT = "subscriptions_search_input"
@@ -37,6 +38,8 @@ object SmokeTestTags {
     const val UPDATES_SEARCH_INPUT = "updates_search_input"
     const val UPDATES_RESET_FILTERS_BUTTON = "updates_reset_filters_button"
     const val SETTINGS_TITLE = "settings_title"
+    const val SETTINGS_NOTIFICATIONS_SWITCH = "settings_notifications_switch"
+    const val SETTINGS_OPEN_QUIET_HOURS_BUTTON = "settings_open_quiet_hours_button"
 
     fun subscriptionRow(id: Long): String = "subscriptions_row_$id"
 

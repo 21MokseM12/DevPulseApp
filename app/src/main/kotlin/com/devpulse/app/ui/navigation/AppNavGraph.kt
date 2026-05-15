@@ -17,7 +17,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -53,7 +52,7 @@ fun AppNavGraph(
         val target = resolveStartupRoute(uiState.startupDestination, openUpdatesRequest)
         if (target != null) {
             navController.navigate(target) {
-                popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                popUpTo(AppRoute.Splash.route) { inclusive = true }
                 launchSingleTop = true
             }
             if (target == AppRoute.Updates.route) {
@@ -118,7 +117,7 @@ fun AppNavGraph(
                     onOpenQuietHoursSchedule = { navController.navigate(AppRoute.QuietHoursSchedule.route) },
                     onNavigateToAuth = {
                         navController.navigate(AppRoute.Auth.route) {
-                            popUpTo(navController.graph.findStartDestination().id) { inclusive = true }
+                            popUpTo(AppRoute.Splash.route) { inclusive = true }
                             launchSingleTop = true
                         }
                     },

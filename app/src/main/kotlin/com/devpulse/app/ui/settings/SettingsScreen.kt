@@ -202,6 +202,7 @@ internal fun SettingsScreen(
                         }
                     }
                 },
+                modifier = Modifier.testTag(SmokeTestTags.SETTINGS_NOTIFICATIONS_SWITCH),
             )
         }
         Row(
@@ -445,7 +446,10 @@ private fun QuietHoursCard(
             Button(
                 onClick = onOpenQuietHoursSchedule,
                 enabled = enabled,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(SmokeTestTags.SETTINGS_OPEN_QUIET_HOURS_BUTTON),
             ) {
                 Text(text = "Открыть расписание quiet hours")
             }

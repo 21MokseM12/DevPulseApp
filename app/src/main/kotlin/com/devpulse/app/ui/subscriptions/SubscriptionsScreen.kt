@@ -404,7 +404,13 @@ private fun TopActions(
                     .weight(1f)
                     .testTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON),
         ) { Text(text = "Открыть Updates") }
-        Button(onClick = onGoToSettings, modifier = Modifier.weight(1f)) { Text(text = "Открыть Settings") }
+        Button(
+            onClick = onGoToSettings,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_SETTINGS_BUTTON),
+        ) { Text(text = "Открыть Settings") }
         Button(
             onClick = onLogout,
             modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON),

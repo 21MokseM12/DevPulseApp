@@ -168,7 +168,7 @@ jobs:
             while [ $attempt -le $max_attempts ]; do
               echo "Running instrumented smoke (attempt $attempt/$max_attempts)"
               if ./gradlew --no-daemon --stacktrace :app:connectedDebugAndroidTest \
-                -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest; then
+                -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest,com.devpulse.app.ui.navigation.BackNavigationContractIntegrationTest,com.devpulse.app.ui.navigation.BackNavigationUiSmokeTest; then
                 status="success"
                 break
               fi
@@ -193,7 +193,7 @@ jobs:
             gate_metadata = {
                 "gate_id": "instrumented-smoke",
                 "gate_name": "Instrumented Smoke (Compose)",
-                "gradle_task": ":app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest",
+                "gradle_task": ":app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest,com.devpulse.app.ui.navigation.BackNavigationContractIntegrationTest,com.devpulse.app.ui.navigation.BackNavigationUiSmokeTest",
                 "merge_policy": "blocking",
                 "retry_enabled": True,
                 "attempts_used": int(os.environ["ATTEMPTS_USED"]),

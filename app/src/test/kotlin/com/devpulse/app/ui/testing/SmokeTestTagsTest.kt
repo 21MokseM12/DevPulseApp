@@ -38,4 +38,19 @@ class SmokeTestTagsTest {
     fun navigationTopBarTitle_hasStableTag() {
         assertEquals("navigation_top_bar_title", SmokeTestTags.NAVIGATION_TOP_BAR_TITLE)
     }
+
+    @Test
+    fun subscriptionsOpenSettingsButton_hasStableTag() {
+        assertEquals("subscriptions_open_settings_button", SmokeTestTags.SUBSCRIPTIONS_OPEN_SETTINGS_BUTTON)
+    }
+
+    @Test
+    fun settingsOpenQuietHoursButton_hasStableTag() {
+        assertEquals("settings_open_quiet_hours_button", SmokeTestTags.SETTINGS_OPEN_QUIET_HOURS_BUTTON)
+    }
+
+    @Test
+    fun settingsNotificationsSwitch_hasStableTag() {
+        assertEquals("settings_notifications_switch", SmokeTestTags.SETTINGS_NOTIFICATIONS_SWITCH)
+    }
 }
