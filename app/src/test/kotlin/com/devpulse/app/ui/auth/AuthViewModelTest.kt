@@ -45,8 +45,10 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.activeErrorMessage)
-            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.loginErrorMessage)
+            assertEquals("Введите логин.", viewModel.uiState.value.loginInlineError)
+            assertEquals("Введите пароль.", viewModel.uiState.value.passwordInlineError)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
@@ -65,9 +67,11 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             advanceUntilIdle()
 
-            assertEquals("Для регистрации: Введите логин.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Введите логин.", viewModel.uiState.value.loginInlineError)
+            assertEquals("Введите пароль.", viewModel.uiState.value.passwordInlineError)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
             assertEquals(null, viewModel.uiState.value.loginErrorMessage)
-            assertEquals("Для регистрации: Введите логин.", viewModel.uiState.value.registerErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Повторить регистрацию", viewModel.uiState.value.registerButtonState.text)
@@ -82,11 +86,12 @@ class AuthViewModelTest {
             val viewModel = createViewModel(FakeAuthRepository())
 
             viewModel.submitLogin()
-            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Введите логин.", viewModel.uiState.value.loginInlineError)
+            assertEquals("Введите пароль.", viewModel.uiState.value.passwordInlineError)
 
             viewModel.onLoginChanged("moksem")
 
-            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+            assertEquals(null, viewModel.uiState.value.loginInlineError)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
         }

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.devpulse.app.MainActivity
@@ -47,7 +48,7 @@ class AuthUiIntegrationTest {
     @Test
     fun registerHappyPath_navigatesToSubscriptions() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).performClick()
 
@@ -56,21 +57,21 @@ class AuthUiIntegrationTest {
     }
 
     @Test
-    fun loginValidation_blankCredentials_showsValidationError() {
+    fun invalidCredentials_showInlineValidationAndKeepSubmitDisabled() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("ab")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("12345678")
 
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
-
-        composeRule.waitUntilNodeWithTextExists("Для входа заполните логин и пароль.")
-        composeRule.waitUntilNodeWithTextExists("Повторить вход")
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsDisplayed()
+        composeRule.waitUntilNodeWithTextExists("Логин должен содержать минимум 4 символа.")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsNotEnabled()
     }
 
     @Test
     fun loginNetworkError_thenRetrySuccess_completesAuthorization() {
         smokeDataSource.setLoginFailureForTesting(message = "Временная сеть недоступна")
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTextExists(

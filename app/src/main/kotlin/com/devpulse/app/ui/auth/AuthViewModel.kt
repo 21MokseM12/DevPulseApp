@@ -21,6 +21,10 @@ import javax.inject.Inject
 data class AuthUiState(
     val login: String = "",
     val password: String = "",
+    val isLoginTouched: Boolean = false,
+    val isPasswordTouched: Boolean = false,
+    val hasValidationAttempt: Boolean = false,
+    val credentialsValidation: AuthCredentialsValidationResult = AuthCredentialsValidationResult(),
     val isLoginLoading: Boolean = false,
     val isRegisterLoading: Boolean = false,
     val loginErrorMessage: String? = null,
@@ -32,6 +36,15 @@ data class AuthUiState(
 ) {
     val isLoading: Boolean
         get() = isLoginLoading || isRegisterLoading
+
+    val isCredentialsValid: Boolean
+        get() = credentialsValidation.isValid
+
+    val loginInlineError: String?
+        get() = if (isLoginTouched || hasValidationAttempt) credentialsValidation.loginError?.message else null
+
+    val passwordInlineError: String?
+        get() = if (isPasswordTouched || hasValidationAttempt) credentialsValidation.passwordError?.message else null
 
     val activeErrorMessage: String?
         get() =
@@ -119,6 +132,18 @@ class AuthViewModel
         private var activeAuthJob: Job? = null
         private val credentialsValidator = AuthCredentialsValidator()
 
+        init {
+            _uiState.update { state ->
+                state.copy(
+                    credentialsValidation =
+                        credentialsValidator.validate(
+                            loginRaw = state.login,
+                            passwordRaw = state.password,
+                        ),
+                )
+            }
+        }
+
         fun onLoginChanged(value: String) {
             _uiState.update { state ->
                 if (state.isLoading) {
@@ -126,8 +151,14 @@ class AuthViewModel
                 }
                 state.copy(
                     login = value,
+                    isLoginTouched = true,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    credentialsValidation =
+                        credentialsValidator.validate(
+                            loginRaw = value,
+                            passwordRaw = state.password,
+                        ),
                 ).resetButtonsToIdle()
             }
         }
@@ -139,8 +170,14 @@ class AuthViewModel
                 }
                 state.copy(
                     password = value,
+                    isPasswordTouched = true,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    credentialsValidation =
+                        credentialsValidator.validate(
+                            loginRaw = state.login,
+                            passwordRaw = value,
+                        ),
                 ).resetButtonsToIdle()
             }
         }
@@ -155,8 +192,11 @@ class AuthViewModel
             if (!validationResult.isValid) {
                 _uiState.update { state ->
                     state.copy(
+                        hasValidationAttempt = true,
                         lastSubmittedAction = AuthAction.Login,
-                        loginErrorMessage = validationMessage(AuthAction.Login, validationResult),
+                        loginErrorMessage = null,
+                        registerErrorMessage = null,
+                        credentialsValidation = validationResult,
                     ).setButtonStates(
                         action = AuthAction.Login,
                         status = AuthButtonStatus.Error,
@@ -168,8 +208,11 @@ class AuthViewModel
                 state.copy(
                     isLoginLoading = true,
                     isRegisterLoading = false,
+                    hasValidationAttempt = true,
                     lastSubmittedAction = AuthAction.Login,
                     loginErrorMessage = null,
+                    registerErrorMessage = null,
+                    credentialsValidation = validationResult,
                 ).setButtonStates(
                     action = AuthAction.Login,
                     status = AuthButtonStatus.Loading,
@@ -191,6 +234,10 @@ class AuthViewModel
                                     state.copy(
                                         login = login,
                                         password = "",
+                                        isLoginTouched = false,
+                                        isPasswordTouched = false,
+                                        hasValidationAttempt = false,
+                                        credentialsValidation = credentialsValidator.validate(loginRaw = login, passwordRaw = ""),
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,
@@ -238,8 +285,11 @@ class AuthViewModel
             if (!validationResult.isValid) {
                 _uiState.update { state ->
                     state.copy(
+                        hasValidationAttempt = true,
                         lastSubmittedAction = AuthAction.Register,
-                        registerErrorMessage = validationMessage(AuthAction.Register, validationResult),
+                        loginErrorMessage = null,
+                        registerErrorMessage = null,
+                        credentialsValidation = validationResult,
                     ).setButtonStates(
                         action = AuthAction.Register,
                         status = AuthButtonStatus.Error,
@@ -251,8 +301,11 @@ class AuthViewModel
                 state.copy(
                     isLoginLoading = false,
                     isRegisterLoading = true,
+                    hasValidationAttempt = true,
                     lastSubmittedAction = AuthAction.Register,
+                    loginErrorMessage = null,
                     registerErrorMessage = null,
+                    credentialsValidation = validationResult,
                 ).setButtonStates(
                     action = AuthAction.Register,
                     status = AuthButtonStatus.Loading,
@@ -274,6 +327,10 @@ class AuthViewModel
                                     state.copy(
                                         login = login,
                                         password = "",
+                                        isLoginTouched = false,
+                                        isPasswordTouched = false,
+                                        hasValidationAttempt = false,
+                                        credentialsValidation = credentialsValidator.validate(loginRaw = login, passwordRaw = ""),
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,
@@ -312,17 +369,6 @@ class AuthViewModel
                 }
         }
 
-        private fun validationMessage(
-            action: AuthAction,
-            validationResult: AuthCredentialsValidationResult,
-        ): String {
-            val details = validationResult.loginError?.message ?: validationResult.passwordError?.message
-            return when (action) {
-                AuthAction.Login -> "Для входа: $details"
-                AuthAction.Register -> "Для регистрации: $details"
-            }
-        }
-
         private fun failureMessage(
             action: AuthAction,
             error: ApiError,
@@ -335,6 +381,10 @@ class AuthViewModel
                 state.copy(
                     pendingAuthSuccess = null,
                     password = "",
+                    isLoginTouched = false,
+                    isPasswordTouched = false,
+                    hasValidationAttempt = false,
+                    credentialsValidation = credentialsValidator.validate(loginRaw = state.login, passwordRaw = ""),
                     isLoginLoading = false,
                     isRegisterLoading = false,
                     loginErrorMessage = null,
@@ -354,6 +404,7 @@ class AuthViewModel
                     state.copy(
                         isLoginLoading = false,
                         isRegisterLoading = false,
+                        hasValidationAttempt = false,
                         loginErrorMessage = null,
                         registerErrorMessage = null,
                         lastSubmittedAction = null,

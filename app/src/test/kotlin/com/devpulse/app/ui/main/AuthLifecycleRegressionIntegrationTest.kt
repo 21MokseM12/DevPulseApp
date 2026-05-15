@@ -63,7 +63,7 @@ class AuthLifecycleRegressionIntegrationTest {
             assertEquals(StartupDestination.Auth, mainViewModel.uiState.value.startupDestination)
 
             authViewModel.onLoginChanged("moksem")
-            authViewModel.onPasswordChanged("secret")
+            authViewModel.onPasswordChanged("secret12")
             authViewModel.submitRegister()
             advanceUntilIdle()
 
@@ -80,7 +80,7 @@ class AuthLifecycleRegressionIntegrationTest {
             assertEquals(StartupDestination.Auth, mainViewModel.uiState.value.startupDestination)
             assertNull(sessionStore.getSession())
 
-            authViewModel.onPasswordChanged("secret")
+            authViewModel.onPasswordChanged("secret12")
             authViewModel.submitLogin()
             advanceUntilIdle()
 
@@ -122,7 +122,7 @@ class AuthLifecycleRegressionIntegrationTest {
             assertEquals(StartupDestination.Auth, mainViewModel.uiState.value.startupDestination)
 
             authViewModel.onLoginChanged("moksem")
-            authViewModel.onPasswordChanged("secret")
+            authViewModel.onPasswordChanged("secret12")
             authViewModel.submitLogin()
             advanceUntilIdle()
 

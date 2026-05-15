@@ -68,7 +68,7 @@ class DevPulseAppTest {
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret12")
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
@@ -81,14 +81,14 @@ class DevPulseAppTest {
     }
 
     @Test
-    fun authValidation_blankCredentials_showsLoginValidationState() {
+    fun authValidation_invalidCredentials_showsInlineErrorsAndDisabledActions() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("ab")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("12345678")
 
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
-
-        composeRule.waitUntilNodeWithTextExists("Для входа заполните логин и пароль.")
-        composeRule.waitUntilNodeWithTextExists("Повторить вход")
-        composeRule.onNodeWithText("Зарегистрироваться").assertIsDisplayed()
+        composeRule.waitUntilNodeWithTextExists("Логин должен содержать минимум 4 символа.")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsNotEnabled()
     }
 
     @Test
@@ -97,7 +97,7 @@ class DevPulseAppTest {
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret12")
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).performClick()
 
@@ -115,7 +115,7 @@ class DevPulseAppTest {
     @Test
     fun registerSuccess_navigatesToSubscriptions_smoke() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).performClick()
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
@@ -142,7 +142,7 @@ class DevPulseAppTest {
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
 
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
 
@@ -167,7 +167,7 @@ class DevPulseAppTest {
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
 
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
 
@@ -184,7 +184,7 @@ class DevPulseAppTest {
         smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
 
@@ -200,7 +200,7 @@ class DevPulseAppTest {
         smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
 
@@ -435,7 +435,7 @@ class DevPulseAppTest {
     private fun login() {
         ensureAuthScreen()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        fillAuthCredentials(login = "moksem", password = "secret")
+        fillAuthCredentials(login = "moksem", password = "secret12")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
     }
 

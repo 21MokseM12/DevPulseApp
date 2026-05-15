@@ -80,6 +80,13 @@ private fun AuthScreen(
             onValueChange = onLoginChange,
             label = { Text(text = "Логин") },
             singleLine = true,
+            isError = uiState.loginInlineError != null,
+            supportingText = {
+                val message = uiState.loginInlineError
+                if (message != null) {
+                    Text(text = message, color = MaterialTheme.colorScheme.error)
+                }
+            },
             enabled = !uiState.isLoading,
             modifier =
                 Modifier
@@ -92,6 +99,13 @@ private fun AuthScreen(
             label = { Text(text = "Пароль") },
             singleLine = true,
             visualTransformation = PasswordVisualTransformation(),
+            isError = uiState.passwordInlineError != null,
+            supportingText = {
+                val message = uiState.passwordInlineError
+                if (message != null) {
+                    Text(text = message, color = MaterialTheme.colorScheme.error)
+                }
+            },
             enabled = !uiState.isLoading,
             modifier =
                 Modifier
@@ -108,7 +122,7 @@ private fun AuthScreen(
         }
         Button(
             onClick = onLoginSubmit,
-            enabled = !uiState.isLoading,
+            enabled = !uiState.isLoading && uiState.isCredentialsValid,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -132,7 +146,7 @@ private fun AuthScreen(
         }
         OutlinedButton(
             onClick = onRegisterSubmit,
-            enabled = !uiState.isLoading,
+            enabled = !uiState.isLoading && uiState.isCredentialsValid,
             modifier =
                 Modifier
                     .fillMaxWidth()

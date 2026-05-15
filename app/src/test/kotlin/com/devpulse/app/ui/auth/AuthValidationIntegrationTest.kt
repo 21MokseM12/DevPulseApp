@@ -35,7 +35,8 @@ class AuthValidationIntegrationTest {
 
             assertEquals(0, repository.loginCalls)
             assertEquals(0, repository.registerCalls)
-            assertEquals("Для регистрации: Логин должен содержать минимум 4 символа.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Логин должен содержать минимум 4 символа.", viewModel.uiState.value.loginInlineError)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
         }
 
     private class CountingAuthRepository : AuthRepository {
