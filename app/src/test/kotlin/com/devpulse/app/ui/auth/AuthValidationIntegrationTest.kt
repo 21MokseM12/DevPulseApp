@@ -1,5 +1,7 @@
 package com.devpulse.app.ui.auth
 
+import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.repository.AuthRepository
 import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
@@ -39,16 +41,47 @@ class AuthValidationIntegrationTest {
             assertEquals(null, viewModel.uiState.value.activeErrorMessage)
         }
 
+    @Test
+    fun backendValidationError_mapsToSingleInlineMessage_withoutGlobalConflict() =
+        runTest {
+            val repository = CountingAuthRepository()
+            repository.loginResult =
+                AuthResult.Failure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.BadRequest,
+                            userMessage = "password must include a number",
+                        ),
+                )
+            val viewModel =
+                AuthViewModel(
+                    loginClientUseCase = LoginClientUseCase(repository),
+                    registerClientUseCase = RegisterClientUseCase(repository),
+                )
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("valid123")
+
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.loginCalls)
+            assertEquals("Проверьте пароль. password must include a number", viewModel.uiState.value.passwordInlineError)
+            assertEquals(null, viewModel.uiState.value.loginInlineError)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+        }
+
     private class CountingAuthRepository : AuthRepository {
         var loginCalls: Int = 0
         var registerCalls: Int = 0
+        var loginResult: AuthResult = AuthResult.Success
+        var registerResult: AuthResult = AuthResult.Success
 
         override suspend fun login(
             login: String,
             password: String,
         ): AuthResult {
             loginCalls += 1
-            return AuthResult.Success
+            return loginResult
         }
 
         override suspend fun register(
@@ -56,7 +89,7 @@ class AuthValidationIntegrationTest {
             password: String,
         ): AuthResult {
             registerCalls += 1
-            return AuthResult.Success
+            return registerResult
         }
     }
 }

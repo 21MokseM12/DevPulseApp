@@ -25,6 +25,8 @@ data class AuthUiState(
     val isPasswordTouched: Boolean = false,
     val hasValidationAttempt: Boolean = false,
     val credentialsValidation: AuthCredentialsValidationResult = AuthCredentialsValidationResult(),
+    val backendLoginErrorMessage: String? = null,
+    val backendPasswordErrorMessage: String? = null,
     val isLoginLoading: Boolean = false,
     val isRegisterLoading: Boolean = false,
     val loginErrorMessage: String? = null,
@@ -41,10 +43,20 @@ data class AuthUiState(
         get() = credentialsValidation.isValid
 
     val loginInlineError: String?
-        get() = if (isLoginTouched || hasValidationAttempt) credentialsValidation.loginError?.message else null
+        get() =
+            if (isLoginTouched || hasValidationAttempt) {
+                credentialsValidation.loginError?.message ?: backendLoginErrorMessage
+            } else {
+                null
+            }
 
     val passwordInlineError: String?
-        get() = if (isPasswordTouched || hasValidationAttempt) credentialsValidation.passwordError?.message else null
+        get() =
+            if (isPasswordTouched || hasValidationAttempt) {
+                credentialsValidation.passwordError?.message ?: backendPasswordErrorMessage
+            } else {
+                null
+            }
 
     val activeErrorMessage: String?
         get() =
@@ -154,6 +166,8 @@ class AuthViewModel
                     isLoginTouched = true,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    backendLoginErrorMessage = null,
+                    backendPasswordErrorMessage = null,
                     credentialsValidation =
                         credentialsValidator.validate(
                             loginRaw = value,
@@ -173,6 +187,8 @@ class AuthViewModel
                     isPasswordTouched = true,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    backendLoginErrorMessage = null,
+                    backendPasswordErrorMessage = null,
                     credentialsValidation =
                         credentialsValidator.validate(
                             loginRaw = state.login,
@@ -196,6 +212,8 @@ class AuthViewModel
                         lastSubmittedAction = AuthAction.Login,
                         loginErrorMessage = null,
                         registerErrorMessage = null,
+                        backendLoginErrorMessage = null,
+                        backendPasswordErrorMessage = null,
                         credentialsValidation = validationResult,
                     ).setButtonStates(
                         action = AuthAction.Login,
@@ -212,6 +230,8 @@ class AuthViewModel
                     lastSubmittedAction = AuthAction.Login,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    backendLoginErrorMessage = null,
+                    backendPasswordErrorMessage = null,
                     credentialsValidation = validationResult,
                 ).setButtonStates(
                     action = AuthAction.Login,
@@ -242,6 +262,8 @@ class AuthViewModel
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,
                                         registerErrorMessage = null,
+                                        backendLoginErrorMessage = null,
+                                        backendPasswordErrorMessage = null,
                                         pendingAuthSuccess =
                                             AuthSuccessEvent(
                                                 login = login,
@@ -256,13 +278,9 @@ class AuthViewModel
 
                             is AuthResult.Failure -> {
                                 _uiState.update { state ->
-                                    state.copy(
-                                        isLoginLoading = false,
-                                        isRegisterLoading = false,
-                                        loginErrorMessage = failureMessage(AuthAction.Login, result.error),
-                                    ).setButtonStates(
+                                    state.applyBackendFailure(
                                         action = AuthAction.Login,
-                                        status = AuthButtonStatus.Error,
+                                        error = result.error,
                                     )
                                 }
                             }
@@ -289,6 +307,8 @@ class AuthViewModel
                         lastSubmittedAction = AuthAction.Register,
                         loginErrorMessage = null,
                         registerErrorMessage = null,
+                        backendLoginErrorMessage = null,
+                        backendPasswordErrorMessage = null,
                         credentialsValidation = validationResult,
                     ).setButtonStates(
                         action = AuthAction.Register,
@@ -305,6 +325,8 @@ class AuthViewModel
                     lastSubmittedAction = AuthAction.Register,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    backendLoginErrorMessage = null,
+                    backendPasswordErrorMessage = null,
                     credentialsValidation = validationResult,
                 ).setButtonStates(
                     action = AuthAction.Register,
@@ -335,6 +357,8 @@ class AuthViewModel
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,
                                         registerErrorMessage = null,
+                                        backendLoginErrorMessage = null,
+                                        backendPasswordErrorMessage = null,
                                         pendingAuthSuccess =
                                             AuthSuccessEvent(
                                                 login = login,
@@ -349,14 +373,9 @@ class AuthViewModel
 
                             is AuthResult.Failure -> {
                                 _uiState.update { state ->
-                                    state.copy(
-                                        isLoginLoading = false,
-                                        isRegisterLoading = false,
-                                        registerErrorMessage =
-                                            failureMessage(AuthAction.Register, result.error),
-                                    ).setButtonStates(
+                                    state.applyBackendFailure(
                                         action = AuthAction.Register,
-                                        status = AuthButtonStatus.Error,
+                                        error = result.error,
                                     )
                                 }
                             }
@@ -389,6 +408,8 @@ class AuthViewModel
                     isRegisterLoading = false,
                     loginErrorMessage = null,
                     registerErrorMessage = null,
+                    backendLoginErrorMessage = null,
+                    backendPasswordErrorMessage = null,
                     lastSubmittedAction = null,
                 ).resetButtonsToIdle()
             }
@@ -407,9 +428,68 @@ class AuthViewModel
                         hasValidationAttempt = false,
                         loginErrorMessage = null,
                         registerErrorMessage = null,
+                        backendLoginErrorMessage = null,
+                        backendPasswordErrorMessage = null,
                         lastSubmittedAction = null,
                     ).resetButtonsToIdle()
                 }
+            }
+        }
+
+        private fun AuthUiState.applyBackendFailure(
+            action: AuthAction,
+            error: ApiError,
+        ): AuthUiState {
+            val backendValidationMessage = BackendAuthValidationMessageMapper.map(error)
+            if (backendValidationMessage != null) {
+                return copy(
+                    isLoginLoading = false,
+                    isRegisterLoading = false,
+                    loginErrorMessage = null,
+                    registerErrorMessage = null,
+                    backendLoginErrorMessage =
+                        if (backendValidationMessage.field == AuthValidationField.Login) {
+                            backendValidationMessage.message
+                        } else {
+                            null
+                        },
+                    backendPasswordErrorMessage =
+                        if (backendValidationMessage.field == AuthValidationField.Password) {
+                            backendValidationMessage.message
+                        } else {
+                            null
+                        },
+                ).setButtonStates(
+                    action = action,
+                    status = AuthButtonStatus.Error,
+                )
+            }
+            return when (action) {
+                AuthAction.Login ->
+                    copy(
+                        isLoginLoading = false,
+                        isRegisterLoading = false,
+                        loginErrorMessage = failureMessage(AuthAction.Login, error),
+                        registerErrorMessage = null,
+                        backendLoginErrorMessage = null,
+                        backendPasswordErrorMessage = null,
+                    ).setButtonStates(
+                        action = action,
+                        status = AuthButtonStatus.Error,
+                    )
+
+                AuthAction.Register ->
+                    copy(
+                        isLoginLoading = false,
+                        isRegisterLoading = false,
+                        loginErrorMessage = null,
+                        registerErrorMessage = failureMessage(AuthAction.Register, error),
+                        backendLoginErrorMessage = null,
+                        backendPasswordErrorMessage = null,
+                    ).setButtonStates(
+                        action = action,
+                        status = AuthButtonStatus.Error,
+                    )
             }
         }
 
