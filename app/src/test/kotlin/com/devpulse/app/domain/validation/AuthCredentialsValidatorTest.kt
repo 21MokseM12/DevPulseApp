@@ -45,4 +45,64 @@ class AuthCredentialsValidatorTest {
         assertFalse(result.isValid)
         assertEquals(AuthCredentialsValidationErrorType.MissingDigit, result.passwordError?.type)
     }
+
+    @Test
+    fun validate_matrixCoversLengthCharsetAndComposition() {
+        data class Case(
+            val login: String,
+            val password: String,
+            val expectedLoginError: AuthCredentialsValidationErrorType?,
+            val expectedPasswordError: AuthCredentialsValidationErrorType?,
+        )
+
+        val cases =
+            listOf(
+                Case(
+                    login = "a_b-",
+                    password = "A1bcdefg",
+                    expectedLoginError = null,
+                    expectedPasswordError = null,
+                ),
+                Case(
+                    login = "ab",
+                    password = "A1bcdefg",
+                    expectedLoginError = AuthCredentialsValidationErrorType.TooShort,
+                    expectedPasswordError = null,
+                ),
+                Case(
+                    login = "good login",
+                    password = "A1bcdefg",
+                    expectedLoginError = AuthCredentialsValidationErrorType.InvalidCharacters,
+                    expectedPasswordError = null,
+                ),
+                Case(
+                    login = "valid",
+                    password = "ABCDEFGH",
+                    expectedLoginError = null,
+                    expectedPasswordError = AuthCredentialsValidationErrorType.MissingDigit,
+                ),
+                Case(
+                    login = "valid",
+                    password = "12345678",
+                    expectedLoginError = null,
+                    expectedPasswordError = AuthCredentialsValidationErrorType.MissingLetter,
+                ),
+                Case(
+                    login = "valid",
+                    password = "Abcdef!1",
+                    expectedLoginError = null,
+                    expectedPasswordError = AuthCredentialsValidationErrorType.InvalidCharacters,
+                ),
+            )
+
+        cases.forEach { case ->
+            val result = validator.validate(loginRaw = case.login, passwordRaw = case.password)
+            assertEquals(case.expectedLoginError, result.loginError?.type)
+            assertEquals(case.expectedPasswordError, result.passwordError?.type)
+            assertEquals(
+                case.expectedLoginError == null && case.expectedPasswordError == null,
+                result.isValid,
+            )
+        }
+    }
 }

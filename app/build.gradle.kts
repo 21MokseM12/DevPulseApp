@@ -37,8 +37,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 80
-        versionName = "1.57.0"
+        versionCode = 81
+        versionName = "1.58.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "com.devpulse.app.HiltTestRunner"
@@ -134,7 +134,7 @@ tasks.withType<Test>().configureEach {
 }
 
 tasks.named("check").configure {
-    dependsOn("ktlintCheck", "lintDebug")
+    dependsOn("ktlintCheck", "lintDebug", "validationRegressionSuite")
 }
 
 tasks.matching { task ->
@@ -151,8 +151,14 @@ tasks.register("qualityCheck") {
     dependsOn("ktlintCheck", "lintDebug")
 }
 
+tasks.register("validationRegressionSuite") {
+    group = "verification"
+    description = "Runs auth credentials validation regression suite."
+    dependsOn("testDebugUnitTest", "compileDebugAndroidTestKotlin")
+}
+
 tasks.named("build").configure {
-    dependsOn("qualityCheck", "jacocoTestReport")
+    dependsOn("qualityCheck", "jacocoTestReport", "validationRegressionSuite")
 }
 
 tasks.register("codeStyleFormat") {

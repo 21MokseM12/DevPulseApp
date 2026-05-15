@@ -22,6 +22,11 @@ jobs:
             gradle_command: :app:testDebugUnitTest
             retry_on_fail: true
             merge_policy: blocking
+          - gate_id: validation
+            gate_name: Validation Regression
+            gradle_command: :app:validationRegressionSuite
+            retry_on_fail: true
+            merge_policy: blocking
           - gate_id: contract
             gate_name: Contract Check
             gradle_command: :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"
