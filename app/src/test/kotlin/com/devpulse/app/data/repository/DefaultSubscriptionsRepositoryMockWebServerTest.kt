@@ -99,7 +99,7 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
         }
 
     @Test
-    fun getSubscriptions_repro400_forEmptyAccount_localizesEndpointStatusAndBody() =
+    fun getSubscriptions_repro400_forEmptyAccount_mapsToEmptyStateSuccess() =
         runTest {
             MockWebServer().use { server ->
                 server.enqueue(
@@ -125,12 +125,44 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
 
                 assertEquals("GET", request.method)
                 assertEquals("/api/v1/links", request.path)
+                assertTrue(result is SubscriptionsResult.Success)
+                val success = result as SubscriptionsResult.Success
+                assertTrue(success.links.isEmpty())
+                assertTrue(success.isStale.not())
+                assertTrue(success.lastSyncAtEpochMs != null)
+            }
+        }
+
+    @Test
+    fun getSubscriptions_keepsReal400AsFailure_whenCodeIsNotEmptySubscriptions() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(400)
+                        .setBody(
+                            """
+                            {
+                              "description": "Validation failed",
+                              "code": "VALIDATION_ERROR"
+                            }
+                            """.trimIndent(),
+                        ),
+                )
+                val repository =
+                    createRepository(
+                        server = server,
+                        sessionStore = FakeSessionStore(login = "moksem"),
+                    )
+
+                val result = repository.getSubscriptions(forceRefresh = true)
+
                 assertTrue(result is SubscriptionsResult.Failure)
                 val failure = result as SubscriptionsResult.Failure
                 assertEquals(ApiErrorKind.BadRequest, failure.error.kind)
                 assertEquals(400, failure.error.statusCode)
-                assertEquals("No subscriptions found for this client", failure.error.userMessage)
-                assertEquals("EMPTY_SUBSCRIPTIONS", failure.error.code)
+                assertEquals("Validation failed", failure.error.userMessage)
+                assertEquals("VALIDATION_ERROR", failure.error.code)
             }
         }
 

@@ -53,7 +53,23 @@ class DefaultSubscriptionsRepository
                 }
 
                 is RemoteCallResult.ApiFailure -> {
-                    SubscriptionsResult.Failure(error = result.error)
+                    if (SubscriptionsErrorMapper.shouldTreatAsEmpty(result.error)) {
+                        val now = System.currentTimeMillis()
+                        subscriptionsCacheDao.replaceAll(emptyList())
+                        subscriptionsCacheDao.upsertSyncState(
+                            SubscriptionsSyncStateEntity(
+                                lastSyncAtEpochMs = now,
+                                isStale = false,
+                            ),
+                        )
+                        SubscriptionsResult.Success(
+                            links = emptyList(),
+                            isStale = false,
+                            lastSyncAtEpochMs = now,
+                        )
+                    } else {
+                        SubscriptionsResult.Failure(error = result.error)
+                    }
                 }
 
                 is RemoteCallResult.NetworkFailure -> {
