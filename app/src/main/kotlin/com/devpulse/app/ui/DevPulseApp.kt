@@ -30,7 +30,7 @@ fun DevPulseApp(
         ) {
             AppNavGraph(
                 uiState = uiState,
-                onLoginClick = viewModel::onLoginSucceeded,
+                onLoginClick = viewModel::onAuthSucceeded,
                 onLogoutClick = viewModel::onLogout,
                 openUpdatesRequest = openUpdatesRequest,
                 openUpdatesDigestContextRequest = openUpdatesDigestContextRequest,

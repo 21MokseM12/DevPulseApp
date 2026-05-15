@@ -11,7 +11,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -62,7 +61,8 @@ class AuthButtonTextIntegrationTest {
             assertEquals(null, viewModel.uiState.value.loginErrorMessage)
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthAction.Register, viewModel.uiState.value.lastSubmittedAction)
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.pendingAuthSuccess?.action)
+            assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
         }
 
     private class SequenceAuthRepository : AuthRepository {

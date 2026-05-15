@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.ui.auth.AuthRoute
+import com.devpulse.app.ui.auth.AuthSuccessEvent
 import com.devpulse.app.ui.main.MainUiState
 import com.devpulse.app.ui.main.StartupDestination
 import com.devpulse.app.ui.settings.QuietHoursScheduleRoute
@@ -28,7 +29,7 @@ import com.devpulse.app.ui.updates.UpdatesRoute
 @Composable
 fun AppNavGraph(
     uiState: MainUiState,
-    onLoginClick: (String) -> Unit,
+    onLoginClick: (AuthSuccessEvent) -> Unit,
     onLogoutClick: () -> Unit,
     openUpdatesRequest: Boolean,
     openUpdatesDigestContextRequest: OpenUpdatesDigestContextRequest?,
@@ -61,8 +62,8 @@ fun AppNavGraph(
 
             composable(AppRoute.Auth.route) {
                 AuthRoute(
-                    onAuthorized = { login ->
-                        onLoginClick(login)
+                    onAuthorized = { authSuccess ->
+                        onLoginClick(authSuccess)
                     },
                 )
             }

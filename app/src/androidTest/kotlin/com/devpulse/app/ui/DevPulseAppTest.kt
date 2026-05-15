@@ -98,6 +98,18 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun authSuccess_clearsAuthFromBackStack() {
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+
+        composeRule.activityRule.scenario.onActivity { activity ->
+            activity.onBackPressedDispatcher.onBackPressed()
+        }
+
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+    }
+
+    @Test
     fun addAndRemoveSubscription_flowWorks() {
         val smokeUrl = "https://example.dev/smoke-case"
 
@@ -306,6 +318,12 @@ class DevPulseAppTest {
 private fun ComposeContentTestRule.waitUntilNodeWithTagExists(tag: String) {
     waitUntil(timeoutMillis = 5_000) {
         onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+    }
+}
+
+private fun ComposeContentTestRule.waitUntilNodeWithTagMissing(tag: String) {
+    waitUntil(timeoutMillis = 5_000) {
+        onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()
     }
 }
 

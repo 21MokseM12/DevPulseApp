@@ -21,6 +21,8 @@ import com.devpulse.app.domain.repository.AppBootstrapRepository
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.ui.auth.AuthAction
+import com.devpulse.app.ui.auth.AuthSuccessEvent
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -104,7 +106,7 @@ class MainViewModelTest {
     }
 
     @Test
-    fun onLoginSucceeded_setsHasCachedSessionToTrue() {
+    fun onAuthSucceeded_setsHasCachedSessionToTrue() {
         runTest {
             val repository =
                 FakeAppBootstrapRepository(
@@ -119,11 +121,51 @@ class MainViewModelTest {
             val sessionStore = FakeSessionStore()
             val viewModel = MainViewModel(repository, sessionStore, createAccountLifecycleUseCase())
             advanceUntilIdle()
-            viewModel.onLoginSucceeded(login = "moksem")
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.hasCachedSession)
             assertEquals("moksem", sessionStore.getSession()?.login)
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+        }
+    }
+
+    @Test
+    fun onAuthSucceeded_navigatesAfterSessionIsPersisted() {
+        runTest {
+            val saveGate = CompletableDeferred<Unit>()
+            val repository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val sessionStore = FakeSessionStore(saveGate = saveGate)
+            val viewModel = MainViewModel(repository, sessionStore, createAccountLifecycleUseCase())
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Register,
+                ),
+            )
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+
+            saveGate.complete(Unit)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.hasCachedSession)
             assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
         }
     }
@@ -232,6 +274,7 @@ class MainViewModelTest {
 
     private class FakeSessionStore(
         initialSession: StoredSession? = null,
+        private val saveGate: CompletableDeferred<Unit>? = null,
     ) : SessionStore {
         private val state = MutableStateFlow(initialSession)
 
@@ -245,6 +288,7 @@ class MainViewModelTest {
             login: String,
             isRegistered: Boolean,
         ) {
+            saveGate?.await()
             state.value =
                 StoredSession(
                     login = login,

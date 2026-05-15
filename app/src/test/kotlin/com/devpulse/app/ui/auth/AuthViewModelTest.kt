@@ -85,7 +85,8 @@ class AuthViewModelTest {
             assertEquals("moksem", remote.lastLoginLogin)
             assertEquals("secret", remote.lastLoginPassword)
             assertEquals("moksem", viewModel.uiState.value.login)
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
+            assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Вход выполнен", viewModel.uiState.value.loginButtonState.text)
         }
@@ -102,7 +103,8 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.pendingAuthSuccess?.action)
+            assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
             assertEquals(1, remote.registerCalls)
             assertEquals("moksem", remote.lastRegisterLogin)
             assertEquals("secret", remote.lastRegisterPassword)
@@ -133,7 +135,7 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isAuthorized)
+            assertEquals(null, viewModel.uiState.value.pendingAuthSuccess)
             assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.activeErrorMessage)
             assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
@@ -166,7 +168,7 @@ class AuthViewModelTest {
             gate.complete(Unit)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
         }
     }
 
@@ -191,7 +193,7 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isAuthorized)
+            assertEquals(null, viewModel.uiState.value.pendingAuthSuccess)
             assertEquals(
                 "Не удалось зарегистрироваться. Превышено время ожидания сети",
                 viewModel.uiState.value.activeErrorMessage,
@@ -207,7 +209,7 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun onAuthorizationHandled_resetsAuthorizationFlagAndPassword() {
+    fun onAuthSuccessHandled_clearsPendingSuccessAndPassword() {
         runTest {
             val remote = FakeAuthRepository(result = AuthResult.Success)
             val viewModel = createViewModel(remote)
@@ -216,9 +218,9 @@ class AuthViewModelTest {
 
             viewModel.submitLogin()
             advanceUntilIdle()
-            viewModel.onAuthorizationHandled()
+            viewModel.onAuthSuccessHandled()
 
-            assertFalse(viewModel.uiState.value.isAuthorized)
+            assertEquals(null, viewModel.uiState.value.pendingAuthSuccess)
             assertEquals("", viewModel.uiState.value.password)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
@@ -264,7 +266,7 @@ class AuthViewModelTest {
 
             gate.complete(Unit)
             advanceUntilIdle()
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.pendingAuthSuccess?.action)
         }
     }
 
@@ -299,7 +301,7 @@ class AuthViewModelTest {
 
             assertEquals(2, remote.loginCalls)
             assertEquals(null, viewModel.uiState.value.activeErrorMessage)
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
         }
     }
@@ -327,7 +329,7 @@ class AuthViewModelTest {
 
             gate.complete(Unit)
             advanceUntilIdle()
-            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.pendingAuthSuccess?.action)
         }
     }
 

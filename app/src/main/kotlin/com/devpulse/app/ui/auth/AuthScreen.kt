@@ -26,15 +26,14 @@ import com.devpulse.app.ui.testing.SmokeTestTags
 
 @Composable
 fun AuthRoute(
-    onAuthorized: (String) -> Unit,
+    onAuthorized: (AuthSuccessEvent) -> Unit,
     viewModel: AuthViewModel = hiltViewModel(),
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
-    LaunchedEffect(uiState.isAuthorized) {
-        if (uiState.isAuthorized) {
-            onAuthorized(uiState.login.trim())
-            viewModel.onAuthorizationHandled()
-        }
+    LaunchedEffect(uiState.pendingAuthSuccess) {
+        val successEvent = uiState.pendingAuthSuccess ?: return@LaunchedEffect
+        onAuthorized(successEvent)
+        viewModel.onAuthSuccessHandled()
     }
 
     AuthScreen(

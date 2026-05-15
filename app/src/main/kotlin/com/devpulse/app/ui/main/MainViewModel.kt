@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.domain.repository.AppBootstrapRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
+import com.devpulse.app.ui.auth.AuthSuccessEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,9 +73,12 @@ class MainViewModel
             }
         }
 
-        fun onLoginSucceeded(login: String) {
+        fun onAuthSucceeded(event: AuthSuccessEvent) {
             viewModelScope.launch {
-                sessionStore.saveSession(login = login)
+                sessionStore.saveSession(
+                    login = event.login,
+                    isRegistered = true,
+                )
             }
         }
 

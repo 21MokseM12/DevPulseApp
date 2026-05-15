@@ -21,7 +21,7 @@ data class AuthUiState(
     val loginErrorMessage: String? = null,
     val registerErrorMessage: String? = null,
     val lastSubmittedAction: AuthAction? = null,
-    val isAuthorized: Boolean = false,
+    val pendingAuthSuccess: AuthSuccessEvent? = null,
     val loginButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Login, AuthButtonStatus.Idle),
     val registerButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Register, AuthButtonStatus.Idle),
 ) {
@@ -36,6 +36,11 @@ data class AuthUiState(
                 null -> null
             }
 }
+
+data class AuthSuccessEvent(
+    val login: String,
+    val action: AuthAction,
+)
 
 enum class AuthAction {
     Login,
@@ -180,7 +185,11 @@ class AuthViewModel
                                 isRegisterLoading = false,
                                 loginErrorMessage = null,
                                 registerErrorMessage = null,
-                                isAuthorized = true,
+                                pendingAuthSuccess =
+                                    AuthSuccessEvent(
+                                        login = login,
+                                        action = AuthAction.Login,
+                                    ),
                             ).setButtonStates(
                                 action = AuthAction.Login,
                                 status = AuthButtonStatus.Success,
@@ -251,7 +260,11 @@ class AuthViewModel
                                 isRegisterLoading = false,
                                 loginErrorMessage = null,
                                 registerErrorMessage = null,
-                                isAuthorized = true,
+                                pendingAuthSuccess =
+                                    AuthSuccessEvent(
+                                        login = login,
+                                        action = AuthAction.Register,
+                                    ),
                             ).setButtonStates(
                                 action = AuthAction.Register,
                                 status = AuthButtonStatus.Success,
@@ -292,10 +305,10 @@ class AuthViewModel
             }
         }
 
-        fun onAuthorizationHandled() {
+        fun onAuthSuccessHandled() {
             _uiState.update { state ->
                 state.copy(
-                    isAuthorized = false,
+                    pendingAuthSuccess = null,
                     password = "",
                     isLoginLoading = false,
                     isRegisterLoading = false,
