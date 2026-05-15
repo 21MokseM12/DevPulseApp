@@ -21,7 +21,7 @@
 | ID | Сценарий | Ожидаемый результат | Статус | Доказательство/ссылка |
 | --- | --- | --- | --- | --- |
 | AC-01 | Установка `staging` APK на Android 13+ | Приложение устанавливается и запускается без crash | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
-| AC-02 | Auth success + session restore | Успешный вход, сессия восстанавливается после cold start | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
+| AC-02 | Auth success + session restore | Успешный вход, сессия восстанавливается после cold start | PENDING_MANUAL | `release/startup-operational-coverage-matrix.md`, `release/startup-lifecycle-report.md`, раздел "Порядок ручного прогона" |
 | AC-03 | Auth validation/network errors | Понятные user-friendly ошибки без поломки flow | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
 | AC-04 | Subscriptions CRUD | Добавление/удаление/чтение подписок работает стабильно | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
 | AC-05 | Notifications feed + unread-count + mark-read | Лента загружается, unread-count и mark-read работают | PENDING_MANUAL | См. раздел "Порядок ручного прогона" |
@@ -48,4 +48,9 @@
 
 - `GO`: все blocker/major закрыты, обязательные AC-01..AC-07 в `PASS`.
 - `NO-GO`: есть хотя бы один blocker/major или не закрыты обязательные manual gates.
+
+## Startup lifecycle артефакты
+
+- Матрица операционного покрытия (`env` + `cold/warm start`): `release/startup-operational-coverage-matrix.md`.
+- Отдельный startup lifecycle отчет: `release/startup-lifecycle-report.md`.
 

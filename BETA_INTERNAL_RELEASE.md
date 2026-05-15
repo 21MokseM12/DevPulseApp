@@ -46,6 +46,8 @@
 - Матрица instrumented smoke-сценариев: `docs/instrumented-smoke-matrix.md`.
 - Flaky/quarantine policy для smoke: `docs/instrumented-smoke-flaky-policy.md`.
 - Архитектура хранения сессии: `docs/session-storage-architecture.md`.
+- Матрица операционного startup-покрытия (`env` + `cold/warm start`): `release/startup-operational-coverage-matrix.md`.
+- Отдельный startup lifecycle отчет: `release/startup-lifecycle-report.md`.
 
 ## Smoke Checklist (реальное устройство)
 

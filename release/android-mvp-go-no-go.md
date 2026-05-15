@@ -15,7 +15,10 @@
 4. Автоматизирована формальная проверка release decision:
    - `ReleaseAcceptanceDeciderTest` (unit) -> PASS
    - `ReleaseAcceptanceDocsIntegrationTest` (integration) -> PASS
-5. Обязательные ручные проверки на физическом устройстве еще не закрыты:
+5. Startup-артефакты вынесены в отдельные подтверждаемые документы:
+   - `release/startup-operational-coverage-matrix.md`
+   - `release/startup-lifecycle-report.md`
+6. Обязательные ручные проверки на физическом устройстве еще не закрыты:
    - Android 13+ smoke;
    - push e2e + deep-link;
    - (опционально) Android <13 smoke.

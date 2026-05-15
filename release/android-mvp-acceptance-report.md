@@ -8,6 +8,8 @@
 ## Объем приемки
 
 - Формализованный checklist: `release/android-mvp-acceptance-checklist.md`
+- Матрица операционного startup-покрытия: `release/startup-operational-coverage-matrix.md`
+- Отдельный startup lifecycle отчет: `release/startup-lifecycle-report.md`
 - Обязательные MVP сценарии:
   - auth (success/error/session restore);
   - subscriptions CRUD;
@@ -21,6 +23,13 @@
 | --- | --- | --- |
 | Build gate | `./gradlew build` | PASS (см. локальный прогон в рамках задачи R-0) |
 | Release decision policy | `./gradlew :app:testDebugUnitTest --tests "*ReleaseAcceptance*"` | PASS |
+
+## Startup lifecycle артефакты
+
+| Артефакт | Что подтверждает | Статус |
+| --- | --- | --- |
+| `release/startup-operational-coverage-matrix.md` | Полное покрытие осей `env` + `cold/warm start` c подтвержденным статусом по каждой ячейке | PASS |
+| `release/startup-lifecycle-report.md` | Сценарный startup lifecycle отчет с явными шагами, ожиданиями и результатами | PASS |
 
 ## Manual gates (physical device required)
 
