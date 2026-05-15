@@ -45,8 +45,8 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
-            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.loginErrorMessage)
+            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.loginErrorMessage)
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
@@ -65,9 +65,9 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             advanceUntilIdle()
 
-            assertEquals("Для регистрации заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Для регистрации: Введите логин.", viewModel.uiState.value.activeErrorMessage)
             assertEquals(null, viewModel.uiState.value.loginErrorMessage)
-            assertEquals("Для регистрации заполните логин и пароль.", viewModel.uiState.value.registerErrorMessage)
+            assertEquals("Для регистрации: Введите логин.", viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Повторить регистрацию", viewModel.uiState.value.registerButtonState.text)
@@ -82,7 +82,7 @@ class AuthViewModelTest {
             val viewModel = createViewModel(FakeAuthRepository())
 
             viewModel.submitLogin()
-            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Для входа: Введите логин.", viewModel.uiState.value.activeErrorMessage)
 
             viewModel.onLoginChanged("moksem")
 
@@ -98,13 +98,13 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(result = AuthResult.Success)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("  moksem  ")
-            viewModel.onPasswordChanged("  secret  ")
+            viewModel.onPasswordChanged("  secret12  ")
 
             viewModel.submitLogin()
             advanceUntilIdle()
 
             assertEquals("moksem", remote.lastLoginLogin)
-            assertEquals("secret", remote.lastLoginPassword)
+            assertEquals("secret12", remote.lastLoginPassword)
             assertEquals("moksem", viewModel.uiState.value.login)
             assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
             assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
@@ -119,7 +119,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(result = AuthResult.Success)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitRegister()
             advanceUntilIdle()
@@ -128,7 +128,7 @@ class AuthViewModelTest {
             assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
             assertEquals(1, remote.registerCalls)
             assertEquals("moksem", remote.lastRegisterLogin)
-            assertEquals("secret", remote.lastRegisterPassword)
+            assertEquals("secret12", remote.lastRegisterPassword)
             assertEquals("", viewModel.uiState.value.password)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Регистрация выполнена", viewModel.uiState.value.registerButtonState.text)
@@ -151,7 +151,7 @@ class AuthViewModelTest {
                 )
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -179,7 +179,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(gate = gate)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitLogin()
             viewModel.submitRegister()
@@ -215,7 +215,7 @@ class AuthViewModelTest {
                 )
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitRegister()
             advanceUntilIdle()
@@ -243,7 +243,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(result = AuthResult.Success)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -262,7 +262,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository()
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             remote.nextResult =
                 AuthResult.Failure(
@@ -311,7 +311,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository()
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
             remote.nextResult =
                 AuthResult.Failure(
                     error =
@@ -347,7 +347,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository()
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
             remote.nextResult =
                 AuthResult.Failure(
                     error =
@@ -385,7 +385,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(gate = gate)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitRegister()
             runCurrent()
@@ -395,7 +395,7 @@ class AuthViewModelTest {
             viewModel.onPasswordChanged("updated-password")
 
             assertEquals("moksem", viewModel.uiState.value.login)
-            assertEquals("secret", viewModel.uiState.value.password)
+            assertEquals("secret12", viewModel.uiState.value.password)
             assertTrue(viewModel.uiState.value.isRegisterLoading)
             assertEquals(AuthButtonStatus.Loading, viewModel.uiState.value.registerButtonState.status)
 
@@ -412,7 +412,7 @@ class AuthViewModelTest {
             val remote = FakeAuthRepository(gate = gate)
             val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             viewModel.submitLogin()
             runCurrent()

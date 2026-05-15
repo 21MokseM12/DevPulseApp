@@ -29,7 +29,7 @@ class AuthButtonTextIntegrationTest {
                     registerClientUseCase = RegisterClientUseCase(remote),
                 )
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             remote.enqueueLogin(
                 AuthResult.Failure(
@@ -78,7 +78,7 @@ class AuthButtonTextIntegrationTest {
                     registerClientUseCase = RegisterClientUseCase(remote),
                 )
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
 
             remote.enqueueLogin(
                 AuthResult.Failure(
@@ -124,7 +124,7 @@ class AuthButtonTextIntegrationTest {
                     registerClientUseCase = RegisterClientUseCase(remote),
                 )
             viewModel.onLoginChanged("moksem")
-            viewModel.onPasswordChanged("secret")
+            viewModel.onPasswordChanged("secret12")
             remote.enqueueLogin(
                 AuthResult.Failure(
                     error =

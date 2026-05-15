@@ -2,6 +2,8 @@ package com.devpulse.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.domain.validation.AuthCredentialsValidationResult
+import com.devpulse.app.domain.validation.AuthCredentialsValidator
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
@@ -115,6 +117,7 @@ class AuthViewModel
         private val _uiState = MutableStateFlow(AuthUiState())
         val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
         private var activeAuthJob: Job? = null
+        private val credentialsValidator = AuthCredentialsValidator()
 
         fun onLoginChanged(value: String) {
             _uiState.update { state ->
@@ -148,11 +151,12 @@ class AuthViewModel
 
             val login = current.login.trim()
             val password = current.password.trim()
-            if (login.isBlank() || password.isBlank()) {
+            val validationResult = credentialsValidator.validate(login, password)
+            if (!validationResult.isValid) {
                 _uiState.update { state ->
                     state.copy(
                         lastSubmittedAction = AuthAction.Login,
-                        loginErrorMessage = validationMessage(AuthAction.Login),
+                        loginErrorMessage = validationMessage(AuthAction.Login, validationResult),
                     ).setButtonStates(
                         action = AuthAction.Login,
                         status = AuthButtonStatus.Error,
@@ -230,11 +234,12 @@ class AuthViewModel
 
             val login = current.login.trim()
             val password = current.password.trim()
-            if (login.isBlank() || password.isBlank()) {
+            val validationResult = credentialsValidator.validate(login, password)
+            if (!validationResult.isValid) {
                 _uiState.update { state ->
                     state.copy(
                         lastSubmittedAction = AuthAction.Register,
-                        registerErrorMessage = validationMessage(AuthAction.Register),
+                        registerErrorMessage = validationMessage(AuthAction.Register, validationResult),
                     ).setButtonStates(
                         action = AuthAction.Register,
                         status = AuthButtonStatus.Error,
@@ -307,10 +312,14 @@ class AuthViewModel
                 }
         }
 
-        private fun validationMessage(action: AuthAction): String {
+        private fun validationMessage(
+            action: AuthAction,
+            validationResult: AuthCredentialsValidationResult,
+        ): String {
+            val details = validationResult.loginError?.message ?: validationResult.passwordError?.message
             return when (action) {
-                AuthAction.Login -> "Для входа заполните логин и пароль."
-                AuthAction.Register -> "Для регистрации заполните логин и пароль."
+                AuthAction.Login -> "Для входа: $details"
+                AuthAction.Register -> "Для регистрации: $details"
             }
         }
 
