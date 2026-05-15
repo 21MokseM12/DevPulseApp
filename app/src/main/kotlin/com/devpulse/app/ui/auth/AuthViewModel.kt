@@ -20,11 +20,68 @@ data class AuthUiState(
     val loadingAction: AuthAction? = null,
     val errorMessage: String? = null,
     val isAuthorized: Boolean = false,
+    val loginButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Login, AuthButtonStatus.Idle),
+    val registerButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Register, AuthButtonStatus.Idle),
 )
 
 enum class AuthAction {
     Login,
     Register,
+}
+
+enum class AuthButtonStatus {
+    Idle,
+    Loading,
+    Error,
+    Success,
+}
+
+data class AuthButtonUiState(
+    val action: AuthAction,
+    val status: AuthButtonStatus,
+    val text: String,
+) {
+    companion object {
+        fun create(
+            action: AuthAction,
+            status: AuthButtonStatus,
+        ): AuthButtonUiState {
+            return AuthButtonUiState(
+                action = action,
+                status = status,
+                text = AuthButtonTextContract.resolve(action, status),
+            )
+        }
+    }
+}
+
+object AuthButtonTextContract {
+    private val loginStates: Map<AuthButtonStatus, String> =
+        mapOf(
+            AuthButtonStatus.Idle to "Войти",
+            AuthButtonStatus.Loading to "Входим...",
+            AuthButtonStatus.Error to "Повторить вход",
+            AuthButtonStatus.Success to "Вход выполнен",
+        )
+    private val registerStates: Map<AuthButtonStatus, String> =
+        mapOf(
+            AuthButtonStatus.Idle to "Зарегистрироваться",
+            AuthButtonStatus.Loading to "Регистрируем...",
+            AuthButtonStatus.Error to "Повторить регистрацию",
+            AuthButtonStatus.Success to "Регистрация выполнена",
+        )
+
+    fun resolve(
+        action: AuthAction,
+        status: AuthButtonStatus,
+    ): String {
+        val states =
+            when (action) {
+                AuthAction.Login -> loginStates
+                AuthAction.Register -> registerStates
+            }
+        return requireNotNull(states[status]) { "Missing text contract for $action/$status" }
+    }
 }
 
 @HiltViewModel
@@ -38,13 +95,13 @@ class AuthViewModel
 
         fun onLoginChanged(value: String) {
             _uiState.update { state ->
-                state.copy(login = value, errorMessage = null)
+                state.copy(login = value, errorMessage = null).resetButtonsToIdle()
             }
         }
 
         fun onPasswordChanged(value: String) {
             _uiState.update { state ->
-                state.copy(password = value, errorMessage = null)
+                state.copy(password = value, errorMessage = null).resetButtonsToIdle()
             }
         }
 
@@ -69,11 +126,10 @@ class AuthViewModel
             if (login.isBlank() || password.isBlank()) {
                 _uiState.update { state ->
                     state.copy(
-                        errorMessage =
-                            when (action) {
-                                AuthAction.Login -> "Для входа заполните логин и пароль."
-                                AuthAction.Register -> "Для регистрации заполните логин и пароль."
-                            },
+                        errorMessage = validationMessage(action),
+                    ).setButtonStates(
+                        action = action,
+                        status = AuthButtonStatus.Error,
                     )
                 }
                 return
@@ -83,6 +139,9 @@ class AuthViewModel
                     isLoading = true,
                     loadingAction = action,
                     errorMessage = null,
+                ).setButtonStates(
+                    action = action,
+                    status = AuthButtonStatus.Loading,
                 )
             }
 
@@ -104,6 +163,9 @@ class AuthViewModel
                                 isLoading = false,
                                 loadingAction = null,
                                 isAuthorized = true,
+                            ).setButtonStates(
+                                action = action,
+                                status = AuthButtonStatus.Success,
                             )
                         }
                     }
@@ -113,7 +175,10 @@ class AuthViewModel
                             state.copy(
                                 isLoading = false,
                                 loadingAction = null,
-                                errorMessage = actionFailureMessage(action, result.error.userMessage),
+                                errorMessage = failureMessage(action, result.error.userMessage),
+                            ).setButtonStates(
+                                action = action,
+                                status = AuthButtonStatus.Error,
                             )
                         }
                     }
@@ -123,7 +188,10 @@ class AuthViewModel
                             state.copy(
                                 isLoading = false,
                                 loadingAction = null,
-                                errorMessage = actionFailureMessage(action, result.error.userMessage),
+                                errorMessage = failureMessage(action, result.error.userMessage),
+                            ).setButtonStates(
+                                action = action,
+                                status = AuthButtonStatus.Error,
                             )
                         }
                     }
@@ -131,7 +199,14 @@ class AuthViewModel
             }
         }
 
-        private fun actionFailureMessage(
+        private fun validationMessage(action: AuthAction): String {
+            return when (action) {
+                AuthAction.Login -> "Для входа заполните логин и пароль."
+                AuthAction.Register -> "Для регистрации заполните логин и пароль."
+            }
+        }
+
+        private fun failureMessage(
             action: AuthAction,
             message: String,
         ): String {
@@ -146,7 +221,33 @@ class AuthViewModel
                 state.copy(
                     isAuthorized = false,
                     password = "",
-                )
+                ).resetButtonsToIdle()
+            }
+        }
+
+        private fun AuthUiState.resetButtonsToIdle(): AuthUiState {
+            return copy(
+                loginButtonState = AuthButtonUiState.create(AuthAction.Login, AuthButtonStatus.Idle),
+                registerButtonState = AuthButtonUiState.create(AuthAction.Register, AuthButtonStatus.Idle),
+            )
+        }
+
+        private fun AuthUiState.setButtonStates(
+            action: AuthAction,
+            status: AuthButtonStatus,
+        ): AuthUiState {
+            return when (action) {
+                AuthAction.Login ->
+                    copy(
+                        loginButtonState = AuthButtonUiState.create(AuthAction.Login, status),
+                        registerButtonState = AuthButtonUiState.create(AuthAction.Register, AuthButtonStatus.Idle),
+                    )
+
+                AuthAction.Register ->
+                    copy(
+                        loginButtonState = AuthButtonUiState.create(AuthAction.Login, AuthButtonStatus.Idle),
+                        registerButtonState = AuthButtonUiState.create(AuthAction.Register, status),
+                    )
             }
         }
     }

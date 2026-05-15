@@ -12,6 +12,8 @@ import com.devpulse.app.data.remote.dto.NotificationDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
+import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
 import kotlinx.coroutines.delay
 import java.time.Instant
 import javax.inject.Inject
@@ -28,6 +30,9 @@ class FakeSmokeRemoteDataSource
 
         @Volatile
         private var registerDelayMs: Long = 0L
+
+        @Volatile
+        private var registerResult: RemoteCallResult<Unit> = RemoteCallResult.Success(Unit, 200)
 
         init {
             reset()
@@ -59,11 +64,24 @@ class FakeSmokeRemoteDataSource
                     )
                 nextLinkId = 2L
                 registerDelayMs = 0L
+                registerResult = RemoteCallResult.Success(Unit, 200)
             }
         }
 
         fun setRegisterDelayForTesting(delayMs: Long) {
             registerDelayMs = delayMs.coerceAtLeast(0L)
+        }
+
+        fun setRegisterFailureForTesting(message: String) {
+            registerResult =
+                RemoteCallResult.ApiFailure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.BadRequest,
+                            userMessage = message,
+                        ),
+                    statusCode = 400,
+                )
         }
 
         fun setNotificationsForTesting(nextNotifications: List<NotificationDto>) {
@@ -77,7 +95,7 @@ class FakeSmokeRemoteDataSource
             if (delayMs > 0L) {
                 delay(delayMs)
             }
-            return RemoteCallResult.Success(Unit, 200)
+            return registerResult
         }
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {

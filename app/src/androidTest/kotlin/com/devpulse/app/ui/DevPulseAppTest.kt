@@ -68,10 +68,26 @@ class DevPulseAppTest {
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
+        composeRule.waitUntilNodeWithTextExists("Входим...")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).assertIsNotEnabled()
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithText("Зарегистрироваться").assertIsDisplayed()
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+    }
+
+    @Test
+    fun authRegisterFailure_showsRegisterErrorButtonText() {
+        smokeDataSource.setRegisterFailureForTesting(message = "Пользователь уже существует")
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
+
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTextExists("Повторить регистрацию")
+        composeRule.waitUntilNodeWithTextExists("Не удалось зарегистрироваться. Пользователь уже существует")
     }
 
     @Test

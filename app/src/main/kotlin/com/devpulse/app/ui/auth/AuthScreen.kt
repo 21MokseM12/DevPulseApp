@@ -2,8 +2,11 @@ package com.devpulse.app.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -106,15 +109,19 @@ private fun AuthScreen(
                     .testTag(SmokeTestTags.AUTH_LOGIN_BUTTON),
         ) {
             if (isLoginLoading) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier =
-                        Modifier
-                            .padding(vertical = 2.dp)
-                            .testTag(SmokeTestTags.AUTH_LOGIN_LOADER),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier =
+                            Modifier
+                                .padding(vertical = 2.dp)
+                                .testTag(SmokeTestTags.AUTH_LOGIN_LOADER),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = uiState.loginButtonState.text)
+                }
             } else {
-                Text(text = "Войти")
+                Text(text = uiState.loginButtonState.text)
             }
         }
         OutlinedButton(
@@ -126,15 +133,19 @@ private fun AuthScreen(
                     .testTag(SmokeTestTags.AUTH_REGISTER_BUTTON),
         ) {
             if (isRegisterLoading) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.dp,
-                    modifier =
-                        Modifier
-                            .padding(vertical = 2.dp)
-                            .testTag(SmokeTestTags.AUTH_REGISTER_LOADER),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.dp,
+                        modifier =
+                            Modifier
+                                .padding(vertical = 2.dp)
+                                .testTag(SmokeTestTags.AUTH_REGISTER_LOADER),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = uiState.registerButtonState.text)
+                }
             } else {
-                Text(text = "Зарегистрироваться")
+                Text(text = uiState.registerButtonState.text)
             }
         }
     }
