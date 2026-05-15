@@ -65,6 +65,49 @@ class AuthButtonTextIntegrationTest {
             assertEquals("moksem", viewModel.uiState.value.pendingAuthSuccess?.login)
         }
 
+    @Test
+    fun loginNetworkFailure_thenRetrySuccess_resetsErrorAndKeepsActionStateIsolated() =
+        runTest {
+            val remote = SequenceAuthRepository()
+            val viewModel =
+                AuthViewModel(
+                    loginClientUseCase = LoginClientUseCase(remote),
+                    registerClientUseCase = RegisterClientUseCase(remote),
+                )
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            remote.enqueueLogin(
+                AuthResult.Failure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.NetworkTimeout,
+                            userMessage = "Нет соединения",
+                        ),
+                ),
+            )
+            remote.enqueueLogin(AuthResult.Success)
+
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
+            assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
+            assertEquals("Не удалось войти. Нет соединения", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
+
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
+            assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
+            assertEquals("Вход выполнен", viewModel.uiState.value.loginButtonState.text)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
+        }
+
     private class SequenceAuthRepository : AuthRepository {
         private val loginResults = ArrayDeque<AuthResult>()
         private val registerResults = ArrayDeque<AuthResult>()

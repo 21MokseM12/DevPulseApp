@@ -56,6 +56,26 @@ class AuthViewModelTest {
     }
 
     @Test
+    fun submitRegister_withBlankFields_showsRegisterValidationError() {
+        runTest {
+            val remote = FakeAuthRepository()
+            val viewModel = createViewModel(remote)
+
+            viewModel.submitRegister()
+            advanceUntilIdle()
+
+            assertEquals("Для регистрации заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
+            assertEquals("Для регистрации заполните логин и пароль.", viewModel.uiState.value.registerErrorMessage)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
+            assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.registerButtonState.status)
+            assertEquals("Повторить регистрацию", viewModel.uiState.value.registerButtonState.text)
+            assertEquals(0, remote.loginCalls)
+            assertEquals(0, remote.registerCalls)
+        }
+    }
+
+    @Test
     fun onLoginChanged_clearsPreviousError() {
         runTest {
             val viewModel = createViewModel(FakeAuthRepository())
@@ -303,6 +323,42 @@ class AuthViewModelTest {
             assertEquals(null, viewModel.uiState.value.activeErrorMessage)
             assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
+        }
+    }
+
+    @Test
+    fun submitRegister_afterNetworkError_retrySucceedsWithoutSharingLoginError() {
+        runTest {
+            val remote = FakeAuthRepository()
+            val viewModel = createViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+            remote.nextResult =
+                AuthResult.Failure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.NetworkTimeout,
+                            userMessage = "Превышено время ожидания сети",
+                        ),
+                )
+
+            viewModel.submitRegister()
+            advanceUntilIdle()
+
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                viewModel.uiState.value.registerErrorMessage,
+            )
+
+            remote.nextResult = AuthResult.Success
+            viewModel.submitRegister()
+            advanceUntilIdle()
+
+            assertEquals(2, remote.registerCalls)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.pendingAuthSuccess?.action)
+            assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.registerButtonState.status)
         }
     }
 

@@ -78,6 +78,17 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun authValidation_blankCredentials_showsLoginValidationState() {
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTextExists("Для входа заполните логин и пароль.")
+        composeRule.waitUntilNodeWithTextExists("Повторить вход")
+        composeRule.onNodeWithText("Зарегистрироваться").assertIsDisplayed()
+    }
+
+    @Test
     fun authRegisterFailure_showsRegisterErrorButtonText() {
         smokeDataSource.setRegisterFailureForTesting(message = "Пользователь уже существует")
 
