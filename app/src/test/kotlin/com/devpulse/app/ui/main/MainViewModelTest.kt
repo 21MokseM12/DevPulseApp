@@ -344,6 +344,53 @@ class MainViewModelTest {
     }
 
     @Test
+    fun loginLogoutLogin_cycle_keepsStartupDestinationConsistent() {
+        runTest {
+            val repository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val sessionStore = FakeSessionStore()
+            val viewModel =
+                MainViewModel(
+                    repository,
+                    sessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sessionStore),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+
+            viewModel.onLogout()
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+            assertTrue(viewModel.uiState.value.hasCachedSession)
+        }
+    }
+
+    @Test
     fun logoutDuringBootstrap_keepsAuthRouteAfterBootstrapFinishes() {
         runTest {
             val bootstrapGate = CompletableDeferred<Unit>()
