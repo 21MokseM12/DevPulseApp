@@ -168,7 +168,8 @@ class DevPulseAppTest {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
 
         fillAuthCredentials(login = "moksem", password = "secret")
-        composeRule.activityRule.scenario.recreate()
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
@@ -432,6 +433,7 @@ class DevPulseAppTest {
     }
 
     private fun login() {
+        ensureAuthScreen()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         fillAuthCredentials(login = "moksem", password = "secret")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
@@ -449,6 +451,19 @@ class DevPulseAppTest {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON)
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.UPDATES_TITLE)
+    }
+
+    private fun ensureAuthScreen() {
+        val hasAuthScreen =
+            composeRule.onAllNodesWithTag(SmokeTestTags.AUTH_TITLE).fetchSemanticsNodes().isNotEmpty()
+        if (hasAuthScreen) return
+
+        val hasLogoutAction =
+            composeRule.onAllNodesWithTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON).fetchSemanticsNodes().isNotEmpty()
+        if (hasLogoutAction) {
+            composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON).performClick()
+            composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        }
     }
 
     private fun captureScreenshot(
