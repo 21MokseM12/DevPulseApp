@@ -65,7 +65,10 @@ class AuthValidationIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(1, repository.loginCalls)
-            assertEquals("Проверьте пароль. password must include a number", viewModel.uiState.value.passwordInlineError)
+            assertEquals(
+                "Проверьте пароль. password must include a number",
+                viewModel.uiState.value.passwordInlineError,
+            )
             assertEquals(null, viewModel.uiState.value.loginInlineError)
             assertEquals(null, viewModel.uiState.value.activeErrorMessage)
         }

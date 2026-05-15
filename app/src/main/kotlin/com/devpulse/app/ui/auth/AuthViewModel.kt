@@ -2,12 +2,12 @@ package com.devpulse.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devpulse.app.domain.validation.AuthCredentialsValidationResult
-import com.devpulse.app.domain.validation.AuthCredentialsValidator
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
 import com.devpulse.app.domain.usecase.RegisterClientUseCase
+import com.devpulse.app.domain.validation.AuthCredentialsValidationResult
+import com.devpulse.app.domain.validation.AuthCredentialsValidator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -257,7 +257,11 @@ class AuthViewModel
                                         isLoginTouched = false,
                                         isPasswordTouched = false,
                                         hasValidationAttempt = false,
-                                        credentialsValidation = credentialsValidator.validate(loginRaw = login, passwordRaw = ""),
+                                        credentialsValidation =
+                                            credentialsValidator.validate(
+                                                loginRaw = login,
+                                                passwordRaw = "",
+                                            ),
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,
@@ -352,7 +356,11 @@ class AuthViewModel
                                         isLoginTouched = false,
                                         isPasswordTouched = false,
                                         hasValidationAttempt = false,
-                                        credentialsValidation = credentialsValidator.validate(loginRaw = login, passwordRaw = ""),
+                                        credentialsValidation =
+                                            credentialsValidator.validate(
+                                                loginRaw = login,
+                                                passwordRaw = "",
+                                            ),
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
                                         loginErrorMessage = null,

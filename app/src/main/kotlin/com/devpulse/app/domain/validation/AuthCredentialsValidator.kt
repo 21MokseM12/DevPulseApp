@@ -50,7 +50,9 @@ class AuthCredentialsValidator {
         if (!AuthCredentialsValidationPolicy.hasAllowedCharacters(login)) {
             return AuthCredentialsValidationError(
                 type = AuthCredentialsValidationErrorType.InvalidCharacters,
-                message = "Логин может содержать только ${AuthCredentialsValidationPolicy.ALLOWED_SYMBOLS_DESCRIPTION}.",
+                message =
+                    "Логин может содержать только " +
+                        "${AuthCredentialsValidationPolicy.ALLOWED_SYMBOLS_DESCRIPTION}.",
             )
         }
         return null
@@ -72,7 +74,9 @@ class AuthCredentialsValidator {
         if (!AuthCredentialsValidationPolicy.hasAllowedCharacters(password)) {
             return AuthCredentialsValidationError(
                 type = AuthCredentialsValidationErrorType.InvalidCharacters,
-                message = "Пароль может содержать только ${AuthCredentialsValidationPolicy.ALLOWED_SYMBOLS_DESCRIPTION}.",
+                message =
+                    "Пароль может содержать только " +
+                        "${AuthCredentialsValidationPolicy.ALLOWED_SYMBOLS_DESCRIPTION}.",
             )
         }
         if (!AuthCredentialsValidationPolicy.hasLetter(password)) {
