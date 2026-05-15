@@ -21,6 +21,8 @@ import com.devpulse.app.domain.repository.AppBootstrapRepository
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.ui.auth.AuthAction
+import com.devpulse.app.ui.auth.AuthSuccessEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -122,6 +124,52 @@ class MainLogoutLifecycleIntegrationTest {
             )
         }
 
+    @Test
+    fun logoutThenRelogin_restoresSubscriptionsDestinationAndSession() =
+        runTest {
+            val steps = mutableListOf<String>()
+            val sessionStore = RecordingSessionStore(steps)
+            val viewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = true,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase =
+                        AccountLifecycleUseCase(
+                            remoteDataSource = FakeRemoteDataSource(),
+                            sessionStore = sessionStore,
+                            updatesRepository = RecordingUpdatesRepository(steps),
+                            pushTokenStore = RecordingPushTokenStore(steps),
+                            notificationPermissionStore = RecordingNotificationPermissionStore(steps),
+                        ),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+
+            viewModel.onLogout()
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+            assertEquals(null, sessionStore.getSession())
+
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+            assertEquals("moksem", sessionStore.getSession()?.login)
+            assertTrue(viewModel.uiState.value.hasCachedSession)
+        }
+
     private class FakeAppBootstrapRepository(
         private val info: AppBootstrapInfo,
     ) : AppBootstrapRepository {
@@ -148,7 +196,14 @@ class MainLogoutLifecycleIntegrationTest {
         override suspend fun saveSession(
             login: String,
             isRegistered: Boolean,
-        ) = Unit
+        ) {
+            state.value =
+                StoredSession(
+                    login = login,
+                    isRegistered = isRegistered,
+                    updatedAtEpochMs = 2L,
+                )
+        }
 
         override suspend fun clearSession() {
             steps += "session.clear"
