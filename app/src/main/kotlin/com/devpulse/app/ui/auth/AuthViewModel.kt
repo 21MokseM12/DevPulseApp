@@ -2,9 +2,9 @@ package com.devpulse.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.devpulse.app.data.remote.DevPulseRemoteDataSource
-import com.devpulse.app.data.remote.RemoteCallResult
-import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
+import com.devpulse.app.domain.repository.AuthResult
+import com.devpulse.app.domain.usecase.LoginClientUseCase
+import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -101,7 +101,8 @@ object AuthButtonTextContract {
 class AuthViewModel
     @Inject
     constructor(
-        private val remoteDataSource: DevPulseRemoteDataSource,
+        private val loginClientUseCase: LoginClientUseCase,
+        private val registerClientUseCase: RegisterClientUseCase,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AuthUiState())
         val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
@@ -165,14 +166,12 @@ class AuthViewModel
             viewModelScope.launch {
                 when (
                     val result =
-                        remoteDataSource.loginClient(
-                            ClientCredentialsRequestDto(
-                                login = login,
-                                password = password,
-                            ),
+                        loginClientUseCase(
+                            login = login,
+                            password = password,
                         )
                 ) {
-                    is RemoteCallResult.Success -> {
+                    is AuthResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 login = login,
@@ -189,20 +188,7 @@ class AuthViewModel
                         }
                     }
 
-                    is RemoteCallResult.ApiFailure -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
-                            ).setButtonStates(
-                                action = AuthAction.Login,
-                                status = AuthButtonStatus.Error,
-                            )
-                        }
-                    }
-
-                    is RemoteCallResult.NetworkFailure -> {
+                    is AuthResult.Failure -> {
                         _uiState.update { state ->
                             state.copy(
                                 isLoginLoading = false,
@@ -251,14 +237,12 @@ class AuthViewModel
             viewModelScope.launch {
                 when (
                     val result =
-                        remoteDataSource.registerClient(
-                            ClientCredentialsRequestDto(
-                                login = login,
-                                password = password,
-                            ),
+                        registerClientUseCase(
+                            login = login,
+                            password = password,
                         )
                 ) {
-                    is RemoteCallResult.Success -> {
+                    is AuthResult.Success -> {
                         _uiState.update { state ->
                             state.copy(
                                 login = login,
@@ -275,20 +259,7 @@ class AuthViewModel
                         }
                     }
 
-                    is RemoteCallResult.ApiFailure -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                registerErrorMessage = failureMessage(AuthAction.Register, result.error.userMessage),
-                            ).setButtonStates(
-                                action = AuthAction.Register,
-                                status = AuthButtonStatus.Error,
-                            )
-                        }
-                    }
-
-                    is RemoteCallResult.NetworkFailure -> {
+                    is AuthResult.Failure -> {
                         _uiState.update { state ->
                             state.copy(
                                 isLoginLoading = false,

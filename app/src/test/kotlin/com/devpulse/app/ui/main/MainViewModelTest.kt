@@ -259,6 +259,10 @@ class MainViewModelTest {
     }
 
     private class FakeRemoteDataSource : DevPulseRemoteDataSource {
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }

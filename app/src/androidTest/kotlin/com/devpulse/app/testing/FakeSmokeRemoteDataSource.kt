@@ -90,6 +90,10 @@ class FakeSmokeRemoteDataSource
             }
         }
 
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return registerClient(request)
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             val delayMs = registerDelayMs
             if (delayMs > 0L) {

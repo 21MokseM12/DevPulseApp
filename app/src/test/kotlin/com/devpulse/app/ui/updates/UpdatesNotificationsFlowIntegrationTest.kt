@@ -168,6 +168,10 @@ class UpdatesNotificationsFlowIntegrationTest {
             notifications.addAll(next)
         }
 
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            error("Not used")
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             error("Not used")
         }

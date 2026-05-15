@@ -436,6 +436,10 @@ class DefaultSubscriptionsRepositoryTest {
                 statusCode = 200,
             ),
     ) : DevPulseRemoteDataSource {
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            throw UnsupportedOperationException()
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             throw UnsupportedOperationException()
         }

@@ -1,18 +1,11 @@
 package com.devpulse.app.ui.auth
 
-import com.devpulse.app.data.remote.DevPulseRemoteDataSource
-import com.devpulse.app.data.remote.RemoteCallResult
-import com.devpulse.app.data.remote.dto.AddLinkRequestDto
-import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
-import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
-import com.devpulse.app.data.remote.dto.LinkResponseDto
-import com.devpulse.app.data.remote.dto.MarkReadRequestDto
-import com.devpulse.app.data.remote.dto.MarkReadResponseDto
-import com.devpulse.app.data.remote.dto.NotificationListResponseDto
-import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
-import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
+import com.devpulse.app.domain.repository.AuthRepository
+import com.devpulse.app.domain.repository.AuthResult
+import com.devpulse.app.domain.usecase.LoginClientUseCase
+import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -30,22 +23,25 @@ class AuthButtonTextIntegrationTest {
     @Test
     fun loginError_thenRegisterSuccess_switchesButtonTextByAction() =
         runTest {
-            val remote = SequenceRemoteDataSource()
-            val viewModel = AuthViewModel(remote)
+            val remote = SequenceAuthRepository()
+            val viewModel =
+                AuthViewModel(
+                    loginClientUseCase = LoginClientUseCase(remote),
+                    registerClientUseCase = RegisterClientUseCase(remote),
+                )
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
             remote.enqueueLogin(
-                RemoteCallResult.ApiFailure(
+                AuthResult.Failure(
                     error =
                         ApiError(
                             kind = ApiErrorKind.BadRequest,
                             userMessage = "Неверные данные",
                         ),
-                    statusCode = 400,
                 ),
             )
-            remote.enqueueRegister(RemoteCallResult.Success(data = Unit, statusCode = 200))
+            remote.enqueueRegister(AuthResult.Success)
 
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -69,56 +65,30 @@ class AuthButtonTextIntegrationTest {
             assertTrue(viewModel.uiState.value.isAuthorized)
         }
 
-    private class SequenceRemoteDataSource : DevPulseRemoteDataSource {
-        private val loginResults = ArrayDeque<RemoteCallResult<Unit>>()
-        private val registerResults = ArrayDeque<RemoteCallResult<Unit>>()
+    private class SequenceAuthRepository : AuthRepository {
+        private val loginResults = ArrayDeque<AuthResult>()
+        private val registerResults = ArrayDeque<AuthResult>()
 
-        fun enqueueLogin(result: RemoteCallResult<Unit>) {
+        fun enqueueLogin(result: AuthResult) {
             loginResults.addLast(result)
         }
 
-        fun enqueueRegister(result: RemoteCallResult<Unit>) {
+        fun enqueueRegister(result: AuthResult) {
             registerResults.addLast(result)
         }
 
-        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            return loginResults.removeFirstOrNull() ?: RemoteCallResult.Success(data = Unit, statusCode = 200)
+        override suspend fun login(
+            login: String,
+            password: String,
+        ): AuthResult {
+            return loginResults.removeFirstOrNull() ?: AuthResult.Success
         }
 
-        override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            return registerResults.removeFirstOrNull() ?: RemoteCallResult.Success(data = Unit, statusCode = 200)
-        }
-
-        override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getNotifications(
-            limit: Int,
-            offset: Int,
-            tags: List<String>,
-        ): RemoteCallResult<NotificationListResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
-            throw UnsupportedOperationException()
+        override suspend fun register(
+            login: String,
+            password: String,
+        ): AuthResult {
+            return registerResults.removeFirstOrNull() ?: AuthResult.Success
         }
     }
 }

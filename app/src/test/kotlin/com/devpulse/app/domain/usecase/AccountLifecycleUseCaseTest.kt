@@ -157,6 +157,10 @@ class AccountLifecycleUseCaseTest {
         var unregisterCalls: Int = 0
             private set
 
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }
@@ -196,6 +200,10 @@ class AccountLifecycleUseCaseTest {
     }
 
     private class ThrowingRemoteDataSource : DevPulseRemoteDataSource {
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }

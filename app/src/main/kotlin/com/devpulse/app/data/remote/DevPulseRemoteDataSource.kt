@@ -18,7 +18,7 @@ import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 
 interface DevPulseRemoteDataSource {
-    suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> = registerClient(request)
+    suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
 
     suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
 

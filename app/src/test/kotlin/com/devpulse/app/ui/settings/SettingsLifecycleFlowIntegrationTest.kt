@@ -174,6 +174,10 @@ class SettingsLifecycleFlowIntegrationTest {
         private val steps: MutableList<String>,
         private val unregisterResult: RemoteCallResult<Unit>,
     ) : DevPulseRemoteDataSource {
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }

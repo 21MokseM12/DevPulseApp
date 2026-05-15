@@ -1,18 +1,11 @@
 package com.devpulse.app.ui.auth
 
-import com.devpulse.app.data.remote.DevPulseRemoteDataSource
-import com.devpulse.app.data.remote.RemoteCallResult
-import com.devpulse.app.data.remote.dto.AddLinkRequestDto
-import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
-import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
-import com.devpulse.app.data.remote.dto.LinkResponseDto
-import com.devpulse.app.data.remote.dto.MarkReadRequestDto
-import com.devpulse.app.data.remote.dto.MarkReadResponseDto
-import com.devpulse.app.data.remote.dto.NotificationListResponseDto
-import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
-import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
+import com.devpulse.app.domain.repository.AuthRepository
+import com.devpulse.app.domain.repository.AuthResult
+import com.devpulse.app.domain.usecase.LoginClientUseCase
+import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,7 +26,7 @@ class AuthViewModelTest {
     @Test
     fun initialState_exposesIdleTextsForBothButtons() {
         runTest {
-            val viewModel = AuthViewModel(FakeRemoteDataSource())
+            val viewModel = createViewModel(FakeAuthRepository())
 
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Войти", viewModel.uiState.value.loginButtonState.text)
@@ -45,8 +38,8 @@ class AuthViewModelTest {
     @Test
     fun submitLogin_withBlankFields_showsLoginValidationError() {
         runTest {
-            val remote = FakeRemoteDataSource()
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository()
+            val viewModel = createViewModel(remote)
 
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -65,7 +58,7 @@ class AuthViewModelTest {
     @Test
     fun onLoginChanged_clearsPreviousError() {
         runTest {
-            val viewModel = AuthViewModel(FakeRemoteDataSource())
+            val viewModel = createViewModel(FakeAuthRepository())
 
             viewModel.submitLogin()
             assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
@@ -81,8 +74,8 @@ class AuthViewModelTest {
     @Test
     fun submit_trimsLoginBeforeSendingRequest() {
         runTest {
-            val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository(result = AuthResult.Success)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("  moksem  ")
             viewModel.onPasswordChanged("  secret  ")
 
@@ -101,8 +94,8 @@ class AuthViewModelTest {
     @Test
     fun submitRegister_withSuccess_setsAuthorizedState() {
         runTest {
-            val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository(result = AuthResult.Success)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -123,18 +116,17 @@ class AuthViewModelTest {
     fun submitLogin_withApiError_exposesActionScopedUserMessage() {
         runTest {
             val remote =
-                FakeRemoteDataSource(
+                FakeAuthRepository(
                     result =
-                        RemoteCallResult.ApiFailure(
+                        AuthResult.Failure(
                             error =
                                 ApiError(
                                     kind = ApiErrorKind.BadRequest,
                                     userMessage = "Неверные данные",
                                 ),
-                            statusCode = 400,
                         ),
                 )
-            val viewModel = AuthViewModel(remote)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -155,8 +147,8 @@ class AuthViewModelTest {
     fun submitLogin_thenSubmitRegisterWhileLoading_ignoresSecondRequest() {
         runTest {
             val gate = CompletableDeferred<Unit>()
-            val remote = FakeRemoteDataSource(gate = gate)
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository(gate = gate)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -182,18 +174,17 @@ class AuthViewModelTest {
     fun submitRegister_withNetworkError_exposesActionScopedUserMessage() {
         runTest {
             val remote =
-                FakeRemoteDataSource(
+                FakeAuthRepository(
                     result =
-                        RemoteCallResult.NetworkFailure(
+                        AuthResult.Failure(
                             error =
                                 ApiError(
                                     kind = ApiErrorKind.NetworkTimeout,
                                     userMessage = "Превышено время ожидания сети",
                                 ),
-                            throwable = IllegalStateException("timeout"),
                         ),
                 )
-            val viewModel = AuthViewModel(remote)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -218,8 +209,8 @@ class AuthViewModelTest {
     @Test
     fun onAuthorizationHandled_resetsAuthorizationFlagAndPassword() {
         runTest {
-            val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository(result = AuthResult.Success)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -237,19 +228,18 @@ class AuthViewModelTest {
     @Test
     fun submitRegister_afterLoginError_clearsErrorAndStartsLoading() {
         runTest {
-            val remote = FakeRemoteDataSource()
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository()
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
             remote.nextResult =
-                RemoteCallResult.ApiFailure(
+                AuthResult.Failure(
                     error =
                         ApiError(
                             kind = ApiErrorKind.BadRequest,
                             userMessage = "Неверные данные",
                         ),
-                    statusCode = 400,
                 )
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -259,7 +249,7 @@ class AuthViewModelTest {
 
             val gate = CompletableDeferred<Unit>()
             remote.gate = gate
-            remote.nextResult = RemoteCallResult.Success(data = Unit, statusCode = 200)
+            remote.nextResult = AuthResult.Success
             viewModel.submitRegister()
             runCurrent()
 
@@ -281,18 +271,17 @@ class AuthViewModelTest {
     @Test
     fun submitLogin_afterNetworkError_retrySucceedsWithoutSharingRegisterError() {
         runTest {
-            val remote = FakeRemoteDataSource()
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository()
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
             remote.nextResult =
-                RemoteCallResult.NetworkFailure(
+                AuthResult.Failure(
                     error =
                         ApiError(
                             kind = ApiErrorKind.NetworkTimeout,
                             userMessage = "Превышено время ожидания сети",
                         ),
-                    throwable = IllegalStateException("timeout"),
                 )
 
             viewModel.submitLogin()
@@ -304,7 +293,7 @@ class AuthViewModelTest {
             )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
 
-            remote.nextResult = RemoteCallResult.Success(data = Unit, statusCode = 200)
+            remote.nextResult = AuthResult.Success
             viewModel.submitLogin()
             advanceUntilIdle()
 
@@ -319,8 +308,8 @@ class AuthViewModelTest {
     fun onFieldChange_whileLoading_doesNotMutateCredentialsOrLoadingState() {
         runTest {
             val gate = CompletableDeferred<Unit>()
-            val remote = FakeRemoteDataSource(gate = gate)
-            val viewModel = AuthViewModel(remote)
+            val remote = FakeAuthRepository(gate = gate)
+            val viewModel = createViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
@@ -342,11 +331,18 @@ class AuthViewModelTest {
         }
     }
 
-    private class FakeRemoteDataSource(
-        result: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),
+    private fun createViewModel(repository: AuthRepository): AuthViewModel {
+        return AuthViewModel(
+            loginClientUseCase = LoginClientUseCase(repository),
+            registerClientUseCase = RegisterClientUseCase(repository),
+        )
+    }
+
+    private class FakeAuthRepository(
+        result: AuthResult = AuthResult.Success,
         gate: CompletableDeferred<Unit>? = null,
-    ) : DevPulseRemoteDataSource {
-        var nextResult: RemoteCallResult<Unit> = result
+    ) : AuthRepository {
+        var nextResult: AuthResult = result
         var gate: CompletableDeferred<Unit>? = gate
         var loginCalls: Int = 0
             private set
@@ -361,52 +357,26 @@ class AuthViewModelTest {
         var lastRegisterPassword: String? = null
             private set
 
-        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+        override suspend fun login(
+            login: String,
+            password: String,
+        ): AuthResult {
             loginCalls += 1
-            lastLoginLogin = request.login
-            lastLoginPassword = request.password
+            lastLoginLogin = login
+            lastLoginPassword = password
             gate?.await()
             return nextResult
         }
 
-        override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+        override suspend fun register(
+            login: String,
+            password: String,
+        ): AuthResult {
             registerCalls += 1
-            lastRegisterLogin = request.login
-            lastRegisterPassword = request.password
+            lastRegisterLogin = login
+            lastRegisterPassword = password
             gate?.await()
             return nextResult
-        }
-
-        override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun addLink(request: AddLinkRequestDto): RemoteCallResult<LinkResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun removeLink(request: RemoveLinkRequestDto): RemoteCallResult<BotApiMessageResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getNotifications(
-            limit: Int,
-            offset: Int,
-            tags: List<String>,
-        ): RemoteCallResult<NotificationListResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun getUnreadNotificationsCount(): RemoteCallResult<UnreadCountResponseDto> {
-            throw UnsupportedOperationException()
-        }
-
-        override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
-            throw UnsupportedOperationException()
         }
     }
 }
