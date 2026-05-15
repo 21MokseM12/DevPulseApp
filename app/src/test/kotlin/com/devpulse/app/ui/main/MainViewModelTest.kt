@@ -136,7 +136,7 @@ class MainViewModelTest {
     }
 
     @Test
-    fun onAuthSucceeded_navigatesAfterSessionIsPersisted() {
+    fun backgroundDuringAuthSuccess_navigatesToMainAfterResume() {
         runTest {
             val saveGate = CompletableDeferred<Unit>()
             val repository =
@@ -165,6 +165,141 @@ class MainViewModelTest {
 
             saveGate.complete(Unit)
             advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
+        }
+    }
+
+    @Test
+    fun rotationDuringAuthSuccess_keepsMainNavigationAfterRecreation() {
+        runTest {
+            val saveGate = CompletableDeferred<Unit>()
+            val sharedSessionStore = FakeSessionStore(saveGate = saveGate)
+            val initialRepository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val firstViewModel =
+                MainViewModel(
+                    initialRepository,
+                    sharedSessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sharedSessionStore),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, firstViewModel.uiState.value.startupDestination)
+
+            firstViewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
+            advanceUntilIdle()
+
+            val recreatedViewModel =
+                MainViewModel(
+                    initialRepository,
+                    sharedSessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sharedSessionStore),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, recreatedViewModel.uiState.value.startupDestination)
+
+            saveGate.complete(Unit)
+            advanceUntilIdle()
+
+            assertTrue(recreatedViewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Subscriptions, recreatedViewModel.uiState.value.startupDestination)
+        }
+    }
+
+    @Test
+    fun quickRelaunch_afterAuthSuccess_keepsMainDestination() {
+        runTest {
+            val sharedSessionStore = FakeSessionStore()
+            val initialRepository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val firstViewModel =
+                MainViewModel(
+                    initialRepository,
+                    sharedSessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sharedSessionStore),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, firstViewModel.uiState.value.startupDestination)
+
+            firstViewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Register,
+                ),
+            )
+
+            val relaunchedRepository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val relaunchedViewModel =
+                MainViewModel(
+                    relaunchedRepository,
+                    sharedSessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sharedSessionStore),
+                )
+            advanceUntilIdle()
+
+            assertTrue(relaunchedViewModel.uiState.value.hasCachedSession)
+            assertEquals(StartupDestination.Subscriptions, relaunchedViewModel.uiState.value.startupDestination)
+            assertEquals("moksem", sharedSessionStore.getSession()?.login)
+        }
+    }
+
+    @Test
+    fun registerSuccess_navigatesToMain_smoke() {
+        runTest {
+            val repository =
+                FakeAppBootstrapRepository(
+                    info =
+                        AppBootstrapInfo(
+                            environment = "debug",
+                            baseUrl = "https://api.example.com/",
+                            hasCachedSession = false,
+                        ),
+                )
+            val sessionStore = FakeSessionStore()
+            val viewModel =
+                MainViewModel(
+                    repository,
+                    sessionStore,
+                    createAccountLifecycleUseCase(sessionStore = sessionStore),
+                )
+            advanceUntilIdle()
+            assertEquals(StartupDestination.Auth, viewModel.uiState.value.startupDestination)
+
+            viewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "new-user",
+                    action = AuthAction.Register,
+                ),
+            )
+            advanceUntilIdle()
+
             assertTrue(viewModel.uiState.value.hasCachedSession)
             assertEquals(StartupDestination.Subscriptions, viewModel.uiState.value.startupDestination)
         }

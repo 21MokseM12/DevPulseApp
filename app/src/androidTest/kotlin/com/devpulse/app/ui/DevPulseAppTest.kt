@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.platform.app.InstrumentationRegistry
 import com.devpulse.app.MainActivity
 import com.devpulse.app.data.remote.dto.NotificationDto
@@ -98,6 +99,16 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun registerSuccess_navigatesToSubscriptions_smoke() {
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        fillAuthCredentials(login = "moksem", password = "secret")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+    }
+
+    @Test
     fun authSuccess_clearsAuthFromBackStack() {
         login()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
@@ -106,6 +117,37 @@ class DevPulseAppTest {
             activity.onBackPressedDispatcher.onBackPressed()
         }
 
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+    }
+
+    @Test
+    fun authSuccess_duringRotation_navigatesToMain() {
+        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        fillAuthCredentials(login = "moksem", password = "secret")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
+
+        composeRule.activityRule.scenario.recreate()
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+    }
+
+    @Test
+    fun authSuccess_afterBackgroundResume_navigatesToMain() {
+        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        fillAuthCredentials(login = "moksem", password = "secret")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
+
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
+        composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
         composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
     }
 
@@ -283,9 +325,16 @@ class DevPulseAppTest {
 
     private fun login() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
+        fillAuthCredentials(login = "moksem", password = "secret")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+    }
+
+    private fun fillAuthCredentials(
+        login: String,
+        password: String,
+    ) {
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput(login)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput(password)
     }
 
     private fun openUpdates() {
