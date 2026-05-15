@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -51,7 +53,25 @@ class DevPulseAppTest {
     @Test
     fun coldStart_opensAuthRoute() {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsDisplayed()
         captureScreenshot("smoke_cold_start_auth", SmokeTestTags.AUTH_TITLE)
+    }
+
+    @Test
+    fun authActions_areDistinct_andLockedDuringLoading() {
+        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
+
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_LOGIN_LOADER)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).assertIsNotEnabled()
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_REGISTER_BUTTON).assertIsNotEnabled()
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
     }
 
     @Test
@@ -237,7 +257,7 @@ class DevPulseAppTest {
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_PASSWORD_INPUT).performTextInput("secret")
-        composeRule.onNodeWithTag(SmokeTestTags.AUTH_SUBMIT_BUTTON).performClick()
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
     }
 
     private fun openUpdates() {

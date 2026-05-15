@@ -12,6 +12,7 @@ import com.devpulse.app.data.remote.dto.NotificationDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
+import kotlinx.coroutines.delay
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,6 +25,9 @@ class FakeSmokeRemoteDataSource
         private var links: MutableList<LinkResponseDto> = mutableListOf()
         private var notifications: MutableList<NotificationDto> = mutableListOf()
         private var nextLinkId = 1L
+
+        @Volatile
+        private var registerDelayMs: Long = 0L
 
         init {
             reset()
@@ -54,7 +58,12 @@ class FakeSmokeRemoteDataSource
                         ),
                     )
                 nextLinkId = 2L
+                registerDelayMs = 0L
             }
+        }
+
+        fun setRegisterDelayForTesting(delayMs: Long) {
+            registerDelayMs = delayMs.coerceAtLeast(0L)
         }
 
         fun setNotificationsForTesting(nextNotifications: List<NotificationDto>) {
@@ -64,6 +73,10 @@ class FakeSmokeRemoteDataSource
         }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            val delayMs = registerDelayMs
+            if (delayMs > 0L) {
+                delay(delayMs)
+            }
             return RemoteCallResult.Success(Unit, 200)
         }
 

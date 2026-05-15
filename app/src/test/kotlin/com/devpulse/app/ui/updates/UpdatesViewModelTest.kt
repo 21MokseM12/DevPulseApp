@@ -21,6 +21,8 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdatesViewModelTest {
@@ -281,6 +283,8 @@ class UpdatesViewModelTest {
     @Test
     fun periodAndUnread_filtersCanBeCombined() {
         runTest {
+            val today = LocalDate.now(ZoneOffset.UTC)
+            val oldDay = today.minusDays(14)
             val repository =
                 FakeNotificationsRepository(
                     notificationsResult =
@@ -289,17 +293,17 @@ class UpdatesViewModelTest {
                                 listOf(
                                     remoteNotification(
                                         id = 21L,
-                                        creationDate = "2026-05-14T09:00:00Z",
+                                        creationDate = today.atTime(9, 0).toInstant(ZoneOffset.UTC).toString(),
                                         isRead = false,
                                     ),
                                     remoteNotification(
                                         id = 22L,
-                                        creationDate = "2026-05-14T08:00:00Z",
+                                        creationDate = today.atTime(8, 0).toInstant(ZoneOffset.UTC).toString(),
                                         isRead = true,
                                     ),
                                     remoteNotification(
                                         id = 23L,
-                                        creationDate = "2026-05-01T08:00:00Z",
+                                        creationDate = oldDay.atTime(8, 0).toInstant(ZoneOffset.UTC).toString(),
                                         isRead = false,
                                     ),
                                 ),

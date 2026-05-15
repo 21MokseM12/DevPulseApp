@@ -17,9 +17,15 @@ data class AuthUiState(
     val login: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
+    val loadingAction: AuthAction? = null,
     val errorMessage: String? = null,
     val isAuthorized: Boolean = false,
 )
+
+enum class AuthAction {
+    Login,
+    Register,
+}
 
 @HiltViewModel
 class AuthViewModel
@@ -42,7 +48,19 @@ class AuthViewModel
             }
         }
 
+        fun submitLogin() {
+            submit(action = AuthAction.Login)
+        }
+
+        fun submitRegister() {
+            submit(action = AuthAction.Register)
+        }
+
         fun submit() {
+            submitLogin()
+        }
+
+        private fun submit(action: AuthAction) {
             val current = _uiState.value
             if (current.isLoading) return
 
@@ -50,13 +68,20 @@ class AuthViewModel
             val password = current.password.trim()
             if (login.isBlank() || password.isBlank()) {
                 _uiState.update { state ->
-                    state.copy(errorMessage = "Заполните логин и пароль.")
+                    state.copy(
+                        errorMessage =
+                            when (action) {
+                                AuthAction.Login -> "Для входа заполните логин и пароль."
+                                AuthAction.Register -> "Для регистрации заполните логин и пароль."
+                            },
+                    )
                 }
                 return
             }
             _uiState.update { state ->
                 state.copy(
                     isLoading = true,
+                    loadingAction = action,
                     errorMessage = null,
                 )
             }
@@ -77,6 +102,7 @@ class AuthViewModel
                                 login = login,
                                 password = "",
                                 isLoading = false,
+                                loadingAction = null,
                                 isAuthorized = true,
                             )
                         }
@@ -86,7 +112,8 @@ class AuthViewModel
                         _uiState.update { state ->
                             state.copy(
                                 isLoading = false,
-                                errorMessage = result.error.userMessage,
+                                loadingAction = null,
+                                errorMessage = actionFailureMessage(action, result.error.userMessage),
                             )
                         }
                     }
@@ -95,11 +122,22 @@ class AuthViewModel
                         _uiState.update { state ->
                             state.copy(
                                 isLoading = false,
-                                errorMessage = result.error.userMessage,
+                                loadingAction = null,
+                                errorMessage = actionFailureMessage(action, result.error.userMessage),
                             )
                         }
                     }
                 }
+            }
+        }
+
+        private fun actionFailureMessage(
+            action: AuthAction,
+            message: String,
+        ): String {
+            return when (action) {
+                AuthAction.Login -> "Не удалось войти. $message"
+                AuthAction.Register -> "Не удалось зарегистрироваться. $message"
             }
         }
 

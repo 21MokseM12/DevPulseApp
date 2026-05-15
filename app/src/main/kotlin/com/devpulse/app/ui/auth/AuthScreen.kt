@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +38,8 @@ fun AuthRoute(
         uiState = uiState,
         onLoginChange = viewModel::onLoginChanged,
         onPasswordChange = viewModel::onPasswordChanged,
-        onSubmit = viewModel::submit,
+        onLoginSubmit = viewModel::submitLogin,
+        onRegisterSubmit = viewModel::submitRegister,
     )
 }
 
@@ -46,8 +48,12 @@ private fun AuthScreen(
     uiState: AuthUiState,
     onLoginChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onSubmit: () -> Unit,
+    onLoginSubmit: () -> Unit,
+    onRegisterSubmit: () -> Unit,
 ) {
+    val isLoginLoading = uiState.loadingAction == AuthAction.Login
+    val isRegisterLoading = uiState.loadingAction == AuthAction.Register
+
     Column(
         modifier =
             Modifier
@@ -92,20 +98,43 @@ private fun AuthScreen(
             )
         }
         Button(
-            onClick = onSubmit,
+            onClick = onLoginSubmit,
             enabled = !uiState.isLoading,
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .testTag(SmokeTestTags.AUTH_SUBMIT_BUTTON),
+                    .testTag(SmokeTestTags.AUTH_LOGIN_BUTTON),
         ) {
-            if (uiState.isLoading) {
+            if (isLoginLoading) {
                 CircularProgressIndicator(
                     strokeWidth = 2.dp,
-                    modifier = Modifier.padding(vertical = 2.dp),
+                    modifier =
+                        Modifier
+                            .padding(vertical = 2.dp)
+                            .testTag(SmokeTestTags.AUTH_LOGIN_LOADER),
                 )
             } else {
                 Text(text = "Войти")
+            }
+        }
+        OutlinedButton(
+            onClick = onRegisterSubmit,
+            enabled = !uiState.isLoading,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .testTag(SmokeTestTags.AUTH_REGISTER_BUTTON),
+        ) {
+            if (isRegisterLoading) {
+                CircularProgressIndicator(
+                    strokeWidth = 2.dp,
+                    modifier =
+                        Modifier
+                            .padding(vertical = 2.dp)
+                            .testTag(SmokeTestTags.AUTH_REGISTER_LOADER),
+                )
+            } else {
+                Text(text = "Зарегистрироваться")
             }
         }
     }

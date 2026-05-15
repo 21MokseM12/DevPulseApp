@@ -31,15 +31,15 @@ class AuthViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun submit_withBlankFields_showsValidationError() {
+    fun submitLogin_withBlankFields_showsLoginValidationError() {
         runTest {
             val remote = FakeRemoteDataSource()
             val viewModel = AuthViewModel(remote)
 
-            viewModel.submit()
+            viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals("Заполните логин и пароль.", viewModel.uiState.value.errorMessage)
+            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.errorMessage)
             assertEquals(0, remote.registerCalls)
         }
     }
@@ -49,8 +49,8 @@ class AuthViewModelTest {
         runTest {
             val viewModel = AuthViewModel(FakeRemoteDataSource())
 
-            viewModel.submit()
-            assertEquals("Заполните логин и пароль.", viewModel.uiState.value.errorMessage)
+            viewModel.submitLogin()
+            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.errorMessage)
 
             viewModel.onLoginChanged("moksem")
 
@@ -66,7 +66,7 @@ class AuthViewModelTest {
             viewModel.onLoginChanged("  moksem  ")
             viewModel.onPasswordChanged("  secret  ")
 
-            viewModel.submit()
+            viewModel.submitLogin()
             advanceUntilIdle()
 
             assertEquals("moksem", remote.lastRegisterLogin)
@@ -77,14 +77,14 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun submit_withSuccess_setsAuthorizedState() {
+    fun submitRegister_withSuccess_setsAuthorizedState() {
         runTest {
             val remote = FakeRemoteDataSource(result = RemoteCallResult.Success(data = Unit, statusCode = 200))
             val viewModel = AuthViewModel(remote)
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            viewModel.submit()
+            viewModel.submitRegister()
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.isAuthorized)
@@ -96,7 +96,7 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun submit_withApiError_exposesUserMessage() {
+    fun submitLogin_withApiError_exposesActionScopedUserMessage() {
         runTest {
             val remote =
                 FakeRemoteDataSource(
@@ -114,16 +114,16 @@ class AuthViewModelTest {
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            viewModel.submit()
+            viewModel.submitLogin()
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isAuthorized)
-            assertEquals("Неверные данные", viewModel.uiState.value.errorMessage)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.errorMessage)
         }
     }
 
     @Test
-    fun submit_whileLoading_ignoresSecondRequest() {
+    fun submitLogin_thenSubmitRegisterWhileLoading_ignoresSecondRequest() {
         runTest {
             val gate = CompletableDeferred<Unit>()
             val remote = FakeRemoteDataSource(gate = gate)
@@ -131,10 +131,11 @@ class AuthViewModelTest {
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            viewModel.submit()
-            viewModel.submit()
+            viewModel.submitLogin()
+            viewModel.submitRegister()
             runCurrent()
             assertEquals(1, remote.registerCalls)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.loadingAction)
 
             gate.complete(Unit)
             advanceUntilIdle()
@@ -144,7 +145,7 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun submit_withNetworkError_exposesUserMessage() {
+    fun submitRegister_withNetworkError_exposesActionScopedUserMessage() {
         runTest {
             val remote =
                 FakeRemoteDataSource(
@@ -162,11 +163,14 @@ class AuthViewModelTest {
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            viewModel.submit()
+            viewModel.submitRegister()
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isAuthorized)
-            assertEquals("Превышено время ожидания сети", viewModel.uiState.value.errorMessage)
+            assertEquals(
+                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                viewModel.uiState.value.errorMessage,
+            )
         }
     }
 
@@ -178,7 +182,7 @@ class AuthViewModelTest {
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            viewModel.submit()
+            viewModel.submitLogin()
             advanceUntilIdle()
             viewModel.onAuthorizationHandled()
 
@@ -187,10 +191,49 @@ class AuthViewModelTest {
         }
     }
 
+    @Test
+    fun submitRegister_afterLoginError_clearsErrorAndStartsLoading() {
+        runTest {
+            val remote = FakeRemoteDataSource()
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            remote.nextResult =
+                RemoteCallResult.ApiFailure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.BadRequest,
+                            userMessage = "Неверные данные",
+                        ),
+                    statusCode = 400,
+                )
+            viewModel.submitLogin()
+            advanceUntilIdle()
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.errorMessage)
+
+            val gate = CompletableDeferred<Unit>()
+            remote.gate = gate
+            remote.nextResult = RemoteCallResult.Success(data = Unit, statusCode = 200)
+            viewModel.submitRegister()
+            runCurrent()
+
+            assertEquals(null, viewModel.uiState.value.errorMessage)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.loadingAction)
+            assertEquals(2, remote.registerCalls)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isAuthorized)
+        }
+    }
+
     private class FakeRemoteDataSource(
-        private val result: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),
-        private val gate: CompletableDeferred<Unit>? = null,
+        result: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),
+        gate: CompletableDeferred<Unit>? = null,
     ) : DevPulseRemoteDataSource {
+        var nextResult: RemoteCallResult<Unit> = result
+        var gate: CompletableDeferred<Unit>? = gate
         var registerCalls: Int = 0
             private set
         var lastRegisterLogin: String? = null
@@ -203,7 +246,7 @@ class AuthViewModelTest {
             lastRegisterLogin = request.login
             lastRegisterPassword = request.password
             gate?.await()
-            return result
+            return nextResult
         }
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {

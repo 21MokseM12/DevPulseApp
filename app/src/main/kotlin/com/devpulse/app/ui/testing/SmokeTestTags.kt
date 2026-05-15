@@ -4,7 +4,10 @@ object SmokeTestTags {
     const val AUTH_TITLE = "auth_title"
     const val AUTH_LOGIN_INPUT = "auth_login_input"
     const val AUTH_PASSWORD_INPUT = "auth_password_input"
-    const val AUTH_SUBMIT_BUTTON = "auth_submit_button"
+    const val AUTH_LOGIN_BUTTON = "auth_login_button"
+    const val AUTH_REGISTER_BUTTON = "auth_register_button"
+    const val AUTH_LOGIN_LOADER = "auth_login_loader"
+    const val AUTH_REGISTER_LOADER = "auth_register_loader"
 
     const val SUBSCRIPTIONS_TITLE = "subscriptions_title"
     const val SUBSCRIPTIONS_LINK_INPUT = "subscriptions_link_input"

@@ -26,6 +26,7 @@ class AppDatabaseMigrationTest {
         MigrationTestHelper(
             InstrumentationRegistry.getInstrumentation(),
             AppDatabase::class.java,
+            emptyList(),
             FrameworkSQLiteOpenHelperFactory(),
         )
 
