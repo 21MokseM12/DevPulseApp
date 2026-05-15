@@ -152,6 +152,16 @@ class SubscriptionsViewModel
             }
         }
 
+        fun prepareFirstSubscriptionDraft() {
+            updateUiState { state ->
+                if (state.addLinkInput.isNotBlank()) {
+                    state
+                } else {
+                    state.copy(addLinkInput = DEFAULT_URL_DRAFT, addErrorMessage = null)
+                }
+            }
+        }
+
         fun onRemoveRequested(link: TrackedLink) {
             updateUiState { state ->
                 state.copy(
@@ -444,5 +454,6 @@ class SubscriptionsViewModel
             const val KEY_SEARCH_HAS_FILTERS_ONLY = "subscriptions_search_has_filters_only"
             const val KEY_SEARCH_ONLY_TAGGED = "subscriptions_search_only_tagged"
             const val KEY_SEARCH_SORT_MODE = "subscriptions_search_sort_mode"
+            const val DEFAULT_URL_DRAFT = "https://"
         }
     }

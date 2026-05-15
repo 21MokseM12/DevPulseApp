@@ -21,8 +21,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,6 +55,7 @@ fun SubscriptionsRoute(
         onAddTagsInputChange = viewModel::onAddTagsInputChanged,
         onAddFiltersInputChange = viewModel::onAddFiltersInputChanged,
         onAddSubscription = viewModel::addSubscription,
+        onPrepareFirstSubscriptionDraft = viewModel::prepareFirstSubscriptionDraft,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onTagFilterSelected = viewModel::onTagFilterSelected,
         onOnlyTaggedPresetToggled = viewModel::onOnlyTaggedPresetToggled,
@@ -77,6 +81,7 @@ private fun SubscriptionsScreen(
     onAddTagsInputChange: (String) -> Unit,
     onAddFiltersInputChange: (String) -> Unit,
     onAddSubscription: () -> Unit,
+    onPrepareFirstSubscriptionDraft: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onTagFilterSelected: (String?) -> Unit,
     onOnlyTaggedPresetToggled: () -> Unit,
@@ -87,6 +92,7 @@ private fun SubscriptionsScreen(
     onRemoveDismissed: () -> Unit,
     onRemoveConfirmed: () -> Unit,
 ) {
+    val addLinkFocusRequester = remember { FocusRequester() }
     Column(
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -109,6 +115,7 @@ private fun SubscriptionsScreen(
             onAddTagsInputChange = onAddTagsInputChange,
             onAddFiltersInputChange = onAddFiltersInputChange,
             onAddSubscription = onAddSubscription,
+            addLinkFocusRequester = addLinkFocusRequester,
         )
         SearchAndFiltersSection(
             uiState = uiState,
@@ -161,7 +168,12 @@ private fun SubscriptionsScreen(
                 }
 
                 SubscriptionsScreenState.Empty -> {
-                    EmptyState()
+                    EmptyState(
+                        onPrimaryAction = {
+                            onPrepareFirstSubscriptionDraft()
+                            addLinkFocusRequester.requestFocus()
+                        },
+                    )
                 }
 
                 SubscriptionsScreenState.Content -> {
@@ -306,6 +318,7 @@ private fun AddSubscriptionForm(
     onAddTagsInputChange: (String) -> Unit,
     onAddFiltersInputChange: (String) -> Unit,
     onAddSubscription: () -> Unit,
+    addLinkFocusRequester: FocusRequester,
 ) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -319,6 +332,7 @@ private fun AddSubscriptionForm(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .focusRequester(addLinkFocusRequester)
                     .testTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT),
             enabled = !uiState.isAdding,
         )
@@ -445,14 +459,32 @@ private fun LinksContent(
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(onPrimaryAction: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(text = "Список подписок пуст")
-        Text(text = "Потяните вниз, чтобы обновить")
+        Text(
+            text = "Список подписок пока пуст",
+            modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_EMPTY_TITLE),
+        )
+        Text(
+            text = "Добавьте первую ссылку, чтобы начать отслеживание обновлений",
+            modifier =
+                Modifier
+                    .padding(top = 4.dp)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_EMPTY_DESCRIPTION),
+        )
+        Button(
+            onClick = onPrimaryAction,
+            modifier =
+                Modifier
+                    .padding(top = 12.dp)
+                    .testTag(SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON),
+        ) {
+            Text(text = "Добавить первую ссылку")
+        }
     }
 }
 

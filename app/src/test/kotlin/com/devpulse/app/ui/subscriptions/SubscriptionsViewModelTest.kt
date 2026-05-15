@@ -438,6 +438,23 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun prepareFirstSubscriptionDraft_prefillsUrlInEmptyState() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
+
+            viewModel.prepareFirstSubscriptionDraft()
+
+            assertEquals("https://", viewModel.uiState.value.addLinkInput)
+        }
+    }
+
+    @Test
     fun refresh_whenRepositoryReturnsEmpty_keepsEmptyState() {
         runTest {
             val repository =

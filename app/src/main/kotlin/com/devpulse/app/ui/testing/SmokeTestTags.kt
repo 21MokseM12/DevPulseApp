@@ -23,6 +23,9 @@ object SmokeTestTags {
     const val SUBSCRIPTIONS_PRESET_RECENTLY_ADDED = "subscriptions_preset_recently_added"
     const val SUBSCRIPTIONS_SORT_BY_URL = "subscriptions_sort_by_url"
     const val SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON = "subscriptions_clear_search_button"
+    const val SUBSCRIPTIONS_EMPTY_TITLE = "subscriptions_empty_title"
+    const val SUBSCRIPTIONS_EMPTY_DESCRIPTION = "subscriptions_empty_description"
+    const val SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON = "subscriptions_empty_primary_button"
 
     const val UPDATES_TITLE = "updates_title"
     const val UPDATES_UNREAD_COUNT = "updates_unread_count"

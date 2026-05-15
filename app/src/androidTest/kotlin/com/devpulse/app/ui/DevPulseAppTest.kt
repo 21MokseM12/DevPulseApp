@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -189,14 +191,20 @@ class DevPulseAppTest {
 
         login()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
-        composeRule.waitUntilNodeWithTextExists("Список подписок пуст")
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_EMPTY_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON)
         composeRule.waitUntilNodeWithTextMissing("Проверьте корректность введенных данных.")
+        composeRule.waitUntilNodeWithTextMissing("Повторить")
 
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON).performClick()
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).assertTextContains("https://")
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextClearance()
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextInput(firstUrl)
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
 
         composeRule.waitUntilNodeWithTextExists(firstUrl)
-        composeRule.waitUntilNodeWithTextMissing("Список подписок пуст")
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_EMPTY_TITLE)
     }
 
     @Test

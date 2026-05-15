@@ -23,4 +23,9 @@ class SmokeTestTagsTest {
     fun subscriptionTagFilter_generatesStableTag() {
         assertEquals("subscriptions_tag_filter_android", SmokeTestTags.subscriptionTagFilter("Android"))
     }
+
+    @Test
+    fun subscriptionsEmptyPrimaryButton_hasStableTag() {
+        assertEquals("subscriptions_empty_primary_button", SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON)
+    }
 }
