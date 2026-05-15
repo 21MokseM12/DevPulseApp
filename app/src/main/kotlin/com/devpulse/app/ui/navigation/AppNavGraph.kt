@@ -4,17 +4,24 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.ui.auth.AuthRoute
@@ -24,6 +31,7 @@ import com.devpulse.app.ui.main.StartupDestination
 import com.devpulse.app.ui.settings.QuietHoursScheduleRoute
 import com.devpulse.app.ui.settings.SettingsRoute
 import com.devpulse.app.ui.subscriptions.SubscriptionsRoute
+import com.devpulse.app.ui.testing.SmokeTestTags
 import com.devpulse.app.ui.updates.UpdatesRoute
 
 @Composable
@@ -37,6 +45,10 @@ fun AppNavGraph(
     onOpenUpdatesDigestContextHandled: () -> Unit,
     navController: NavHostController = rememberNavController(),
 ) {
+    val currentBackStackEntry = navController.currentBackStackEntryAsState().value
+    val currentRoute = currentBackStackEntry?.destination?.route
+    val nonMainRouteContract = resolveNonMainRouteContract(currentRoute)
+
     LaunchedEffect(uiState.startupDestination, openUpdatesRequest) {
         val target = resolveStartupRoute(uiState.startupDestination, openUpdatesRequest)
         if (target != null) {
@@ -50,7 +62,16 @@ fun AppNavGraph(
         }
     }
 
-    Scaffold { innerPadding ->
+    Scaffold(
+        topBar = {
+            if (nonMainRouteContract != null) {
+                BackNavigationTopBar(
+                    title = nonMainRouteContract.title,
+                    onNavigateBack = { navController.navigateBackWithPolicy(currentRoute) },
+                )
+            }
+        },
+    ) { innerPadding ->
         NavHost(
             navController = navController,
             startDestination = AppRoute.Splash.route,
@@ -106,11 +127,40 @@ fun AppNavGraph(
 
             composable(AppRoute.QuietHoursSchedule.route) {
                 QuietHoursScheduleRoute(
-                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateBack = {
+                        navController.navigateBackWithPolicy(AppRoute.QuietHoursSchedule.route)
+                    },
                 )
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BackNavigationTopBar(
+    title: String,
+    onNavigateBack: () -> Unit,
+) {
+    androidx.compose.material3.TopAppBar(
+        title = {
+            Text(
+                text = title,
+                modifier = Modifier.testTag(SmokeTestTags.NAVIGATION_TOP_BAR_TITLE),
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onNavigateBack,
+                modifier = Modifier.testTag(SmokeTestTags.NAVIGATION_BACK_BUTTON),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Назад",
+                )
+            }
+        },
+    )
 }
 
 internal fun resolveStartupRoute(

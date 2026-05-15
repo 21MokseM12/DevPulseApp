@@ -2,6 +2,7 @@ package com.devpulse.app.ui.navigation
 
 import com.devpulse.app.ui.main.StartupDestination
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -32,5 +33,20 @@ class AppNavGraphLogicTest {
         val route = resolveStartupRoute(StartupDestination.Subscriptions, openUpdatesRequest = true)
 
         assertEquals(AppRoute.Updates.route, route)
+    }
+
+    @Test
+    fun resolveNonMainRouteContract_returnsSettingsBackTarget_forQuietHoursRoute() {
+        val contract = resolveNonMainRouteContract(AppRoute.QuietHoursSchedule.route)
+
+        assertNotNull(contract)
+        assertEquals(AppRoute.Settings.route, contract?.backTargetRoute)
+    }
+
+    @Test
+    fun resolveNonMainRouteContract_returnsNull_forMainRoute() {
+        val contract = resolveNonMainRouteContract(AppRoute.Subscriptions.route)
+
+        assertNull(contract)
     }
 }

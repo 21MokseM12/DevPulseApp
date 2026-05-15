@@ -1,5 +1,6 @@
 package com.devpulse.app.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -65,6 +65,8 @@ internal fun QuietHoursScheduleScreen(
     }
     val preview = formatQuietHoursPreview(policy = policy, now = now)
     val controlsEnabled = policy.enabled
+
+    BackHandler(onBack = onNavigateBack)
 
     Column(
         modifier =
@@ -191,10 +193,6 @@ internal fun QuietHoursScheduleScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        }
-
-        Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Назад в настройки")
         }
     }
 }

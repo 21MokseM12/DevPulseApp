@@ -28,4 +28,14 @@ class SmokeTestTagsTest {
     fun subscriptionsEmptyPrimaryButton_hasStableTag() {
         assertEquals("subscriptions_empty_primary_button", SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON)
     }
+
+    @Test
+    fun navigationBackButton_hasStableTag() {
+        assertEquals("navigation_back_button", SmokeTestTags.NAVIGATION_BACK_BUTTON)
+    }
+
+    @Test
+    fun navigationTopBarTitle_hasStableTag() {
+        assertEquals("navigation_top_bar_title", SmokeTestTags.NAVIGATION_TOP_BAR_TITLE)
+    }
 }

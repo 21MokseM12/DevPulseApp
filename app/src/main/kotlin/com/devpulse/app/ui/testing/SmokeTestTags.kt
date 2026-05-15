@@ -1,6 +1,9 @@
 package com.devpulse.app.ui.testing
 
 object SmokeTestTags {
+    const val NAVIGATION_BACK_BUTTON = "navigation_back_button"
+    const val NAVIGATION_TOP_BAR_TITLE = "navigation_top_bar_title"
+
     const val AUTH_TITLE = "auth_title"
     const val AUTH_LOGIN_INPUT = "auth_login_input"
     const val AUTH_PASSWORD_INPUT = "auth_password_input"
@@ -33,6 +36,7 @@ object SmokeTestTags {
     const val UPDATES_LOGOUT_BUTTON = "updates_logout_button"
     const val UPDATES_SEARCH_INPUT = "updates_search_input"
     const val UPDATES_RESET_FILTERS_BUTTON = "updates_reset_filters_button"
+    const val SETTINGS_TITLE = "settings_title"
 
     fun subscriptionRow(id: Long): String = "subscriptions_row_$id"
 
