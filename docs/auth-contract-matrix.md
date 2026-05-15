@@ -30,3 +30,10 @@ Fallback включается только если login endpoint явно от
 - `already exists` в fallback-login нормализуется в успешный вход.
 - `not found` и неформатированный `400` не маскируются и возвращаются как ошибка выбранного действия.
 - UI всегда получает действие-специфичное сообщение (`Не удалось войти...` или `Не удалось зарегистрироваться...`).
+
+## Re-login root-cause note (T4.1)
+
+- Цепочка `register -> logout -> login` ожидает чистый `POST /api/v1/clients/login`.
+- Фактическая реализация могла переключать login в fallback-register при `404/405/501`.
+- Если fallback-register отвечал `400` без распознаваемых marker-ов `already exists`, ошибка возвращалась в UI как `Bad Request`.
+- Корень проблемы локализован в `DefaultDevPulseRemoteDataSource.loginClient` и `AuthFallbackPolicy`.

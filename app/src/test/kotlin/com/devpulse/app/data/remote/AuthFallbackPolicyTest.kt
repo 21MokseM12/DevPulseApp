@@ -68,6 +68,20 @@ class AuthFallbackPolicyTest {
         assertFalse(shouldTreatAsSuccess)
     }
 
+    @Test
+    fun shouldTreatRegisterConflictAsLoginSuccess_returnsFalseForUnknownConflictMessage() {
+        val shouldTreatAsSuccess =
+            AuthFallbackPolicy.shouldTreatRegisterConflictAsLoginSuccess(
+                apiError(
+                    kind = ApiErrorKind.BadRequest,
+                    message = "Client cannot be created in current state",
+                    code = "register_rejected",
+                ),
+            )
+
+        assertFalse(shouldTreatAsSuccess)
+    }
+
     private fun apiError(
         kind: ApiErrorKind,
         message: String,

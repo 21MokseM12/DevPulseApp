@@ -449,6 +449,49 @@ class DevPulseRemoteDataSourceTest {
         }
 
     @Test
+    fun loginClient_fallbackCanReturnBadRequest_whenRegisterConflictIsNotRecognized() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(404)
+                        .setBody(
+                            """
+                            {"description":"Endpoint not found","code":"not_found"}
+                            """.trimIndent(),
+                        ),
+                )
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(400)
+                        .setBody(
+                            """
+                            {"description":"Client cannot be created in current state","code":"register_rejected"}
+                            """.trimIndent(),
+                        ),
+                )
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.loginClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.ApiFailure)
+                val failure = result as RemoteCallResult.ApiFailure
+                assertEquals(400, failure.statusCode)
+                assertEquals(ApiErrorKind.BadRequest, failure.error.kind)
+                assertEquals("Client cannot be created in current state", failure.error.userMessage)
+                assertEquals(2, server.requestCount)
+                assertEquals("/api/v1/clients/login", server.takeRequest().path)
+                assertEquals("/api/v1/clients", server.takeRequest().path)
+            }
+        }
+
+    @Test
     fun loginClient_returnsOriginalApiFailureForMalformedBadRequest() =
         runTest {
             MockWebServer().use { server ->
