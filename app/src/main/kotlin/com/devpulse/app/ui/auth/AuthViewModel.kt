@@ -304,10 +304,6 @@ class AuthViewModel
             }
         }
 
-        fun submit() {
-            submitLogin()
-        }
-
         private fun validationMessage(action: AuthAction): String {
             return when (action) {
                 AuthAction.Login -> "Для входа заполните логин и пароль."
