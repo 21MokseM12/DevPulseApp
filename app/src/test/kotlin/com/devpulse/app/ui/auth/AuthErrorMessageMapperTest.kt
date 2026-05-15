@@ -22,6 +22,24 @@ class AuthErrorMessageMapperTest {
     }
 
     @Test
+    fun map_registerBadRequest_withBlankMessage_usesRegisterFallbackHint() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.BadRequest,
+                        userMessage = "   ",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Проверьте данные регистрации или попробуйте войти в существующий аккаунт.",
+            message,
+        )
+    }
+
+    @Test
     fun map_registerBadRequest_keepsBackendReasonAndAddsActionHint() {
         val message =
             AuthErrorMessageMapper.map(
@@ -41,6 +59,42 @@ class AuthErrorMessageMapperTest {
     }
 
     @Test
+    fun map_notFound_returnsAuthServiceUnavailableHint() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Login,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.NotFound,
+                        userMessage = "Endpoint not found",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось войти. Сервис авторизации временно недоступен. Повторите попытку позже.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_configuration_returnsAppConfigurationGuidance() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.Configuration,
+                        userMessage = "TLS pin mismatch",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Ошибка конфигурации приложения. Обновите приложение или обратитесь в поддержку.",
+            message,
+        )
+    }
+
+    @Test
     fun map_networkTimeout_returnsRetryGuidance() {
         val message =
             AuthErrorMessageMapper.map(
@@ -54,6 +108,42 @@ class AuthErrorMessageMapperTest {
 
         assertEquals(
             "Не удалось войти. Превышено время ожидания ответа сервера. Проверьте сеть и попробуйте снова.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_network_returnsConnectivityGuidance() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Login,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.Network,
+                        userMessage = "No route to host",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось войти. Нет соединения с сервером. Проверьте интернет и попробуйте снова.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_unknownWithMessage_keepsBackendTextAndAddsRetryHint() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Login,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.Unknown,
+                        userMessage = "Сервис перегружен",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось войти. Сервис перегружен Повторите попытку позже.",
             message,
         )
     }
