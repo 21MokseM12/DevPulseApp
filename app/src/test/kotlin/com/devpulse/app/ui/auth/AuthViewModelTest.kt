@@ -51,7 +51,9 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.errorMessage)
+            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
@@ -65,11 +67,11 @@ class AuthViewModelTest {
             val viewModel = AuthViewModel(FakeRemoteDataSource())
 
             viewModel.submitLogin()
-            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.errorMessage)
+            assertEquals("Для входа заполните логин и пароль.", viewModel.uiState.value.activeErrorMessage)
 
             viewModel.onLoginChanged("moksem")
 
-            assertEquals(null, viewModel.uiState.value.errorMessage)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
         }
@@ -139,7 +141,9 @@ class AuthViewModelTest {
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.isAuthorized)
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.errorMessage)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
@@ -159,7 +163,9 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             runCurrent()
             assertEquals(1, remote.registerCalls)
-            assertEquals(AuthAction.Login, viewModel.uiState.value.loadingAction)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.lastSubmittedAction)
+            assertTrue(viewModel.uiState.value.isLoginLoading)
+            assertFalse(viewModel.uiState.value.isRegisterLoading)
             assertEquals(AuthButtonStatus.Loading, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Входим...", viewModel.uiState.value.loginButtonState.text)
 
@@ -195,7 +201,12 @@ class AuthViewModelTest {
             assertFalse(viewModel.uiState.value.isAuthorized)
             assertEquals(
                 "Не удалось зарегистрироваться. Превышено время ожидания сети",
-                viewModel.uiState.value.errorMessage,
+                viewModel.uiState.value.activeErrorMessage,
+            )
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                viewModel.uiState.value.registerErrorMessage,
             )
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Повторить регистрацию", viewModel.uiState.value.registerButtonState.text)
@@ -240,7 +251,9 @@ class AuthViewModelTest {
                 )
             viewModel.submitLogin()
             advanceUntilIdle()
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.errorMessage)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.activeErrorMessage)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
 
             val gate = CompletableDeferred<Unit>()
             remote.gate = gate
@@ -248,11 +261,77 @@ class AuthViewModelTest {
             viewModel.submitRegister()
             runCurrent()
 
-            assertEquals(null, viewModel.uiState.value.errorMessage)
-            assertEquals(AuthAction.Register, viewModel.uiState.value.loadingAction)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.lastSubmittedAction)
+            assertFalse(viewModel.uiState.value.isLoginLoading)
+            assertTrue(viewModel.uiState.value.isRegisterLoading)
             assertEquals(AuthButtonStatus.Loading, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Регистрируем...", viewModel.uiState.value.registerButtonState.text)
             assertEquals(2, remote.registerCalls)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isAuthorized)
+        }
+    }
+
+    @Test
+    fun submitLogin_afterNetworkError_retrySucceedsWithoutSharingRegisterError() {
+        runTest {
+            val remote = FakeRemoteDataSource()
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+            remote.nextResult =
+                RemoteCallResult.NetworkFailure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.NetworkTimeout,
+                            userMessage = "Превышено время ожидания сети",
+                        ),
+                    throwable = IllegalStateException("timeout"),
+                )
+
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(
+                "Не удалось войти. Превышено время ожидания сети",
+                viewModel.uiState.value.loginErrorMessage,
+            )
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
+
+            remote.nextResult = RemoteCallResult.Success(data = Unit, statusCode = 200)
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(2, remote.registerCalls)
+            assertEquals(null, viewModel.uiState.value.activeErrorMessage)
+            assertTrue(viewModel.uiState.value.isAuthorized)
+            assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
+        }
+    }
+
+    @Test
+    fun onFieldChange_whileLoading_doesNotMutateCredentialsOrLoadingState() {
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val remote = FakeRemoteDataSource(gate = gate)
+            val viewModel = AuthViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            viewModel.submitRegister()
+            runCurrent()
+            assertTrue(viewModel.uiState.value.isRegisterLoading)
+
+            viewModel.onLoginChanged("updated")
+            viewModel.onPasswordChanged("updated-password")
+
+            assertEquals("moksem", viewModel.uiState.value.login)
+            assertEquals("secret", viewModel.uiState.value.password)
+            assertTrue(viewModel.uiState.value.isRegisterLoading)
+            assertEquals(AuthButtonStatus.Loading, viewModel.uiState.value.registerButtonState.status)
 
             gate.complete(Unit)
             advanceUntilIdle()

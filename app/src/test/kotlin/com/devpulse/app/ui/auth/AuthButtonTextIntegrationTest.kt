@@ -53,6 +53,9 @@ class AuthButtonTextIntegrationTest {
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
+            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
+            assertEquals(AuthAction.Login, viewModel.uiState.value.lastSubmittedAction)
 
             viewModel.submitRegister()
             advanceUntilIdle()
@@ -60,6 +63,9 @@ class AuthButtonTextIntegrationTest {
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Регистрация выполнена", viewModel.uiState.value.registerButtonState.text)
+            assertEquals(null, viewModel.uiState.value.loginErrorMessage)
+            assertEquals(null, viewModel.uiState.value.registerErrorMessage)
+            assertEquals(AuthAction.Register, viewModel.uiState.value.lastSubmittedAction)
             assertTrue(viewModel.uiState.value.isAuthorized)
         }
 

@@ -54,8 +54,8 @@ private fun AuthScreen(
     onLoginSubmit: () -> Unit,
     onRegisterSubmit: () -> Unit,
 ) {
-    val isLoginLoading = uiState.loadingAction == AuthAction.Login
-    val isRegisterLoading = uiState.loadingAction == AuthAction.Register
+    val isLoginLoading = uiState.isLoginLoading
+    val isRegisterLoading = uiState.isRegisterLoading
 
     Column(
         modifier =
@@ -93,9 +93,10 @@ private fun AuthScreen(
                     .fillMaxWidth()
                     .testTag(SmokeTestTags.AUTH_PASSWORD_INPUT),
         )
-        if (uiState.errorMessage != null) {
+        val activeErrorMessage = uiState.activeErrorMessage
+        if (activeErrorMessage != null) {
             Text(
-                text = uiState.errorMessage,
+                text = activeErrorMessage,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
             )

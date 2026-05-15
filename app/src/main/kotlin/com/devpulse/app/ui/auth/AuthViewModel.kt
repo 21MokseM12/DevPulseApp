@@ -16,13 +16,26 @@ import javax.inject.Inject
 data class AuthUiState(
     val login: String = "",
     val password: String = "",
-    val isLoading: Boolean = false,
-    val loadingAction: AuthAction? = null,
-    val errorMessage: String? = null,
+    val isLoginLoading: Boolean = false,
+    val isRegisterLoading: Boolean = false,
+    val loginErrorMessage: String? = null,
+    val registerErrorMessage: String? = null,
+    val lastSubmittedAction: AuthAction? = null,
     val isAuthorized: Boolean = false,
     val loginButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Login, AuthButtonStatus.Idle),
     val registerButtonState: AuthButtonUiState = AuthButtonUiState.create(AuthAction.Register, AuthButtonStatus.Idle),
-)
+) {
+    val isLoading: Boolean
+        get() = isLoginLoading || isRegisterLoading
+
+    val activeErrorMessage: String?
+        get() =
+            when (lastSubmittedAction) {
+                AuthAction.Login -> loginErrorMessage
+                AuthAction.Register -> registerErrorMessage
+                null -> null
+            }
+}
 
 enum class AuthAction {
     Login,
@@ -95,29 +108,31 @@ class AuthViewModel
 
         fun onLoginChanged(value: String) {
             _uiState.update { state ->
-                state.copy(login = value, errorMessage = null).resetButtonsToIdle()
+                if (state.isLoading) {
+                    return@update state
+                }
+                state.copy(
+                    login = value,
+                    loginErrorMessage = null,
+                    registerErrorMessage = null,
+                ).resetButtonsToIdle()
             }
         }
 
         fun onPasswordChanged(value: String) {
             _uiState.update { state ->
-                state.copy(password = value, errorMessage = null).resetButtonsToIdle()
+                if (state.isLoading) {
+                    return@update state
+                }
+                state.copy(
+                    password = value,
+                    loginErrorMessage = null,
+                    registerErrorMessage = null,
+                ).resetButtonsToIdle()
             }
         }
 
         fun submitLogin() {
-            submit(action = AuthAction.Login)
-        }
-
-        fun submitRegister() {
-            submit(action = AuthAction.Register)
-        }
-
-        fun submit() {
-            submitLogin()
-        }
-
-        private fun submit(action: AuthAction) {
             val current = _uiState.value
             if (current.isLoading) return
 
@@ -126,9 +141,10 @@ class AuthViewModel
             if (login.isBlank() || password.isBlank()) {
                 _uiState.update { state ->
                     state.copy(
-                        errorMessage = validationMessage(action),
+                        lastSubmittedAction = AuthAction.Login,
+                        loginErrorMessage = validationMessage(AuthAction.Login),
                     ).setButtonStates(
-                        action = action,
+                        action = AuthAction.Login,
                         status = AuthButtonStatus.Error,
                     )
                 }
@@ -136,11 +152,12 @@ class AuthViewModel
             }
             _uiState.update { state ->
                 state.copy(
-                    isLoading = true,
-                    loadingAction = action,
-                    errorMessage = null,
+                    isLoginLoading = true,
+                    isRegisterLoading = false,
+                    lastSubmittedAction = AuthAction.Login,
+                    loginErrorMessage = null,
                 ).setButtonStates(
-                    action = action,
+                    action = AuthAction.Login,
                     status = AuthButtonStatus.Loading,
                 )
             }
@@ -160,11 +177,13 @@ class AuthViewModel
                             state.copy(
                                 login = login,
                                 password = "",
-                                isLoading = false,
-                                loadingAction = null,
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                loginErrorMessage = null,
+                                registerErrorMessage = null,
                                 isAuthorized = true,
                             ).setButtonStates(
-                                action = action,
+                                action = AuthAction.Login,
                                 status = AuthButtonStatus.Success,
                             )
                         }
@@ -173,11 +192,11 @@ class AuthViewModel
                     is RemoteCallResult.ApiFailure -> {
                         _uiState.update { state ->
                             state.copy(
-                                isLoading = false,
-                                loadingAction = null,
-                                errorMessage = failureMessage(action, result.error.userMessage),
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
                             ).setButtonStates(
-                                action = action,
+                                action = AuthAction.Login,
                                 status = AuthButtonStatus.Error,
                             )
                         }
@@ -186,17 +205,107 @@ class AuthViewModel
                     is RemoteCallResult.NetworkFailure -> {
                         _uiState.update { state ->
                             state.copy(
-                                isLoading = false,
-                                loadingAction = null,
-                                errorMessage = failureMessage(action, result.error.userMessage),
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
                             ).setButtonStates(
-                                action = action,
+                                action = AuthAction.Login,
                                 status = AuthButtonStatus.Error,
                             )
                         }
                     }
                 }
             }
+        }
+
+        fun submitRegister() {
+            val current = _uiState.value
+            if (current.isLoading) return
+
+            val login = current.login.trim()
+            val password = current.password.trim()
+            if (login.isBlank() || password.isBlank()) {
+                _uiState.update { state ->
+                    state.copy(
+                        lastSubmittedAction = AuthAction.Register,
+                        registerErrorMessage = validationMessage(AuthAction.Register),
+                    ).setButtonStates(
+                        action = AuthAction.Register,
+                        status = AuthButtonStatus.Error,
+                    )
+                }
+                return
+            }
+            _uiState.update { state ->
+                state.copy(
+                    isLoginLoading = false,
+                    isRegisterLoading = true,
+                    lastSubmittedAction = AuthAction.Register,
+                    registerErrorMessage = null,
+                ).setButtonStates(
+                    action = AuthAction.Register,
+                    status = AuthButtonStatus.Loading,
+                )
+            }
+
+            viewModelScope.launch {
+                when (
+                    val result =
+                        remoteDataSource.registerClient(
+                            ClientCredentialsRequestDto(
+                                login = login,
+                                password = password,
+                            ),
+                        )
+                ) {
+                    is RemoteCallResult.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                login = login,
+                                password = "",
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                loginErrorMessage = null,
+                                registerErrorMessage = null,
+                                isAuthorized = true,
+                            ).setButtonStates(
+                                action = AuthAction.Register,
+                                status = AuthButtonStatus.Success,
+                            )
+                        }
+                    }
+
+                    is RemoteCallResult.ApiFailure -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                registerErrorMessage = failureMessage(AuthAction.Register, result.error.userMessage),
+                            ).setButtonStates(
+                                action = AuthAction.Register,
+                                status = AuthButtonStatus.Error,
+                            )
+                        }
+                    }
+
+                    is RemoteCallResult.NetworkFailure -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isLoginLoading = false,
+                                isRegisterLoading = false,
+                                registerErrorMessage = failureMessage(AuthAction.Register, result.error.userMessage),
+                            ).setButtonStates(
+                                action = AuthAction.Register,
+                                status = AuthButtonStatus.Error,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        fun submit() {
+            submitLogin()
         }
 
         private fun validationMessage(action: AuthAction): String {
@@ -221,6 +330,11 @@ class AuthViewModel
                 state.copy(
                     isAuthorized = false,
                     password = "",
+                    isLoginLoading = false,
+                    isRegisterLoading = false,
+                    loginErrorMessage = null,
+                    registerErrorMessage = null,
+                    lastSubmittedAction = null,
                 ).resetButtonsToIdle()
             }
         }
