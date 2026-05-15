@@ -167,6 +167,37 @@ class DefaultSubscriptionsRepositoryMockWebServerTest {
         }
 
     @Test
+    fun getSubscriptions_maps400ToEmptyState_whenMessageContainsNoSubscriptionsHint() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(400)
+                        .setBody(
+                            """
+                            {
+                              "description": "No subscriptions yet for this client"
+                            }
+                            """.trimIndent(),
+                        ),
+                )
+                val repository =
+                    createRepository(
+                        server = server,
+                        sessionStore = FakeSessionStore(login = "moksem"),
+                    )
+
+                val result = repository.getSubscriptions(forceRefresh = true)
+
+                assertTrue(result is SubscriptionsResult.Success)
+                val success = result as SubscriptionsResult.Success
+                assertTrue(success.links.isEmpty())
+                assertTrue(success.isStale.not())
+                assertTrue(success.lastSyncAtEpochMs != null)
+            }
+        }
+
+    @Test
     fun addSubscription_fallsBackToDefaultMessageWhenErrorBodyBroken() =
         runTest {
             MockWebServer().use { server ->

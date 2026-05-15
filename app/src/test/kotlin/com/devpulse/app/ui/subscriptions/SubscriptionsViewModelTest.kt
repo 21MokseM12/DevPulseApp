@@ -481,6 +481,40 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun refresh_fromEmpty_whenNetworkInterrupted_showsErrorState() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results =
+                        ArrayDeque(
+                            listOf(
+                                SubscriptionsResult.Success(emptyList()),
+                                SubscriptionsResult.Failure(
+                                    error =
+                                        ApiError(
+                                            kind = ApiErrorKind.Network,
+                                            userMessage = "Сеть недоступна",
+                                        ),
+                                ),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertEquals(SubscriptionsScreenState.Error, state.screenState)
+            assertEquals("Сеть недоступна", state.errorMessage)
+            assertEquals(2, repository.calls)
+            assertEquals(1, repository.forceRefreshCalls)
+        }
+    }
+
+    @Test
     fun confirmRemove_whileRemoving_ignoresDuplicateRequest() {
         runTest {
             val gate = CompletableDeferred<Unit>()

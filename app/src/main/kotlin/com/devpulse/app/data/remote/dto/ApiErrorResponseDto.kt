@@ -8,7 +8,7 @@ data class ApiErrorResponseDto(
     @field:Json(name = "description")
     val description: String,
     @field:Json(name = "code")
-    val code: String,
+    val code: String?,
     @field:Json(name = "exceptionName")
     val exceptionName: String? = null,
     @field:Json(name = "exceptionMessage")

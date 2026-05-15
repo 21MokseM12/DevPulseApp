@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.test.platform.app.InstrumentationRegistry
 import com.devpulse.app.MainActivity
+import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.NotificationDto
 import com.devpulse.app.testing.FakeSmokeRemoteDataSource
 import com.devpulse.app.ui.testing.SmokeTestTags
@@ -205,6 +206,31 @@ class DevPulseAppTest {
 
         composeRule.waitUntilNodeWithTextExists(firstUrl)
         composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_EMPTY_TITLE)
+    }
+
+    @Test
+    fun subscriptionsRemovingLastItem_transitionsContentToEmptyWithoutErrorBanner() {
+        smokeDataSource.setLinksForTesting(
+            listOf(
+                LinkResponseDto(
+                    id = 41L,
+                    url = "https://example.dev/last-link",
+                    tags = listOf("only"),
+                    filters = listOf("contains:dev"),
+                ),
+            ),
+        )
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTextExists("https://example.dev/last-link")
+
+        composeRule.onAllNodesWithText("Удалить").onFirst().performClick()
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_EMPTY_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_EMPTY_PRIMARY_BUTTON)
+        composeRule.waitUntilNodeWithTextMissing("Проверьте корректность введенных данных.")
     }
 
     @Test
