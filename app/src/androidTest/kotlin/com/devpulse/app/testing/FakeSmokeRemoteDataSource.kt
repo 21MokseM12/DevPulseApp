@@ -84,6 +84,10 @@ class FakeSmokeRemoteDataSource
                 )
         }
 
+        fun setRegisterSuccessForTesting() {
+            registerResult = RemoteCallResult.Success(Unit, 200)
+        }
+
         fun setNotificationsForTesting(nextNotifications: List<NotificationDto>) {
             synchronized(lock) {
                 notifications = nextNotifications.toMutableList()

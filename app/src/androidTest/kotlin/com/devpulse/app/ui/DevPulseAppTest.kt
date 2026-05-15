@@ -132,7 +132,7 @@ class DevPulseAppTest {
     }
 
     @Test
-    fun authSuccess_duringRotation_navigatesToMain() {
+    fun authRequest_duringRotation_isCancelledAndStaysOnAuth() {
         smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
@@ -142,12 +142,13 @@ class DevPulseAppTest {
 
         composeRule.activityRule.scenario.recreate()
 
-        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
-        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_LOGIN_LOADER)
+        composeRule.onNodeWithText("Войти").assertIsDisplayed()
     }
 
     @Test
-    fun authSuccess_afterBackgroundResume_navigatesToMain() {
+    fun authRequest_afterBackgroundResume_isCancelledAndStaysOnAuth() {
         smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
@@ -158,8 +159,9 @@ class DevPulseAppTest {
         composeRule.activityRule.scenario.moveToState(Lifecycle.State.CREATED)
         composeRule.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
 
-        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
-        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.AUTH_LOGIN_LOADER)
+        composeRule.onNodeWithText("Войти").assertIsDisplayed()
     }
 
     @Test

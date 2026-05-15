@@ -9,6 +9,7 @@
 | `./gradlew :app:qualityCheck` | `Quality (ktlint + lint)` | Blocking |
 | `./gradlew :app:testDebugUnitTest` | `Unit Tests` | Blocking |
 | `./gradlew :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"` | `Contract Check` | Blocking |
+| `./scripts/auth-regression-gate.sh` | `Auth Regression Suite` | Blocking |
 | `./gradlew :app:assembleDebug` | `Assemble Debug` | Blocking |
 | `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest` | `Instrumented Smoke (Compose)` | Blocking |
 | `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest` | `Instrumented Migration (Room)` | Blocking |
@@ -35,6 +36,7 @@
 1. `./gradlew :app:qualityCheck`
 2. `./gradlew :app:testDebugUnitTest`
 3. `./gradlew :app:testDebugUnitTest --tests "*Contract*" --tests "*MockWebServer*"`
-4. `./gradlew :app:assembleDebug`
-5. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest`
-6. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest`
+4. `./scripts/auth-regression-gate.sh`
+5. `./gradlew :app:assembleDebug`
+6. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.ui.DevPulseAppTest`
+7. `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.devpulse.app.data.local.db.AppDatabaseMigrationTest`

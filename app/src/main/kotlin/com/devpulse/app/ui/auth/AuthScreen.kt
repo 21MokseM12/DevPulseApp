@@ -14,6 +14,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,11 @@ fun AuthRoute(
         val successEvent = uiState.pendingAuthSuccess ?: return@LaunchedEffect
         onAuthorized(successEvent)
         viewModel.onAuthSuccessHandled()
+    }
+    DisposableEffect(viewModel) {
+        onDispose {
+            viewModel.cancelPendingAuthRequest()
+        }
     }
 
     AuthScreen(

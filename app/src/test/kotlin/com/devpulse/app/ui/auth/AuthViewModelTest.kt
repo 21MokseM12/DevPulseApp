@@ -7,6 +7,7 @@ import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
 import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -389,6 +390,31 @@ class AuthViewModelTest {
         }
     }
 
+    @Test
+    fun authRequest_cancelPendingCall_stopsLoadingAndCancelsRequest() {
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val remote = FakeAuthRepository(gate = gate)
+            val viewModel = createViewModel(remote)
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+
+            viewModel.submitLogin()
+            runCurrent()
+            assertTrue(viewModel.uiState.value.isLoginLoading)
+            assertEquals(1, remote.loginCalls)
+
+            viewModel.cancelPendingAuthRequest()
+            advanceUntilIdle()
+
+            assertTrue(remote.loginAwaitCancelled)
+            assertFalse(gate.isCompleted)
+            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.loginButtonState.status)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
+        }
+    }
+
     private fun createViewModel(repository: AuthRepository): AuthViewModel {
         return AuthViewModel(
             loginClientUseCase = LoginClientUseCase(repository),
@@ -414,6 +440,10 @@ class AuthViewModelTest {
             private set
         var lastRegisterPassword: String? = null
             private set
+        var loginAwaitCancelled: Boolean = false
+            private set
+        var registerAwaitCancelled: Boolean = false
+            private set
 
         override suspend fun login(
             login: String,
@@ -422,7 +452,12 @@ class AuthViewModelTest {
             loginCalls += 1
             lastLoginLogin = login
             lastLoginPassword = password
-            gate?.await()
+            try {
+                gate?.await()
+            } catch (exception: CancellationException) {
+                loginAwaitCancelled = true
+                throw exception
+            }
             return nextResult
         }
 
@@ -433,7 +468,12 @@ class AuthViewModelTest {
             registerCalls += 1
             lastRegisterLogin = login
             lastRegisterPassword = password
-            gate?.await()
+            try {
+                gate?.await()
+            } catch (exception: CancellationException) {
+                registerAwaitCancelled = true
+                throw exception
+            }
             return nextResult
         }
     }

@@ -6,6 +6,8 @@ import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
 import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -111,6 +113,7 @@ class AuthViewModel
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(AuthUiState())
         val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+        private var activeAuthJob: Job? = null
 
         fun onLoginChanged(value: String) {
             _uiState.update { state ->
@@ -168,49 +171,56 @@ class AuthViewModel
                 )
             }
 
-            viewModelScope.launch {
-                when (
-                    val result =
-                        loginClientUseCase(
-                            login = login,
-                            password = password,
-                        )
-                ) {
-                    is AuthResult.Success -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                login = login,
-                                password = "",
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                loginErrorMessage = null,
-                                registerErrorMessage = null,
-                                pendingAuthSuccess =
-                                    AuthSuccessEvent(
+            activeAuthJob =
+                viewModelScope.launch {
+                    try {
+                        when (
+                            val result =
+                                loginClientUseCase(
+                                    login = login,
+                                    password = password,
+                                )
+                        ) {
+                            is AuthResult.Success -> {
+                                _uiState.update { state ->
+                                    state.copy(
                                         login = login,
+                                        password = "",
+                                        isLoginLoading = false,
+                                        isRegisterLoading = false,
+                                        loginErrorMessage = null,
+                                        registerErrorMessage = null,
+                                        pendingAuthSuccess =
+                                            AuthSuccessEvent(
+                                                login = login,
+                                                action = AuthAction.Login,
+                                            ),
+                                    ).setButtonStates(
                                         action = AuthAction.Login,
-                                    ),
-                            ).setButtonStates(
-                                action = AuthAction.Login,
-                                status = AuthButtonStatus.Success,
-                            )
-                        }
-                    }
+                                        status = AuthButtonStatus.Success,
+                                    )
+                                }
+                            }
 
-                    is AuthResult.Failure -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
-                            ).setButtonStates(
-                                action = AuthAction.Login,
-                                status = AuthButtonStatus.Error,
-                            )
+                            is AuthResult.Failure -> {
+                                _uiState.update { state ->
+                                    state.copy(
+                                        isLoginLoading = false,
+                                        isRegisterLoading = false,
+                                        loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
+                                    ).setButtonStates(
+                                        action = AuthAction.Login,
+                                        status = AuthButtonStatus.Error,
+                                    )
+                                }
+                            }
                         }
+                    } catch (_: CancellationException) {
+                        // Запрос был отменен при уходе со страницы auth.
+                    } finally {
+                        activeAuthJob = null
                     }
                 }
-            }
         }
 
         fun submitRegister() {
@@ -243,49 +253,57 @@ class AuthViewModel
                 )
             }
 
-            viewModelScope.launch {
-                when (
-                    val result =
-                        registerClientUseCase(
-                            login = login,
-                            password = password,
-                        )
-                ) {
-                    is AuthResult.Success -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                login = login,
-                                password = "",
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                loginErrorMessage = null,
-                                registerErrorMessage = null,
-                                pendingAuthSuccess =
-                                    AuthSuccessEvent(
+            activeAuthJob =
+                viewModelScope.launch {
+                    try {
+                        when (
+                            val result =
+                                registerClientUseCase(
+                                    login = login,
+                                    password = password,
+                                )
+                        ) {
+                            is AuthResult.Success -> {
+                                _uiState.update { state ->
+                                    state.copy(
                                         login = login,
+                                        password = "",
+                                        isLoginLoading = false,
+                                        isRegisterLoading = false,
+                                        loginErrorMessage = null,
+                                        registerErrorMessage = null,
+                                        pendingAuthSuccess =
+                                            AuthSuccessEvent(
+                                                login = login,
+                                                action = AuthAction.Register,
+                                            ),
+                                    ).setButtonStates(
                                         action = AuthAction.Register,
-                                    ),
-                            ).setButtonStates(
-                                action = AuthAction.Register,
-                                status = AuthButtonStatus.Success,
-                            )
-                        }
-                    }
+                                        status = AuthButtonStatus.Success,
+                                    )
+                                }
+                            }
 
-                    is AuthResult.Failure -> {
-                        _uiState.update { state ->
-                            state.copy(
-                                isLoginLoading = false,
-                                isRegisterLoading = false,
-                                registerErrorMessage = failureMessage(AuthAction.Register, result.error.userMessage),
-                            ).setButtonStates(
-                                action = AuthAction.Register,
-                                status = AuthButtonStatus.Error,
-                            )
+                            is AuthResult.Failure -> {
+                                _uiState.update { state ->
+                                    state.copy(
+                                        isLoginLoading = false,
+                                        isRegisterLoading = false,
+                                        registerErrorMessage =
+                                            failureMessage(AuthAction.Register, result.error.userMessage),
+                                    ).setButtonStates(
+                                        action = AuthAction.Register,
+                                        status = AuthButtonStatus.Error,
+                                    )
+                                }
+                            }
                         }
+                    } catch (_: CancellationException) {
+                        // Запрос был отменен при уходе со страницы auth.
+                    } finally {
+                        activeAuthJob = null
                     }
                 }
-            }
         }
 
         private fun validationMessage(action: AuthAction): String {
@@ -317,6 +335,29 @@ class AuthViewModel
                     lastSubmittedAction = null,
                 ).resetButtonsToIdle()
             }
+        }
+
+        fun cancelPendingAuthRequest() {
+            activeAuthJob?.cancel()
+            activeAuthJob = null
+            _uiState.update { state ->
+                if (!state.isLoading) {
+                    state
+                } else {
+                    state.copy(
+                        isLoginLoading = false,
+                        isRegisterLoading = false,
+                        loginErrorMessage = null,
+                        registerErrorMessage = null,
+                        lastSubmittedAction = null,
+                    ).resetButtonsToIdle()
+                }
+            }
+        }
+
+        override fun onCleared() {
+            cancelPendingAuthRequest()
+            super.onCleared()
         }
 
         private fun AuthUiState.resetButtonsToIdle(): AuthUiState {
