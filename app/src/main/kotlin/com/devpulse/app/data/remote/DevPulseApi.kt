@@ -17,6 +17,11 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface DevPulseApi {
+    @POST("/api/v1/clients/login")
+    suspend fun loginClient(
+        @Body request: ClientCredentialsRequestDto,
+    ): Response<Unit>
+
     @POST("/api/v1/clients")
     suspend fun registerClient(
         @Body request: ClientCredentialsRequestDto,

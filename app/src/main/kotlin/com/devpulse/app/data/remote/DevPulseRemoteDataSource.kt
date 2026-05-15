@@ -18,6 +18,8 @@ import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
 
 interface DevPulseRemoteDataSource {
+    suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> = registerClient(request)
+
     suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
 
     suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
@@ -49,6 +51,31 @@ class DefaultDevPulseRemoteDataSource
         private val authTransportSecurityGuard: AuthTransportSecurityGuard,
     ) : DevPulseRemoteDataSource {
         private val apiErrorAdapter = moshi.adapter(ApiErrorResponseDto::class.java)
+
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            authTransportSecurityViolation()?.let { return it }
+
+            val loginResult = executeUnit { api.loginClient(request) }
+            if (loginResult !is RemoteCallResult.ApiFailure) {
+                return loginResult
+            }
+            if (
+                !AuthFallbackPolicy.shouldFallbackToRegister(
+                    statusCode = loginResult.statusCode,
+                    error = loginResult.error,
+                )
+            ) {
+                return loginResult
+            }
+
+            val fallbackResult = executeUnit { api.registerClient(request) }
+            if (fallbackResult is RemoteCallResult.ApiFailure &&
+                AuthFallbackPolicy.shouldTreatRegisterConflictAsLoginSuccess(fallbackResult.error)
+            ) {
+                return RemoteCallResult.Success(data = Unit, statusCode = fallbackResult.statusCode)
+            }
+            return fallbackResult
+        }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             authTransportSecurityViolation()?.let { return it }

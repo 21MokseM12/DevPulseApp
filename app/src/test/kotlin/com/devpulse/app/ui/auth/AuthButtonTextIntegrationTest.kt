@@ -35,7 +35,7 @@ class AuthButtonTextIntegrationTest {
             viewModel.onLoginChanged("moksem")
             viewModel.onPasswordChanged("secret")
 
-            remote.enqueue(
+            remote.enqueueLogin(
                 RemoteCallResult.ApiFailure(
                     error =
                         ApiError(
@@ -45,7 +45,7 @@ class AuthButtonTextIntegrationTest {
                     statusCode = 400,
                 ),
             )
-            remote.enqueue(RemoteCallResult.Success(data = Unit, statusCode = 200))
+            remote.enqueueRegister(RemoteCallResult.Success(data = Unit, statusCode = 200))
 
             viewModel.submitLogin()
             advanceUntilIdle()
@@ -70,14 +70,23 @@ class AuthButtonTextIntegrationTest {
         }
 
     private class SequenceRemoteDataSource : DevPulseRemoteDataSource {
-        private val results = ArrayDeque<RemoteCallResult<Unit>>()
+        private val loginResults = ArrayDeque<RemoteCallResult<Unit>>()
+        private val registerResults = ArrayDeque<RemoteCallResult<Unit>>()
 
-        fun enqueue(result: RemoteCallResult<Unit>) {
-            results.addLast(result)
+        fun enqueueLogin(result: RemoteCallResult<Unit>) {
+            loginResults.addLast(result)
+        }
+
+        fun enqueueRegister(result: RemoteCallResult<Unit>) {
+            registerResults.addLast(result)
+        }
+
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            return loginResults.removeFirstOrNull() ?: RemoteCallResult.Success(data = Unit, statusCode = 200)
         }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            return results.removeFirstOrNull() ?: RemoteCallResult.Success(data = Unit, statusCode = 200)
+            return registerResults.removeFirstOrNull() ?: RemoteCallResult.Success(data = Unit, statusCode = 200)
         }
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {

@@ -57,6 +57,7 @@ class AuthViewModelTest {
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
+            assertEquals(0, remote.loginCalls)
             assertEquals(0, remote.registerCalls)
         }
     }
@@ -88,8 +89,8 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals("moksem", remote.lastRegisterLogin)
-            assertEquals("secret", remote.lastRegisterPassword)
+            assertEquals("moksem", remote.lastLoginLogin)
+            assertEquals("secret", remote.lastLoginPassword)
             assertEquals("moksem", viewModel.uiState.value.login)
             assertTrue(viewModel.uiState.value.isAuthorized)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
@@ -162,7 +163,8 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             viewModel.submitRegister()
             runCurrent()
-            assertEquals(1, remote.registerCalls)
+            assertEquals(1, remote.loginCalls)
+            assertEquals(0, remote.registerCalls)
             assertEquals(AuthAction.Login, viewModel.uiState.value.lastSubmittedAction)
             assertTrue(viewModel.uiState.value.isLoginLoading)
             assertFalse(viewModel.uiState.value.isRegisterLoading)
@@ -267,7 +269,8 @@ class AuthViewModelTest {
             assertTrue(viewModel.uiState.value.isRegisterLoading)
             assertEquals(AuthButtonStatus.Loading, viewModel.uiState.value.registerButtonState.status)
             assertEquals("Регистрируем...", viewModel.uiState.value.registerButtonState.text)
-            assertEquals(2, remote.registerCalls)
+            assertEquals(1, remote.loginCalls)
+            assertEquals(1, remote.registerCalls)
 
             gate.complete(Unit)
             advanceUntilIdle()
@@ -305,7 +308,7 @@ class AuthViewModelTest {
             viewModel.submitLogin()
             advanceUntilIdle()
 
-            assertEquals(2, remote.registerCalls)
+            assertEquals(2, remote.loginCalls)
             assertEquals(null, viewModel.uiState.value.activeErrorMessage)
             assertTrue(viewModel.uiState.value.isAuthorized)
             assertEquals(AuthButtonStatus.Success, viewModel.uiState.value.loginButtonState.status)
@@ -345,12 +348,26 @@ class AuthViewModelTest {
     ) : DevPulseRemoteDataSource {
         var nextResult: RemoteCallResult<Unit> = result
         var gate: CompletableDeferred<Unit>? = gate
+        var loginCalls: Int = 0
+            private set
         var registerCalls: Int = 0
+            private set
+        var lastLoginLogin: String? = null
+            private set
+        var lastLoginPassword: String? = null
             private set
         var lastRegisterLogin: String? = null
             private set
         var lastRegisterPassword: String? = null
             private set
+
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
+            loginCalls += 1
+            lastLoginLogin = request.login
+            lastLoginPassword = request.password
+            gate?.await()
+            return nextResult
+        }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             registerCalls += 1

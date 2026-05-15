@@ -126,6 +126,9 @@ class DevPulseRemoteDataSourceTest {
         runTest {
             val cancellableApi =
                 object : DevPulseApi {
+                    override suspend fun loginClient(request: ClientCredentialsRequestDto) =
+                        throw UnsupportedOperationException()
+
                     override suspend fun registerClient(request: ClientCredentialsRequestDto) =
                         throw CancellationException("cancelled")
 
@@ -357,6 +360,119 @@ class DevPulseRemoteDataSourceTest {
         }
 
     @Test
+    fun loginClient_usesDedicatedLoginEndpointWhenAvailable() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200))
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.loginClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.Success)
+                assertEquals(1, server.requestCount)
+                assertEquals("/api/v1/clients/login", server.takeRequest().path)
+            }
+        }
+
+    @Test
+    fun loginClient_fallsBackToRegisterWhenLoginEndpointIsMissing() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(404)
+                        .setBody(
+                            """
+                            {"description":"Endpoint not found","code":"not_found"}
+                            """.trimIndent(),
+                        ),
+                )
+                server.enqueue(MockResponse().setResponseCode(200))
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.loginClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.Success)
+                assertEquals(2, server.requestCount)
+                assertEquals("/api/v1/clients/login", server.takeRequest().path)
+                assertEquals("/api/v1/clients", server.takeRequest().path)
+            }
+        }
+
+    @Test
+    fun loginClient_fallbackTreatsAlreadyExistsAsSuccessfulLogin() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(405)
+                        .setBody(
+                            """
+                            {"description":"Method not allowed","code":"method_not_allowed"}
+                            """.trimIndent(),
+                        ),
+                )
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(400)
+                        .setBody(
+                            """
+                            {"description":"Client already exists","code":"already_exists"}
+                            """.trimIndent(),
+                        ),
+                )
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.loginClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.Success)
+                assertEquals(2, server.requestCount)
+            }
+        }
+
+    @Test
+    fun loginClient_returnsOriginalApiFailureForMalformedBadRequest() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(400).setBody("not-a-json"))
+
+                val dataSource = createDataSource(server)
+                val result =
+                    dataSource.loginClient(
+                        ClientCredentialsRequestDto(
+                            login = "moksem",
+                            password = "secret",
+                        ),
+                    )
+
+                assertTrue(result is RemoteCallResult.ApiFailure)
+                val failure = result as RemoteCallResult.ApiFailure
+                assertEquals(ApiErrorKind.BadRequest, failure.error.kind)
+                assertEquals(400, failure.statusCode)
+                assertEquals(1, server.requestCount)
+                assertEquals("/api/v1/clients/login", server.takeRequest().path)
+            }
+        }
+
+    @Test
     fun registerClient_withTransportViolation_doesNotSendHttpRequest() =
         runTest {
             MockWebServer().use { server ->
@@ -461,6 +577,8 @@ class DevPulseRemoteDataSourceTest {
     }
 
     private class FakeDevPulseApi(
+        private val onLoginClient: suspend (ClientCredentialsRequestDto) -> Response<Unit> =
+            { throw UnsupportedOperationException() },
         private val onRegisterClient: suspend (ClientCredentialsRequestDto) -> Response<Unit> =
             { throw UnsupportedOperationException() },
         private val onUnregisterClient: suspend (ClientCredentialsRequestDto) -> Response<Unit> =
@@ -478,6 +596,8 @@ class DevPulseRemoteDataSourceTest {
         private val onMarkNotificationsRead: suspend (MarkReadRequestDto) -> Response<MarkReadResponseDto> =
             { throw UnsupportedOperationException() },
     ) : DevPulseApi {
+        override suspend fun loginClient(request: ClientCredentialsRequestDto): Response<Unit> = onLoginClient(request)
+
         override suspend fun registerClient(request: ClientCredentialsRequestDto): Response<Unit> =
             onRegisterClient(request)
 

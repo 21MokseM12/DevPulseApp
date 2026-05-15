@@ -165,7 +165,7 @@ class AuthViewModel
             viewModelScope.launch {
                 when (
                     val result =
-                        remoteDataSource.registerClient(
+                        remoteDataSource.loginClient(
                             ClientCredentialsRequestDto(
                                 login = login,
                                 password = password,
