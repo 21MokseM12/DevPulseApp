@@ -77,6 +77,28 @@ class DefaultAuthRepositoryTest {
             assertEquals(0, remote.registerCalls)
         }
 
+    @Test
+    fun login_preservesLoginEndpointFailure_withoutInvokingRegister() =
+        runTest {
+            val remote =
+                FakeRemoteDataSource(
+                    loginResult =
+                        RemoteCallResult.ApiFailure(
+                            error = ApiError(kind = ApiErrorKind.NotFound, userMessage = "Endpoint not found"),
+                            statusCode = 404,
+                        ),
+                )
+            val repository = DefaultAuthRepository(remoteDataSource = remote)
+
+            val result = repository.login(login = "moksem", password = "secret")
+
+            assertTrue(result is AuthResult.Failure)
+            assertEquals(ApiErrorKind.NotFound, (result as AuthResult.Failure).error.kind)
+            assertEquals("Endpoint not found", result.error.userMessage)
+            assertEquals(1, remote.loginCalls)
+            assertEquals(0, remote.registerCalls)
+        }
+
     private class FakeRemoteDataSource(
         private val loginResult: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),
         private val registerResult: RemoteCallResult<Unit> = RemoteCallResult.Success(data = Unit, statusCode = 200),

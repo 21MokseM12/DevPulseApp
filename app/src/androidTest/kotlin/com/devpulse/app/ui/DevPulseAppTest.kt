@@ -64,7 +64,7 @@ class DevPulseAppTest {
 
     @Test
     fun authActions_areDistinct_andLockedDuringLoading() {
-        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+        smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_INPUT).performTextInput("moksem")
@@ -136,7 +136,7 @@ class DevPulseAppTest {
 
     @Test
     fun authRequest_duringRotation_isCancelledAndStaysOnAuth() {
-        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+        smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         fillAuthCredentials(login = "moksem", password = "secret")
@@ -152,7 +152,7 @@ class DevPulseAppTest {
 
     @Test
     fun authRequest_afterBackgroundResume_isCancelledAndStaysOnAuth() {
-        smokeDataSource.setRegisterDelayForTesting(delayMs = 1_500L)
+        smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         fillAuthCredentials(login = "moksem", password = "secret")

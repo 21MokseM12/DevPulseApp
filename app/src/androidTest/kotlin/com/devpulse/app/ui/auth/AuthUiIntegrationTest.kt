@@ -68,7 +68,7 @@ class AuthUiIntegrationTest {
 
     @Test
     fun loginNetworkError_thenRetrySuccess_completesAuthorization() {
-        smokeDataSource.setRegisterFailureForTesting(message = "Временная сеть недоступна")
+        smokeDataSource.setLoginFailureForTesting(message = "Временная сеть недоступна")
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
         fillAuthCredentials(login = "moksem", password = "secret")
 
@@ -76,7 +76,7 @@ class AuthUiIntegrationTest {
         composeRule.waitUntilNodeWithTextExists("Не удалось войти. Временная сеть недоступна")
         composeRule.waitUntilNodeWithTextExists("Повторить вход")
 
-        smokeDataSource.setRegisterSuccessForTesting()
+        smokeDataSource.setLoginSuccessForTesting()
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
 
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)

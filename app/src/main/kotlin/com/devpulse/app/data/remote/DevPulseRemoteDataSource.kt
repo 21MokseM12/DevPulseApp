@@ -54,27 +54,7 @@ class DefaultDevPulseRemoteDataSource
 
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             authTransportSecurityViolation()?.let { return it }
-
-            val loginResult = executeUnit { api.loginClient(request) }
-            if (loginResult !is RemoteCallResult.ApiFailure) {
-                return loginResult
-            }
-            if (
-                !AuthFallbackPolicy.shouldFallbackToRegister(
-                    statusCode = loginResult.statusCode,
-                    error = loginResult.error,
-                )
-            ) {
-                return loginResult
-            }
-
-            val fallbackResult = executeUnit { api.registerClient(request) }
-            if (fallbackResult is RemoteCallResult.ApiFailure &&
-                AuthFallbackPolicy.shouldTreatRegisterConflictAsLoginSuccess(fallbackResult.error)
-            ) {
-                return RemoteCallResult.Success(data = Unit, statusCode = fallbackResult.statusCode)
-            }
-            return fallbackResult
+            return executeUnit { api.loginClient(request) }
         }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {

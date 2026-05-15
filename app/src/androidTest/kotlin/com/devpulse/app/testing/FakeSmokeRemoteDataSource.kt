@@ -29,6 +29,12 @@ class FakeSmokeRemoteDataSource
         private var nextLinkId = 1L
 
         @Volatile
+        private var loginDelayMs: Long = 0L
+
+        @Volatile
+        private var loginResult: RemoteCallResult<Unit> = RemoteCallResult.Success(Unit, 200)
+
+        @Volatile
         private var registerDelayMs: Long = 0L
 
         @Volatile
@@ -63,9 +69,31 @@ class FakeSmokeRemoteDataSource
                         ),
                     )
                 nextLinkId = 2L
+                loginDelayMs = 0L
+                loginResult = RemoteCallResult.Success(Unit, 200)
                 registerDelayMs = 0L
                 registerResult = RemoteCallResult.Success(Unit, 200)
             }
+        }
+
+        fun setLoginDelayForTesting(delayMs: Long) {
+            loginDelayMs = delayMs.coerceAtLeast(0L)
+        }
+
+        fun setLoginFailureForTesting(message: String) {
+            loginResult =
+                RemoteCallResult.ApiFailure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.BadRequest,
+                            userMessage = message,
+                        ),
+                    statusCode = 400,
+                )
+        }
+
+        fun setLoginSuccessForTesting() {
+            loginResult = RemoteCallResult.Success(Unit, 200)
         }
 
         fun setRegisterDelayForTesting(delayMs: Long) {
@@ -103,7 +131,11 @@ class FakeSmokeRemoteDataSource
         }
 
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
-            return registerClient(request)
+            val delayMs = loginDelayMs
+            if (delayMs > 0L) {
+                delay(delayMs)
+            }
+            return loginResult
         }
 
         override suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
