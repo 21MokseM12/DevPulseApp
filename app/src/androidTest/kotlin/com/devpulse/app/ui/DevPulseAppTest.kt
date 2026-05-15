@@ -183,6 +183,23 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun subscriptionsEmptyState_thenAddLink_transitionsToContentWithoutErrorBanner() {
+        val firstUrl = "https://example.dev/first-subscription"
+        smokeDataSource.setLinksForTesting(emptyList())
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTextExists("Список подписок пуст")
+        composeRule.waitUntilNodeWithTextMissing("Проверьте корректность введенных данных.")
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextInput(firstUrl)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTextExists(firstUrl)
+        composeRule.waitUntilNodeWithTextMissing("Список подписок пуст")
+    }
+
+    @Test
     fun subscriptionsSearch_filtersAndResetResultList() {
         val kotlinUrl = "https://example.dev/kotlin-news"
         val backendUrl = "https://example.dev/backend-feed"

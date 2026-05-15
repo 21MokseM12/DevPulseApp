@@ -52,6 +52,7 @@ class SubscriptionsViewModelTest {
             assertFalse(state.isRefreshing)
             assertEquals(1, state.links.size)
             assertEquals(null, state.errorMessage)
+            assertEquals(SubscriptionsScreenState.Content, state.screenState)
         }
     }
 
@@ -69,6 +70,7 @@ class SubscriptionsViewModelTest {
             assertFalse(state.isLoading)
             assertTrue(state.links.isEmpty())
             assertEquals(null, state.errorMessage)
+            assertEquals(SubscriptionsScreenState.Empty, state.screenState)
         }
     }
 
@@ -97,6 +99,7 @@ class SubscriptionsViewModelTest {
             assertFalse(state.isLoading)
             assertTrue(state.links.isEmpty())
             assertEquals("Ошибка сети", state.errorMessage)
+            assertEquals(SubscriptionsScreenState.Error, state.screenState)
         }
     }
 
@@ -204,6 +207,7 @@ class SubscriptionsViewModelTest {
             assertEquals(null, viewModel.uiState.value.errorMessage)
             assertEquals(1, viewModel.uiState.value.links.size)
             assertEquals(5L, viewModel.uiState.value.links.first().id)
+            assertEquals(SubscriptionsScreenState.Content, viewModel.uiState.value.screenState)
         }
     }
 
@@ -360,6 +364,7 @@ class SubscriptionsViewModelTest {
             assertEquals(1, repository.removeCalls)
             assertTrue(viewModel.uiState.value.links.isEmpty())
             assertEquals(null, viewModel.uiState.value.removeErrorMessage)
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
         }
     }
 
@@ -397,6 +402,64 @@ class SubscriptionsViewModelTest {
             assertEquals(1, state.links.size)
             assertEquals(existing.id, state.links.first().id)
             assertEquals("Сеть недоступна", state.removeErrorMessage)
+            assertEquals(SubscriptionsScreenState.Content, state.screenState)
+        }
+    }
+
+    @Test
+    fun addSubscription_fromEmpty_transitionsToContent() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult =
+                        SubscriptionsResult.Success(
+                            listOf(
+                                TrackedLink(
+                                    id = 100L,
+                                    url = "https://example.dev/content",
+                                    tags = listOf("dev"),
+                                    filters = emptyList(),
+                                ),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
+
+            viewModel.onAddLinkInputChanged("https://example.dev/content")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(SubscriptionsScreenState.Content, viewModel.uiState.value.screenState)
+            assertEquals(1, viewModel.uiState.value.links.size)
+        }
+    }
+
+    @Test
+    fun refresh_whenRepositoryReturnsEmpty_keepsEmptyState() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results =
+                        ArrayDeque(
+                            listOf(
+                                SubscriptionsResult.Success(emptyList()),
+                                SubscriptionsResult.Success(emptyList()),
+                            ),
+                        ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
+            assertEquals(2, repository.calls)
+            assertEquals(1, repository.forceRefreshCalls)
         }
     }
 

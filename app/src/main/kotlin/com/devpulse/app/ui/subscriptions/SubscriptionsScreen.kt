@@ -151,28 +151,29 @@ private fun SubscriptionsScreen(
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when {
-                uiState.errorMessage != null -> {
+            when (uiState.screenState) {
+                SubscriptionsScreenState.Loading -> Unit
+                SubscriptionsScreenState.Error -> {
                     ErrorState(
-                        message = uiState.errorMessage,
+                        message = uiState.errorMessage ?: "Не удалось загрузить подписки.",
                         onRetry = onRetry,
                     )
                 }
 
-                uiState.allLinks.isEmpty() -> {
+                SubscriptionsScreenState.Empty -> {
                     EmptyState()
                 }
 
-                uiState.links.isEmpty() -> {
-                    NoResultsState(onClearSearch = onClearSearch)
-                }
-
-                else -> {
-                    LinksContent(
-                        links = uiState.links,
-                        isRemoving = uiState.isRemoving,
-                        onRemoveRequested = onRemoveRequested,
-                    )
+                SubscriptionsScreenState.Content -> {
+                    if (uiState.links.isEmpty()) {
+                        NoResultsState(onClearSearch = onClearSearch)
+                    } else {
+                        LinksContent(
+                            links = uiState.links,
+                            isRemoving = uiState.isRemoving,
+                            onRemoveRequested = onRemoveRequested,
+                        )
+                    }
                 }
             }
         }

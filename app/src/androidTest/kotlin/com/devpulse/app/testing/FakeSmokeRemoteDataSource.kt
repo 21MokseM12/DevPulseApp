@@ -94,6 +94,14 @@ class FakeSmokeRemoteDataSource
             }
         }
 
+        fun setLinksForTesting(nextLinks: List<LinkResponseDto>) {
+            synchronized(lock) {
+                links = nextLinks.toMutableList()
+                val maxKnownId = nextLinks.maxOfOrNull { it.id } ?: 0L
+                nextLinkId = maxKnownId + 1L
+            }
+        }
+
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return registerClient(request)
         }

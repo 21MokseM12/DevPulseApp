@@ -32,6 +32,7 @@ data class SubscriptionsUiState(
     val availableTags: List<String> = emptyList(),
     val isStaleData: Boolean = false,
     val lastSyncAtEpochMs: Long? = null,
+    val screenState: SubscriptionsScreenState = SubscriptionsScreenState.Loading,
     val errorMessage: String? = null,
     val removeErrorMessage: String? = null,
     val addLinkInput: String = "",
@@ -40,6 +41,13 @@ data class SubscriptionsUiState(
     val addErrorMessage: String? = null,
     val pendingRemoval: TrackedLink? = null,
 )
+
+enum class SubscriptionsScreenState {
+    Loading,
+    Content,
+    Empty,
+    Error,
+}
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -55,7 +63,13 @@ class SubscriptionsViewModel
         private val searchInput = MutableStateFlow(restoredSearchState.query)
         private var debouncedNormalizedQuery = normalizeQuery(restoredSearchState.query)
 
-        private val _uiState = MutableStateFlow(SubscriptionsUiState(searchState = restoredSearchState))
+        private val _uiState =
+            MutableStateFlow(
+                SubscriptionsUiState(
+                    searchState = restoredSearchState,
+                    screenState = SubscriptionsScreenState.Loading,
+                ),
+            )
         val uiState: StateFlow<SubscriptionsUiState> = _uiState.asStateFlow()
 
         init {
@@ -72,7 +86,7 @@ class SubscriptionsViewModel
         }
 
         fun onSearchQueryChanged(value: String) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(searchState = state.searchState.copy(query = value))
             }
             persistSearchState(_uiState.value.searchState)
@@ -113,7 +127,7 @@ class SubscriptionsViewModel
 
         fun clearSearch() {
             val clearedState = SubscriptionsSearchState()
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(searchState = clearedState)
             }
             persistSearchState(clearedState)
@@ -121,25 +135,25 @@ class SubscriptionsViewModel
         }
 
         fun onAddLinkInputChanged(value: String) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(addLinkInput = value, addErrorMessage = null)
             }
         }
 
         fun onAddTagsInputChanged(value: String) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(addTagsInput = value, addErrorMessage = null)
             }
         }
 
         fun onAddFiltersInputChanged(value: String) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(addFiltersInput = value, addErrorMessage = null)
             }
         }
 
         fun onRemoveRequested(link: TrackedLink) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(
                     pendingRemoval = link,
                     removeErrorMessage = null,
@@ -148,7 +162,7 @@ class SubscriptionsViewModel
         }
 
         fun onRemoveDismissed() {
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(pendingRemoval = null)
             }
         }
@@ -161,11 +175,11 @@ class SubscriptionsViewModel
             val oldLinks = current.allLinks
             val index = oldLinks.indexOfFirst { it.id == target.id }
             if (index == -1) {
-                _uiState.update { state -> state.copy(pendingRemoval = null) }
+                updateUiState { state -> state.copy(pendingRemoval = null) }
                 return
             }
             val optimisticLinks = oldLinks.filterNot { it.id == target.id }
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(
                     isRemoving = true,
                     allLinks = optimisticLinks,
@@ -178,7 +192,7 @@ class SubscriptionsViewModel
             viewModelScope.launch {
                 when (val result = subscriptionsRepository.removeSubscription(link = target.url)) {
                     is SubscriptionsResult.Success -> {
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             state.copy(
                                 isRemoving = false,
                                 isStaleData = result.isStale,
@@ -188,7 +202,7 @@ class SubscriptionsViewModel
                     }
 
                     is SubscriptionsResult.Failure -> {
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             val rollbackLinks = state.allLinks.toMutableList().apply { add(index, target) }
                             state.copy(
                                 isRemoving = false,
@@ -211,13 +225,13 @@ class SubscriptionsViewModel
             val filters = parseCsv(current.addFiltersInput)
 
             if (!isValidHttpUri(link)) {
-                _uiState.update { state ->
+                updateUiState { state ->
                     state.copy(addErrorMessage = "Введите корректный URL (http/https).")
                 }
                 return
             }
 
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(
                     isAdding = true,
                     addErrorMessage = null,
@@ -236,7 +250,7 @@ class SubscriptionsViewModel
                 ) {
                     is SubscriptionsResult.Success -> {
                         val added = result.links.firstOrNull()
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             val updatedLinks = mergeAddedLink(state.allLinks, added)
                             state.copy(
                                 isAdding = false,
@@ -253,7 +267,7 @@ class SubscriptionsViewModel
                     }
 
                     is SubscriptionsResult.Failure -> {
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             state.copy(
                                 isAdding = false,
                                 addErrorMessage = result.error.userMessage,
@@ -268,7 +282,7 @@ class SubscriptionsViewModel
             val current = _uiState.value
             if (current.isLoading || current.isRefreshing) return
 
-            _uiState.update { state ->
+            updateUiState { state ->
                 state.copy(
                     isLoading = !isRefresh,
                     isRefreshing = isRefresh,
@@ -280,7 +294,7 @@ class SubscriptionsViewModel
             viewModelScope.launch {
                 when (val result = subscriptionsRepository.getSubscriptions(forceRefresh = isRefresh)) {
                     is SubscriptionsResult.Success -> {
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             state.copy(
                                 isLoading = false,
                                 isRefreshing = false,
@@ -297,7 +311,7 @@ class SubscriptionsViewModel
                     }
 
                     is SubscriptionsResult.Failure -> {
-                        _uiState.update { state ->
+                        updateUiState { state ->
                             state.copy(
                                 isLoading = false,
                                 isRefreshing = false,
@@ -348,7 +362,7 @@ class SubscriptionsViewModel
         }
 
         private fun recomputeVisibleLinks() {
-            _uiState.update { state ->
+            updateUiState { state ->
                 val availableTags = collectAvailableTags(state.allLinks)
                 val filteredLinks =
                     applySubscriptionsSearchUseCase(
@@ -372,12 +386,29 @@ class SubscriptionsViewModel
         }
 
         private fun updateSearchState(transform: (SubscriptionsSearchState) -> SubscriptionsSearchState) {
-            _uiState.update { state ->
+            updateUiState { state ->
                 val updatedSearchState = transform(state.searchState)
                 persistSearchState(updatedSearchState)
                 state.copy(searchState = updatedSearchState)
             }
             recomputeVisibleLinks()
+        }
+
+        private fun updateUiState(transform: (SubscriptionsUiState) -> SubscriptionsUiState) {
+            _uiState.update { state ->
+                transform(state).withDerivedScreenState()
+            }
+        }
+
+        private fun SubscriptionsUiState.withDerivedScreenState(): SubscriptionsUiState {
+            val nextScreenState =
+                when {
+                    isLoading -> SubscriptionsScreenState.Loading
+                    errorMessage != null -> SubscriptionsScreenState.Error
+                    allLinks.isEmpty() -> SubscriptionsScreenState.Empty
+                    else -> SubscriptionsScreenState.Content
+                }
+            return copy(screenState = nextScreenState)
         }
 
         private fun restoreSearchState(): SubscriptionsSearchState {
