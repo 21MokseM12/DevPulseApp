@@ -160,6 +160,25 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun reloginAfterLogout_withRestartBetweenAuthSteps_staysStable() {
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LOGOUT_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+
+        fillAuthCredentials(login = "moksem", password = "secret")
+        composeRule.activityRule.scenario.recreate()
+
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.AUTH_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.UPDATES_TITLE)
+    }
+
+    @Test
     fun authRequest_duringRotation_isCancelledAndStaysOnAuth() {
         smokeDataSource.setLoginDelayForTesting(delayMs = 1_500L)
 

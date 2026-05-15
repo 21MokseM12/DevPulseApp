@@ -170,6 +170,110 @@ class MainLogoutLifecycleIntegrationTest {
             assertTrue(viewModel.uiState.value.hasCachedSession)
         }
 
+    @Test
+    fun processDeath_afterLogout_keepsAuthDestinationOnNextStart() =
+        runTest {
+            val sessionStore = RecordingSessionStore(mutableListOf())
+            val useCase =
+                AccountLifecycleUseCase(
+                    remoteDataSource = FakeRemoteDataSource(),
+                    sessionStore = sessionStore,
+                    updatesRepository = RecordingUpdatesRepository(mutableListOf()),
+                    pushTokenStore = RecordingPushTokenStore(mutableListOf()),
+                    notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                )
+            val firstProcessViewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = true,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase = useCase,
+                )
+            advanceUntilIdle()
+            firstProcessViewModel.onLogout()
+            advanceUntilIdle()
+
+            val secondProcessViewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = true,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase = useCase,
+                )
+            advanceUntilIdle()
+
+            assertEquals(StartupDestination.Auth, secondProcessViewModel.uiState.value.startupDestination)
+            assertFalse(secondProcessViewModel.uiState.value.hasCachedSession)
+            assertEquals(null, sessionStore.getSession())
+        }
+
+    @Test
+    fun appRestart_afterRelogin_restoresSubscriptionsDestinationFromPersistedSession() =
+        runTest {
+            val sessionStore = RecordingSessionStore(mutableListOf())
+            val useCase =
+                AccountLifecycleUseCase(
+                    remoteDataSource = FakeRemoteDataSource(),
+                    sessionStore = sessionStore,
+                    updatesRepository = RecordingUpdatesRepository(mutableListOf()),
+                    pushTokenStore = RecordingPushTokenStore(mutableListOf()),
+                    notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                )
+            val firstProcessViewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = true,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase = useCase,
+                )
+            advanceUntilIdle()
+            firstProcessViewModel.onLogout()
+            firstProcessViewModel.onAuthSucceeded(
+                AuthSuccessEvent(
+                    login = "moksem",
+                    action = AuthAction.Login,
+                ),
+            )
+            advanceUntilIdle()
+
+            val secondProcessViewModel =
+                MainViewModel(
+                    appBootstrapRepository =
+                        FakeAppBootstrapRepository(
+                            AppBootstrapInfo(
+                                environment = "debug",
+                                baseUrl = "https://api.example.com/",
+                                hasCachedSession = false,
+                            ),
+                        ),
+                    sessionStore = sessionStore,
+                    accountLifecycleUseCase = useCase,
+                )
+            advanceUntilIdle()
+
+            assertEquals(StartupDestination.Subscriptions, secondProcessViewModel.uiState.value.startupDestination)
+            assertTrue(secondProcessViewModel.uiState.value.hasCachedSession)
+            assertEquals("moksem", sessionStore.getSession()?.login)
+        }
+
     private class FakeAppBootstrapRepository(
         private val info: AppBootstrapInfo,
     ) : AppBootstrapRepository {
