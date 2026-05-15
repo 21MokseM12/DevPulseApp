@@ -2,6 +2,7 @@ package com.devpulse.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.repository.AuthResult
 import com.devpulse.app.domain.usecase.LoginClientUseCase
 import com.devpulse.app.domain.usecase.RegisterClientUseCase
@@ -207,7 +208,7 @@ class AuthViewModel
                                     state.copy(
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
-                                        loginErrorMessage = failureMessage(AuthAction.Login, result.error.userMessage),
+                                        loginErrorMessage = failureMessage(AuthAction.Login, result.error),
                                     ).setButtonStates(
                                         action = AuthAction.Login,
                                         status = AuthButtonStatus.Error,
@@ -290,7 +291,7 @@ class AuthViewModel
                                         isLoginLoading = false,
                                         isRegisterLoading = false,
                                         registerErrorMessage =
-                                            failureMessage(AuthAction.Register, result.error.userMessage),
+                                            failureMessage(AuthAction.Register, result.error),
                                     ).setButtonStates(
                                         action = AuthAction.Register,
                                         status = AuthButtonStatus.Error,
@@ -315,12 +316,9 @@ class AuthViewModel
 
         private fun failureMessage(
             action: AuthAction,
-            message: String,
+            error: ApiError,
         ): String {
-            return when (action) {
-                AuthAction.Login -> "Не удалось войти. $message"
-                AuthAction.Register -> "Не удалось зарегистрироваться. $message"
-            }
+            return AuthErrorMessageMapper.map(action = action, error = error)
         }
 
         fun onAuthSuccessHandled() {

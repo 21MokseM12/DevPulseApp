@@ -37,8 +37,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 72
-        versionName = "1.49.0"
+        versionCode = 73
+        versionName = "1.50.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "com.devpulse.app.HiltTestRunner"

@@ -157,8 +157,14 @@ class AuthViewModelTest {
             advanceUntilIdle()
 
             assertEquals(null, viewModel.uiState.value.pendingAuthSuccess)
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.activeErrorMessage)
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось войти. Неверные данные Проверьте введенные данные и повторите попытку.",
+                viewModel.uiState.value.activeErrorMessage,
+            )
+            assertEquals(
+                "Не удалось войти. Неверные данные Проверьте введенные данные и повторите попытку.",
+                viewModel.uiState.value.loginErrorMessage,
+            )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
@@ -216,12 +222,14 @@ class AuthViewModelTest {
 
             assertEquals(null, viewModel.uiState.value.pendingAuthSuccess)
             assertEquals(
-                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                "Не удалось зарегистрироваться. Превышено время ожидания ответа сервера. " +
+                    "Проверьте сеть и попробуйте снова.",
                 viewModel.uiState.value.activeErrorMessage,
             )
             assertEquals(null, viewModel.uiState.value.loginErrorMessage)
             assertEquals(
-                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                "Не удалось зарегистрироваться. Превышено время ожидания ответа сервера. " +
+                    "Проверьте сеть и попробуйте снова.",
                 viewModel.uiState.value.registerErrorMessage,
             )
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.registerButtonState.status)
@@ -266,8 +274,14 @@ class AuthViewModelTest {
                 )
             viewModel.submitLogin()
             advanceUntilIdle()
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.activeErrorMessage)
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось войти. Неверные данные Проверьте введенные данные и повторите попытку.",
+                viewModel.uiState.value.activeErrorMessage,
+            )
+            assertEquals(
+                "Не удалось войти. Неверные данные Проверьте введенные данные и повторите попытку.",
+                viewModel.uiState.value.loginErrorMessage,
+            )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
 
             val gate = CompletableDeferred<Unit>()
@@ -311,7 +325,7 @@ class AuthViewModelTest {
             advanceUntilIdle()
 
             assertEquals(
-                "Не удалось войти. Превышено время ожидания сети",
+                "Не удалось войти. Превышено время ожидания ответа сервера. Проверьте сеть и попробуйте снова.",
                 viewModel.uiState.value.loginErrorMessage,
             )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
@@ -348,7 +362,8 @@ class AuthViewModelTest {
 
             assertEquals(null, viewModel.uiState.value.loginErrorMessage)
             assertEquals(
-                "Не удалось зарегистрироваться. Превышено время ожидания сети",
+                "Не удалось зарегистрироваться. Превышено время ожидания ответа сервера. " +
+                    "Проверьте сеть и попробуйте снова.",
                 viewModel.uiState.value.registerErrorMessage,
             )
 

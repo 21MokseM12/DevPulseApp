@@ -73,7 +73,9 @@ class AuthUiIntegrationTest {
         fillAuthCredentials(login = "moksem", password = "secret")
 
         composeRule.onNodeWithTag(SmokeTestTags.AUTH_LOGIN_BUTTON).performClick()
-        composeRule.waitUntilNodeWithTextExists("Не удалось войти. Временная сеть недоступна")
+        composeRule.waitUntilNodeWithTextExists(
+            "Не удалось войти. Временная сеть недоступна Проверьте введенные данные и повторите попытку.",
+        )
         composeRule.waitUntilNodeWithTextExists("Повторить вход")
 
         smokeDataSource.setLoginSuccessForTesting()

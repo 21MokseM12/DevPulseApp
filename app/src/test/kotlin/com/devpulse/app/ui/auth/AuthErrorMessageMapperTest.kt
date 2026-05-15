@@ -1,0 +1,78 @@
+package com.devpulse.app.ui.auth
+
+import com.devpulse.app.domain.model.ApiError
+import com.devpulse.app.domain.model.ApiErrorKind
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class AuthErrorMessageMapperTest {
+    @Test
+    fun map_loginBadRequest_usesActionableHintWhenMessageIsGeneric() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Login,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.BadRequest,
+                        userMessage = "Проверьте корректность введенных данных.",
+                    ),
+            )
+
+        assertEquals("Не удалось войти. Проверьте логин и пароль и повторите попытку.", message)
+    }
+
+    @Test
+    fun map_registerBadRequest_keepsBackendReasonAndAddsActionHint() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.BadRequest,
+                        userMessage = "Пользователь уже существует",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Пользователь уже существует " +
+                "Проверьте введенные данные и повторите попытку.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_networkTimeout_returnsRetryGuidance() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Login,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.NetworkTimeout,
+                        userMessage = "Превышено время ожидания сети",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось войти. Превышено время ожидания ответа сервера. Проверьте сеть и попробуйте снова.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_unknownWithEmptyMessage_returnsStableFallback() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.Unknown,
+                        userMessage = " ",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Сервис временно недоступен. Повторите попытку позже.",
+            message,
+        )
+    }
+}

@@ -48,7 +48,10 @@ class AuthButtonTextIntegrationTest {
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
-            assertEquals("Не удалось войти. Неверные данные", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось войти. Неверные данные Проверьте введенные данные и повторите попытку.",
+                viewModel.uiState.value.loginErrorMessage,
+            )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthAction.Login, viewModel.uiState.value.lastSubmittedAction)
 
@@ -93,7 +96,10 @@ class AuthButtonTextIntegrationTest {
 
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
             assertEquals("Повторить вход", viewModel.uiState.value.loginButtonState.text)
-            assertEquals("Не удалось войти. Нет соединения", viewModel.uiState.value.loginErrorMessage)
+            assertEquals(
+                "Не удалось войти. Превышено время ожидания ответа сервера. Проверьте сеть и попробуйте снова.",
+                viewModel.uiState.value.loginErrorMessage,
+            )
             assertEquals(null, viewModel.uiState.value.registerErrorMessage)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
 
@@ -106,6 +112,38 @@ class AuthButtonTextIntegrationTest {
             assertEquals("Вход выполнен", viewModel.uiState.value.loginButtonState.text)
             assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
             assertEquals(AuthAction.Login, viewModel.uiState.value.pendingAuthSuccess?.action)
+        }
+
+    @Test
+    fun loginNotFoundFailure_showsServiceUnavailableGuidance() =
+        runTest {
+            val remote = SequenceAuthRepository()
+            val viewModel =
+                AuthViewModel(
+                    loginClientUseCase = LoginClientUseCase(remote),
+                    registerClientUseCase = RegisterClientUseCase(remote),
+                )
+            viewModel.onLoginChanged("moksem")
+            viewModel.onPasswordChanged("secret")
+            remote.enqueueLogin(
+                AuthResult.Failure(
+                    error =
+                        ApiError(
+                            kind = ApiErrorKind.NotFound,
+                            userMessage = "Endpoint not found",
+                        ),
+                ),
+            )
+
+            viewModel.submitLogin()
+            advanceUntilIdle()
+
+            assertEquals(
+                "Не удалось войти. Сервис авторизации временно недоступен. Повторите попытку позже.",
+                viewModel.uiState.value.loginErrorMessage,
+            )
+            assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)
+            assertEquals(AuthButtonStatus.Idle, viewModel.uiState.value.registerButtonState.status)
         }
 
     private class SequenceAuthRepository : AuthRepository {
