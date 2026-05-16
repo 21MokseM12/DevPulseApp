@@ -115,7 +115,7 @@ class AuthButtonTextIntegrationTest {
         }
 
     @Test
-    fun loginNotFoundFailure_showsServiceUnavailableGuidance() =
+    fun loginNotFoundFailure_showsAccountNotFoundGuidance() =
         runTest {
             val remote = SequenceAuthRepository()
             val viewModel =
@@ -139,7 +139,7 @@ class AuthButtonTextIntegrationTest {
             advanceUntilIdle()
 
             assertEquals(
-                "Не удалось войти. Сервис авторизации временно недоступен. Повторите попытку позже.",
+                "Не удалось войти. Аккаунт с таким логином не найден.",
                 viewModel.uiState.value.loginErrorMessage,
             )
             assertEquals(AuthButtonStatus.Error, viewModel.uiState.value.loginButtonState.status)

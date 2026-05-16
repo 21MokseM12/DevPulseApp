@@ -128,7 +128,7 @@ class AuthLifecycleRegressionIntegrationTest {
 
             assertNull(authViewModel.uiState.value.pendingAuthSuccess)
             assertEquals(
-                "Не удалось войти. Сервис авторизации временно недоступен. Повторите попытку позже.",
+                "Не удалось войти. Аккаунт с таким логином не найден.",
                 authViewModel.uiState.value.activeErrorMessage,
             )
             assertEquals(StartupDestination.Auth, mainViewModel.uiState.value.startupDestination)

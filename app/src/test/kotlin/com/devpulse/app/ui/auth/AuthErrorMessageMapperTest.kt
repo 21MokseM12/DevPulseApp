@@ -34,7 +34,25 @@ class AuthErrorMessageMapperTest {
             )
 
         assertEquals(
-            "Не удалось зарегистрироваться. Проверьте данные регистрации или попробуйте войти в существующий аккаунт.",
+            "Не удалось зарегистрироваться. Аккаунт с этим логином уже существует, измените логин и повторите попытку.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_registerBadRequest_withGenericServerMessage_treatsAsDuplicateAccount() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.BadRequest,
+                        userMessage = "Bad request",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Аккаунт с этим логином уже существует, измените логин и повторите попытку.",
             message,
         )
     }
@@ -59,7 +77,7 @@ class AuthErrorMessageMapperTest {
     }
 
     @Test
-    fun map_notFound_returnsAuthServiceUnavailableHint() {
+    fun map_loginNotFound_returnsAccountNotFoundHint() {
         val message =
             AuthErrorMessageMapper.map(
                 action = AuthAction.Login,
@@ -71,7 +89,25 @@ class AuthErrorMessageMapperTest {
             )
 
         assertEquals(
-            "Не удалось войти. Сервис авторизации временно недоступен. Повторите попытку позже.",
+            "Не удалось войти. Аккаунт с таким логином не найден.",
+            message,
+        )
+    }
+
+    @Test
+    fun map_registerNotFound_returnsAuthServiceUnavailableHint() {
+        val message =
+            AuthErrorMessageMapper.map(
+                action = AuthAction.Register,
+                error =
+                    ApiError(
+                        kind = ApiErrorKind.NotFound,
+                        userMessage = "Endpoint not found",
+                    ),
+            )
+
+        assertEquals(
+            "Не удалось зарегистрироваться. Сервис авторизации временно недоступен. Повторите попытку позже.",
             message,
         )
     }
