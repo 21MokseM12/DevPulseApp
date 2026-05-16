@@ -280,6 +280,133 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun addSubscription_withUnsupportedDomain_showsDomainError() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://example.com/some/path")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(
+                "Поддерживаются только ссылки на GitHub (github.com) и Stack Overflow (stackoverflow.com).",
+                viewModel.uiState.value.addErrorMessage,
+            )
+            assertEquals(0, repository.addCalls)
+        }
+    }
+
+    @Test
+    fun addSubscription_withGithubUrl_passesValidation() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult = SubscriptionsResult.Success(
+                        listOf(
+                            TrackedLink(
+                                id = 1L,
+                                url = "https://github.com/owner/repo",
+                                tags = emptyList(),
+                                filters = emptyList(),
+                            ),
+                        ),
+                    ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://github.com/owner/repo")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.addCalls)
+            assertEquals(null, viewModel.uiState.value.addErrorMessage)
+        }
+    }
+
+    @Test
+    fun addSubscription_withStackOverflowUrl_passesValidation() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult = SubscriptionsResult.Success(
+                        listOf(
+                            TrackedLink(
+                                id = 2L,
+                                url = "https://stackoverflow.com/questions/123",
+                                tags = emptyList(),
+                                filters = emptyList(),
+                            ),
+                        ),
+                    ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://stackoverflow.com/questions/123")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.addCalls)
+            assertEquals(null, viewModel.uiState.value.addErrorMessage)
+        }
+    }
+
+    @Test
+    fun addSubscription_withGithubSubdomain_passesValidation() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult = SubscriptionsResult.Success(
+                        listOf(
+                            TrackedLink(
+                                id = 3L,
+                                url = "https://gist.github.com/user/abc123",
+                                tags = emptyList(),
+                                filters = emptyList(),
+                            ),
+                        ),
+                    ),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://gist.github.com/user/abc123")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.addCalls)
+            assertEquals(null, viewModel.uiState.value.addErrorMessage)
+        }
+    }
+
+    @Test
+    fun addSubscription_withUnsupportedDomain_doesNotCallRepository() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://twitter.com/user/status/1")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(0, repository.addCalls)
+        }
+    }
+
+    @Test
     fun addSubscription_successfullyAddsItemWithoutManualReload() {
         runTest {
             val repository =

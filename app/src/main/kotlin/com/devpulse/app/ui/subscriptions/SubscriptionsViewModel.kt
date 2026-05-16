@@ -241,6 +241,13 @@ class SubscriptionsViewModel
                 return
             }
 
+            if (!isSupportedDomain(link)) {
+                updateUiState { state ->
+                    state.copy(addErrorMessage = "Поддерживаются только ссылки на GitHub (github.com) и Stack Overflow (stackoverflow.com).")
+                }
+                return
+            }
+
             updateUiState { state ->
                 state.copy(
                     isAdding = true,
@@ -345,6 +352,15 @@ class SubscriptionsViewModel
                 .map { uri ->
                     val scheme = uri.scheme?.lowercase()
                     (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+                }.getOrDefault(false)
+        }
+
+        private fun isSupportedDomain(value: String): Boolean {
+            return runCatching { URI(value) }
+                .map { uri ->
+                    val host = uri.host?.lowercase() ?: return@map false
+                    host == "github.com" || host.endsWith(".github.com") ||
+                        host == "stackoverflow.com" || host.endsWith(".stackoverflow.com")
                 }.getOrDefault(false)
         }
 
