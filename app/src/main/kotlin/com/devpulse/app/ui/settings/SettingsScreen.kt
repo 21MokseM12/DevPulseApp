@@ -14,12 +14,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -48,6 +54,7 @@ import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.push.PushNotificationTextResolver
 import com.devpulse.app.ui.testing.SmokeTestTags
+import com.devpulse.app.ui.theme.Spacing
 import java.time.Instant
 
 @Composable
@@ -67,8 +74,6 @@ fun SettingsRoute(
     }
     SettingsScreen(
         uiState = uiState,
-        onGoToSubscriptions = onGoToSubscriptions,
-        onGoToUpdates = onGoToUpdates,
         onOpenQuietHoursSchedule = onOpenQuietHoursSchedule,
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
         onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
@@ -87,8 +92,6 @@ fun SettingsRoute(
 @Composable
 internal fun SettingsScreen(
     uiState: SettingsUiState,
-    onGoToSubscriptions: () -> Unit,
-    onGoToUpdates: () -> Unit,
     onOpenQuietHoursSchedule: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
     onNotificationToggleChanged: (Boolean) -> Unit,
@@ -111,14 +114,10 @@ internal fun SettingsScreen(
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    refreshTick += 1
-                }
+                if (event == Lifecycle.Event.ON_RESUME) refreshTick += 1
             }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val requestPermissionLauncher =
@@ -163,227 +162,240 @@ internal fun SettingsScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Text(
-            text = "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.testTag(SmokeTestTags.SETTINGS_TITLE),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Показывать системные уведомления",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Switch(
-                checked = effectiveNotificationsEnabled,
-                onCheckedChange = { isEnabled ->
-                    if (!isEnabled) {
-                        onNotificationToggleChanged(false)
-                    } else if (canPostSystemNotifications) {
-                        onNotificationToggleChanged(true)
-                    } else {
-                        when (permissionState) {
-                            NotificationPermissionState.NeedsRequest -> {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    onPermissionRequestTriggered()
-                                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                            }
-                            NotificationPermissionState.NeedsSettings -> context.openNotificationSettings()
-                            NotificationPermissionState.NotRequired -> onNotificationToggleChanged(true)
-                            NotificationPermissionState.Granted -> onNotificationToggleChanged(true)
-                        }
-                    }
-                },
-                modifier = Modifier.testTag(SmokeTestTags.SETTINGS_NOTIFICATIONS_SWITCH),
-            )
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            OutlinedButton(
-                onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Compact) },
-                enabled = effectiveNotificationsEnabled,
-                modifier = Modifier,
-            ) {
-                Text(
-                    text =
-                        if (uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Compact) {
-                            "Compact ✓"
-                        } else {
-                            "Compact"
-                        },
-                )
-            }
-            OutlinedButton(
-                onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Detailed) },
-                enabled = effectiveNotificationsEnabled,
-                modifier = Modifier,
-            ) {
-                Text(
-                    text =
-                        if (uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Detailed) {
-                            "Detailed ✓"
-                        } else {
-                            "Detailed"
-                        },
-                )
-            }
-        }
-        Text(
-            text =
-                when (uiState.notificationPreferences.presentationMode) {
-                    NotificationPresentationMode.Compact ->
-                        "Compact: короткий текст в шторке без деталей."
-                    NotificationPresentationMode.Detailed ->
-                        "Detailed: полный текст обновления в уведомлении."
-                },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Digest mode",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Switch(
-                checked = uiState.notificationPreferences.digestMode != null,
-                enabled = effectiveNotificationsEnabled,
-                onCheckedChange = onNotificationDigestModeToggled,
-            )
-        }
-        if (uiState.notificationPreferences.digestMode != null) {
+        // --- Уведомления ---
+        SettingsSectionCard(title = "Уведомления") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                DigestModeButton(
-                    title = "Каждый час",
-                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Hourly,
-                    enabled = effectiveNotificationsEnabled,
-                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Hourly) },
+                Text(
+                    text = "Показывать системные уведомления",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
                 )
-                DigestModeButton(
-                    title = "Раз в 6ч",
-                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.EverySixHours,
-                    enabled = effectiveNotificationsEnabled,
-                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.EverySixHours) },
-                )
-                DigestModeButton(
-                    title = "Раз в день",
-                    selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Daily,
-                    enabled = effectiveNotificationsEnabled,
-                    onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Daily) },
+                Switch(
+                    checked = effectiveNotificationsEnabled,
+                    onCheckedChange = { isEnabled ->
+                        if (!isEnabled) {
+                            onNotificationToggleChanged(false)
+                        } else if (canPostSystemNotifications) {
+                            onNotificationToggleChanged(true)
+                        } else {
+                            when (permissionState) {
+                                NotificationPermissionState.NeedsRequest -> {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        onPermissionRequestTriggered()
+                                        requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+
+                                NotificationPermissionState.NeedsSettings -> context.openNotificationSettings()
+                                NotificationPermissionState.NotRequired -> onNotificationToggleChanged(true)
+                                NotificationPermissionState.Granted -> onNotificationToggleChanged(true)
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag(SmokeTestTags.SETTINGS_NOTIFICATIONS_SWITCH),
                 )
             }
+
+            Text(
+                text = permissionDescription(permissionState),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            when (permissionState) {
+                NotificationPermissionState.NotRequired, NotificationPermissionState.Granted -> Unit
+                NotificationPermissionState.NeedsRequest -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Button(
+                            onClick = {
+                                onPermissionRequestTriggered()
+                                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = "Разрешить уведомления")
+                        }
+                    }
+                }
+
+                NotificationPermissionState.NeedsSettings -> {
+                    Button(
+                        onClick = { context.openNotificationSettings() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(text = "Открыть настройки уведомлений")
+                    }
+                }
+            }
         }
+
+        // --- Формат уведомлений ---
+        SettingsSectionCard(title = "Формат уведомлений") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                DigestModeButton(
+                    title = "Compact",
+                    selected = uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Compact,
+                    enabled = effectiveNotificationsEnabled,
+                    onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Compact) },
+                    modifier = Modifier.weight(1f),
+                )
+                DigestModeButton(
+                    title = "Detailed",
+                    selected =
+                        uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Detailed,
+                    enabled = effectiveNotificationsEnabled,
+                    onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Detailed) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text =
+                    when (uiState.notificationPreferences.presentationMode) {
+                        NotificationPresentationMode.Compact -> "Compact: короткий текст в шторке без деталей."
+                        NotificationPresentationMode.Detailed -> "Detailed: полный текст обновления в уведомлении."
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        // --- Digest mode ---
+        SettingsSectionCard(title = "Digest mode") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Включить digest",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Switch(
+                    checked = uiState.notificationPreferences.digestMode != null,
+                    enabled = effectiveNotificationsEnabled,
+                    onCheckedChange = onNotificationDigestModeToggled,
+                )
+            }
+            if (uiState.notificationPreferences.digestMode != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    DigestModeButton(
+                        title = "Каждый час",
+                        selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Hourly,
+                        enabled = effectiveNotificationsEnabled,
+                        onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Hourly) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    DigestModeButton(
+                        title = "6 часов",
+                        selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.EverySixHours,
+                        enabled = effectiveNotificationsEnabled,
+                        onClick = { onNotificationDigestModeSelected(NotificationDigestMode.EverySixHours) },
+                        modifier = Modifier.weight(1f),
+                    )
+                    DigestModeButton(
+                        title = "Раз в день",
+                        selected = uiState.notificationPreferences.digestMode == NotificationDigestMode.Daily,
+                        enabled = effectiveNotificationsEnabled,
+                        onClick = { onNotificationDigestModeSelected(NotificationDigestMode.Daily) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        // --- Preview уведомления ---
         NotificationPreviewCard(
             presentationMode = uiState.notificationPreferences.presentationMode,
             digestMode = uiState.notificationPreferences.digestMode,
             textResolver = textResolver,
             notificationsEnabled = effectiveNotificationsEnabled,
         )
+
+        // --- Тихие часы ---
         QuietHoursCard(
             policy = uiState.notificationPreferences.quietHoursPolicy,
             enabled = effectiveNotificationsEnabled,
             onQuietHoursEnabledChanged = onQuietHoursEnabledChanged,
             onOpenQuietHoursSchedule = onOpenQuietHoursSchedule,
         )
-        Text(
-            text = permissionDescription(permissionState),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        when (permissionState) {
-            NotificationPermissionState.NotRequired -> Unit
-            NotificationPermissionState.Granted -> Unit
-            NotificationPermissionState.NeedsRequest -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    Button(
-                        onClick = {
-                            onPermissionRequestTriggered()
-                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(text = "Разрешить уведомления")
-                    }
-                }
-            }
 
-            NotificationPermissionState.NeedsSettings -> {
-                Button(
-                    onClick = { context.openNotificationSettings() },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(text = "Открыть настройки уведомлений")
-                }
+        // --- Аккаунт ---
+        SettingsSectionCard(title = "Аккаунт") {
+            Button(
+                onClick = onLogoutRequested,
+                enabled = uiState.logoutStatus != LogoutActionStatus.InProgress,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = if (uiState.logoutStatus == LogoutActionStatus.InProgress) "Выход..." else "Выйти",
+                )
+            }
+            OutlinedButton(
+                onClick = onUnregisterRequested,
+                enabled = uiState.unregisterStatus != UnregisterActionStatus.InProgress,
+                colors =
+                    ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text =
+                        if (uiState.unregisterStatus == UnregisterActionStatus.InProgress) {
+                            "Удаление аккаунта..."
+                        } else {
+                            "Удалить аккаунт"
+                        },
+                )
+            }
+            if (uiState.unregisterErrorMessage != null) {
+                Text(
+                    text = uiState.unregisterErrorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         }
-        Button(onClick = onGoToSubscriptions, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Открыть Subscriptions")
-        }
-        Button(onClick = onGoToUpdates, modifier = Modifier.fillMaxWidth()) {
-            Text(text = "Открыть Updates")
-        }
-        Button(
-            onClick = onLogoutRequested,
-            enabled = uiState.logoutStatus != LogoutActionStatus.InProgress,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text =
-                    if (uiState.logoutStatus == LogoutActionStatus.InProgress) {
-                        "Выход..."
-                    } else {
-                        "Выйти"
-                    },
-            )
-        }
-        OutlinedButton(
-            onClick = onUnregisterRequested,
-            enabled = uiState.unregisterStatus != UnregisterActionStatus.InProgress,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text =
-                    if (uiState.unregisterStatus == UnregisterActionStatus.InProgress) {
-                        "Удаление аккаунта..."
-                    } else {
-                        "Удалить аккаунт"
-                    },
-            )
-        }
-        if (uiState.unregisterErrorMessage != null) {
-            Text(
-                text = uiState.unregisterErrorMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
+
+        Spacer(modifier = Modifier.height(Spacing.md))
     }
 
     if (uiState.showUnregisterConfirmation) {
         AlertDialog(
             onDismissRequest = onUnregisterDismissed,
             title = { Text(text = "Удалить аккаунт?") },
-            text = { Text(text = "Аккаунт будет удален на сервере, а локальные данные очищены.") },
+            text = {
+                Text(
+                    text = "Аккаунт будет удален на сервере, а локальные данные очищены.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
             confirmButton = {
-                Button(onClick = onUnregisterConfirmed) {
+                Button(
+                    onClick = onUnregisterConfirmed,
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                        ),
+                ) {
                     Text(text = "Удалить")
                 }
             },
@@ -397,19 +409,56 @@ internal fun SettingsScreen(
 }
 
 @Composable
+private fun SettingsSectionCard(
+    title: String,
+    content: @Composable () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            content()
+        }
+    }
+}
+
+@Composable
 private fun DigestModeButton(
     title: String,
     selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-    ) {
-        Text(
-            text = if (selected) "$title ✓" else title,
-        )
+    if (selected) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+        ) {
+            Text(text = title)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+        ) {
+            Text(text = title)
+        }
     }
 }
 
@@ -421,17 +470,33 @@ private fun QuietHoursCard(
     onOpenQuietHoursSchedule: () -> Unit,
 ) {
     val nextWindowPreview = formatQuietHoursPreview(policy = policy, now = Instant.now())
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
+            Text(
+                text = "Тихие часы",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "Quiet hours", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "Включить тихие часы",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
                 Switch(
                     checked = policy.enabled,
                     onCheckedChange = onQuietHoursEnabledChanged,
@@ -443,7 +508,7 @@ private fun QuietHoursCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(
+            OutlinedButton(
                 onClick = onOpenQuietHoursSchedule,
                 enabled = enabled,
                 modifier =
@@ -451,7 +516,7 @@ private fun QuietHoursCard(
                         .fillMaxWidth()
                         .testTag(SmokeTestTags.SETTINGS_OPEN_QUIET_HOURS_BUTTON),
             ) {
-                Text(text = "Открыть расписание quiet hours")
+                Text(text = "Изменить расписание")
             }
         }
     }
@@ -464,18 +529,27 @@ internal fun NotificationPreviewCard(
     textResolver: PushNotificationTextResolver,
     notificationsEnabled: Boolean,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
             Text(
                 text = "Preview уведомления",
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = PushNotificationTextResolver.DEFAULT_NOTIFICATION_TITLE,
                 style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text =
@@ -497,7 +571,7 @@ internal fun NotificationPreviewCard(
                     } else {
                         "Режим: digest (${digestMode.name.lowercase()})"
                     },
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

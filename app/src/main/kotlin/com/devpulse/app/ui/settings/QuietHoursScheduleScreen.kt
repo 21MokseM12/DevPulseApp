@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -19,11 +21,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
+import com.devpulse.app.ui.theme.Spacing
 import kotlinx.coroutines.delay
 import java.time.DayOfWeek
 import java.time.Instant
@@ -73,125 +77,209 @@ internal fun QuietHoursScheduleScreen(
             Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Text(text = "Quiet hours schedule", style = MaterialTheme.typography.headlineSmall)
-
-        Row(
+        // Enable toggle card
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
-            Text(text = "Включить quiet hours", style = MaterialTheme.typography.bodyLarge)
-            Switch(
-                checked = policy.enabled,
-                onCheckedChange = onQuietHoursEnabledChanged,
-            )
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(Spacing.lg),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Включить тихие часы",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = policy.enabled,
+                    onCheckedChange = onQuietHoursEnabledChanged,
+                )
+            }
         }
 
-        Row(
+        // Time range card
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         ) {
-            OutlinedButton(onClick = { onQuietHoursStartShifted(-30) }, enabled = controlsEnabled) {
-                Text(text = "С -30")
-            }
-            OutlinedButton(onClick = { onQuietHoursStartShifted(30) }, enabled = controlsEnabled) {
-                Text(text = "С +30")
-            }
-            Text(
-                text = formatMinutes(policy.fromMinutes),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            )
-        }
+            Column(
+                modifier = Modifier.padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
+                Text(
+                    text = "Временной диапазон",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            OutlinedButton(onClick = { onQuietHoursEndShifted(-30) }, enabled = controlsEnabled) {
-                Text(text = "До -30")
-            }
-            OutlinedButton(onClick = { onQuietHoursEndShifted(30) }, enabled = controlsEnabled) {
-                Text(text = "До +30")
-            }
-            Text(
-                text = formatMinutes(policy.toMinutes),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.align(Alignment.CenterVertically),
-            )
-        }
-
-        Text(text = "Дни недели", style = MaterialTheme.typography.titleSmall)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            DayOfWeek.entries.forEach { day ->
-                val selected = policy.weekdays.contains(day)
-                OutlinedButton(
-                    onClick = { onQuietHoursWeekdayToggled(day) },
+                TimeStepperRow(
+                    label = "Начало",
+                    value = formatMinutes(policy.fromMinutes),
                     enabled = controlsEnabled,
+                    onDecrement = { onQuietHoursStartShifted(-30) },
+                    onIncrement = { onQuietHoursStartShifted(30) },
+                )
+
+                TimeStepperRow(
+                    label = "Конец",
+                    value = formatMinutes(policy.toMinutes),
+                    enabled = controlsEnabled,
+                    onDecrement = { onQuietHoursEndShifted(-30) },
+                    onIncrement = { onQuietHoursEndShifted(30) },
+                )
+            }
+        }
+
+        // Weekdays card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Text(
+                    text = "Дни недели",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
-                    Text(
-                        text = day.shortLabel(),
-                        color =
-                            if (selected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                    DayOfWeek.entries.forEach { day ->
+                        val selected = policy.weekdays.contains(day)
+                        FilterChip(
+                            selected = selected,
+                            onClick = { onQuietHoursWeekdayToggled(day) },
+                            enabled = controlsEnabled,
+                            label = {
+                                Text(
+                                    text = day.shortLabel(),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                )
                             },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Timezone card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Text(
+                    text = "Часовой пояс",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    FilterChip(
+                        selected = policy.timezoneMode == QuietHoursTimezoneMode.Device,
+                        onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Device) },
+                        enabled = controlsEnabled,
+                        label = { Text("Устройство") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    FilterChip(
+                        selected = policy.timezoneMode == QuietHoursTimezoneMode.Fixed,
+                        onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Fixed) },
+                        enabled = controlsEnabled,
+                        label = { Text("Фиксированный UTC") },
+                        modifier = Modifier.weight(1f),
                     )
                 }
             }
         }
 
-        Text(text = "Часовой пояс", style = MaterialTheme.typography.titleSmall)
-        Row(
+        // Preview card
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         ) {
-            OutlinedButton(
-                onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Device) },
-                enabled = controlsEnabled,
-            ) {
-                Text(
-                    text =
-                        if (policy.timezoneMode == QuietHoursTimezoneMode.Device) {
-                            "Часовой пояс устройства ✓"
-                        } else {
-                            "Часовой пояс устройства"
-                        },
-                )
-            }
-            OutlinedButton(
-                onClick = { onQuietHoursTimezoneModeSelected(QuietHoursTimezoneMode.Fixed) },
-                enabled = controlsEnabled,
-            ) {
-                Text(
-                    text =
-                        if (policy.timezoneMode == QuietHoursTimezoneMode.Fixed) {
-                            "Фиксированный UTC ✓"
-                        } else {
-                            "Фиксированный UTC"
-                        },
-                )
-            }
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
-                Text(text = "Preview ближайшего окна", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "Ближайшее окно",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Text(
                     text = preview,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeStepperRow(
+    label: String,
+    value: String,
+    enabled: Boolean,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(
+                onClick = onDecrement,
+                enabled = enabled,
+            ) {
+                Text("−")
+            }
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            OutlinedButton(
+                onClick = onIncrement,
+                enabled = enabled,
+            ) {
+                Text("+")
             }
         }
     }
@@ -205,5 +293,5 @@ private fun formatMinutes(minutes: Int): String {
 }
 
 private fun DayOfWeek.shortLabel(): String {
-    return getDisplayName(TextStyle.SHORT, Locale("ru"))
+    return getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("ru"))
 }

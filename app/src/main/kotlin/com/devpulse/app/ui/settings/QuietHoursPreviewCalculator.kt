@@ -153,5 +153,5 @@ private fun buildIntervalForDate(
 }
 
 private fun DayOfWeek.shortLabel(): String {
-    return getDisplayName(TextStyle.SHORT, Locale("ru"))
+    return getDisplayName(TextStyle.SHORT, Locale.forLanguageTag("ru"))
 }

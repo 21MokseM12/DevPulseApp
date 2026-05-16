@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -24,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.ui.testing.SmokeTestTags
+import com.devpulse.app.ui.theme.Spacing
 
 @Composable
 fun AuthRoute(
@@ -65,16 +70,28 @@ private fun AuthScreen(
     Column(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md, Alignment.CenterVertically),
     ) {
+        Spacer(modifier = Modifier.height(Spacing.huge))
+
         Text(
-            text = "Auth",
+            text = "DevPulse",
             style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.testTag(SmokeTestTags.AUTH_TITLE),
         )
+        Text(
+            text = "Войдите в аккаунт, чтобы продолжить",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(modifier = Modifier.height(Spacing.sm))
+
         OutlinedTextField(
             value = uiState.login,
             onValueChange = onLoginChange,
@@ -112,6 +129,7 @@ private fun AuthScreen(
                     .fillMaxWidth()
                     .testTag(SmokeTestTags.AUTH_PASSWORD_INPUT),
         )
+
         val activeErrorMessage = uiState.activeErrorMessage
         if (activeErrorMessage != null) {
             Text(
@@ -120,6 +138,9 @@ private fun AuthScreen(
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+
+        Spacer(modifier = Modifier.height(Spacing.xs))
+
         Button(
             onClick = onLoginSubmit,
             enabled = !uiState.isLoading && uiState.isCredentialsValid,
@@ -129,15 +150,18 @@ private fun AuthScreen(
                     .testTag(SmokeTestTags.AUTH_LOGIN_BUTTON),
         ) {
             if (isLoginLoading) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     CircularProgressIndicator(
                         strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier =
                             Modifier
-                                .padding(vertical = 2.dp)
+                                .size(18.dp)
                                 .testTag(SmokeTestTags.AUTH_LOGIN_LOADER),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(text = uiState.loginButtonState.text)
                 }
             } else {
@@ -153,20 +177,24 @@ private fun AuthScreen(
                     .testTag(SmokeTestTags.AUTH_REGISTER_BUTTON),
         ) {
             if (isRegisterLoading) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     CircularProgressIndicator(
                         strokeWidth = 2.dp,
                         modifier =
                             Modifier
-                                .padding(vertical = 2.dp)
+                                .size(18.dp)
                                 .testTag(SmokeTestTags.AUTH_REGISTER_LOADER),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(text = uiState.registerButtonState.text)
                 }
             } else {
                 Text(text = uiState.registerButtonState.text)
             }
         }
+
+        Spacer(modifier = Modifier.height(Spacing.huge))
     }
 }

@@ -5,6 +5,6 @@ import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
 data class UnreadCountResponseDto(
-    @Json(name = "unreadCount")
+    @param:Json(name = "unreadCount")
     val unreadCount: Int?,
 )

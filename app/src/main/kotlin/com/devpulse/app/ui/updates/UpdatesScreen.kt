@@ -2,17 +2,23 @@ package com.devpulse.app.ui.updates
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +35,9 @@ import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
 import com.devpulse.app.domain.model.UpdatesQuickFilter
 import com.devpulse.app.ui.testing.SmokeTestTags
+import com.devpulse.app.ui.theme.Spacing
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun UpdatesRoute(
@@ -51,9 +60,6 @@ fun UpdatesRoute(
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
     UpdatesScreen(
         uiState = uiState,
-        onGoToSubscriptions = onGoToSubscriptions,
-        onGoToSettings = onGoToSettings,
-        onLogout = onLogout,
         onMarkAsRead = viewModel::markAsRead,
         onQueryChanged = viewModel::onQueryChanged,
         onUnreadOnlyToggled = viewModel::onUnreadOnlyToggled,
@@ -68,9 +74,6 @@ fun UpdatesRoute(
 @Composable
 private fun UpdatesScreen(
     uiState: UpdatesUiState,
-    onGoToSubscriptions: () -> Unit,
-    onGoToSettings: () -> Unit,
-    onLogout: () -> Unit,
     onMarkAsRead: (Long) -> Unit,
     onQueryChanged: (String) -> Unit,
     onUnreadOnlyToggled: () -> Unit,
@@ -80,30 +83,19 @@ private fun UpdatesScreen(
     onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
     onResetFilters: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Text(
-            text = "Updates",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier =
-                Modifier
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .testTag(SmokeTestTags.UPDATES_TITLE),
-        )
-        Text(
-            text = "Непрочитанных: ${uiState.unreadCount}",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier =
-                Modifier
-                    .padding(horizontal = 16.dp)
-                    .testTag(SmokeTestTags.UPDATES_UNREAD_COUNT),
-        )
-        TopActions(
-            onGoToSubscriptions = onGoToSubscriptions,
-            onGoToSettings = onGoToSettings,
-            onLogout = onLogout,
-        )
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (uiState.unreadCount > 0) {
+            Text(
+                text = "Непрочитанных: ${uiState.unreadCount}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier =
+                    Modifier
+                        .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+                        .testTag(SmokeTestTags.UPDATES_UNREAD_COUNT),
+            )
+        }
+
         FiltersSection(
             uiState = uiState,
             onQueryChanged = onQueryChanged,
@@ -119,26 +111,20 @@ private fun UpdatesScreen(
             Text(
                 text = uiState.actionErrorMessage,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs),
             )
         }
 
         when {
-            uiState.isLoading -> {
-                LoadingState()
-            }
-
-            uiState.events.isEmpty() -> {
-                EmptyState(hasActiveFilters = uiState.filterState.hasActiveFilters)
-            }
-
-            else -> {
+            uiState.isLoading -> LoadingState()
+            uiState.events.isEmpty() -> EmptyState(hasActiveFilters = uiState.filterState.hasActiveFilters)
+            else ->
                 UpdatesList(
                     events = uiState.events,
                     markingIds = uiState.markingIds,
                     onMarkAsRead = onMarkAsRead,
                 )
-            }
         }
     }
 }
@@ -159,8 +145,8 @@ private fun FiltersSection(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         OutlinedTextField(
             value = filterState.query,
@@ -174,9 +160,7 @@ private fun FiltersSection(
             placeholder = { Text(text = "Текст, ссылка или источник") },
         )
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = false,
@@ -207,9 +191,7 @@ private fun FiltersSection(
             }
         }
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = filterState.source == null,
@@ -226,9 +208,7 @@ private fun FiltersSection(
             }
         }
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = filterState.period == UpdatesPeriodFilter.ALL,
@@ -260,9 +240,7 @@ private fun FiltersSection(
         }
 
         if (uiState.availableTags.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 items(uiState.availableTags) { tag ->
                     FilterChip(
                         selected = tag in filterState.selectedTags,
@@ -282,8 +260,9 @@ private fun FiltersSection(
                 Text(
                     text = "Активные фильтры применены",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Button(
+                OutlinedButton(
                     onClick = onResetFilters,
                     modifier = Modifier.testTag(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON),
                 ) {
@@ -302,65 +281,116 @@ private fun UpdatesList(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding =
+            PaddingValues(
+                horizontal = Spacing.lg,
+                vertical = Spacing.sm,
+            ),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(items = events, key = { it.id }) { event ->
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            UpdateEventCard(
+                event = event,
+                isMarking = event.id in markingIds,
+                onMarkAsRead = onMarkAsRead,
+            )
+        }
+    }
+}
+
+@Composable
+private fun UpdateEventCard(
+    event: UpdateEvent,
+    isMarking: Boolean,
+    onMarkAsRead: (Long) -> Unit,
+) {
+    val containerColor =
+        if (!event.isRead) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                Text(
+                    text = event.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = if (event.isRead) FontWeight.Normal else FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (!event.isRead) {
                     Text(
-                        text = event.title,
+                        text = "•",
+                        color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (event.isRead) FontWeight.Normal else FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = if (event.isRead) "read" else "unread",
-                        color =
-                            if (event.isRead) {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            } else {
-                                MaterialTheme.colorScheme.primary
-                            },
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = Spacing.sm),
                     )
                 }
+            }
+
+            Text(
+                text = event.content,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            Text(
+                text = event.linkUrl,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = event.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = event.linkUrl,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "receivedAt=${event.receivedAtEpochMs}",
+                    text = formatTimestamp(event.receivedAtEpochMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (!event.isRead) {
-                    Button(
+                    OutlinedButton(
                         onClick = { onMarkAsRead(event.id) },
-                        enabled = !markingIds.contains(event.id),
-                        modifier =
-                            Modifier
-                                .padding(top = 4.dp)
-                                .testTag(SmokeTestTags.updateMarkReadButton(event.id)),
+                        enabled = !isMarking,
+                        modifier = Modifier.testTag(SmokeTestTags.updateMarkReadButton(event.id)),
                     ) {
-                        Text(text = "Пометить как прочитанное")
+                        if (isMarking) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        } else {
+                            Text(
+                                text = "Прочитано",
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun formatTimestamp(epochMs: Long): String {
+    return DateFormat
+        .getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+        .format(Date(epochMs))
 }
 
 @Composable
@@ -370,51 +400,54 @@ private fun LoadingState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator()
-        Text(text = "Загружаю историю обновлений...", modifier = Modifier.padding(top = 12.dp))
+        CircularProgressIndicator(
+            modifier = Modifier.size(40.dp),
+            strokeWidth = 3.dp,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(modifier = Modifier.height(Spacing.md))
+        Text(
+            text = "Загружаю историю обновлений...",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
 private fun EmptyState(hasActiveFilters: Boolean) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(Spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         if (hasActiveFilters) {
-            Text(text = "Ничего не найдено")
-            Text(text = "Измените фильтры или сбросьте их")
+            Text(
+                text = "Ничего не найдено",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            Text(
+                text = "Измените фильтры или сбросьте их",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
-            Text(text = "Пока нет событий")
-            Text(text = "Новые уведомления из Bot API появятся здесь")
-        }
-    }
-}
-
-@Composable
-private fun TopActions(
-    onGoToSubscriptions: () -> Unit,
-    onGoToSettings: () -> Unit,
-    onLogout: () -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Button(
-            onClick = onGoToSubscriptions,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .testTag(SmokeTestTags.UPDATES_OPEN_SUBSCRIPTIONS_BUTTON),
-        ) { Text(text = "Открыть Subscriptions") }
-        Button(onClick = onGoToSettings, modifier = Modifier.weight(1f)) { Text(text = "Открыть Settings") }
-        Button(onClick = onLogout, modifier = Modifier.testTag(SmokeTestTags.UPDATES_LOGOUT_BUTTON)) {
-            Text(text = "Выйти")
+            Text(
+                text = "Пока нет событий",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            Text(
+                text = "Новые уведомления из Bot API появятся здесь",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

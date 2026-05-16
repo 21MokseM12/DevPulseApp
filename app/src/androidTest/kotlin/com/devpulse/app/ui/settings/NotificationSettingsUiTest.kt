@@ -24,8 +24,6 @@ class NotificationSettingsUiTest {
         composeRule.setContent {
             SettingsScreen(
                 uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
-                onGoToSubscriptions = {},
-                onGoToUpdates = {},
                 onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
@@ -44,7 +42,7 @@ class NotificationSettingsUiTest {
         composeRule.onNodeWithText("Показывать системные уведомления").assertIsDisplayed()
         composeRule.onNodeWithText("Digest mode").assertIsDisplayed()
         composeRule.onNodeWithText("Preview уведомления").assertIsDisplayed()
-        composeRule.onNodeWithText("Quiet hours").assertIsDisplayed()
+        composeRule.onNodeWithText("Тихие часы").assertIsDisplayed()
     }
 
     @Test
@@ -66,8 +64,6 @@ class NotificationSettingsUiTest {
                                     ),
                             ),
                     ),
-                onGoToSubscriptions = {},
-                onGoToUpdates = {},
                 onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
@@ -94,8 +90,6 @@ class NotificationSettingsUiTest {
         composeRule.setContent {
             SettingsScreen(
                 uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
-                onGoToSubscriptions = {},
-                onGoToUpdates = {},
                 onOpenQuietHoursSchedule = { openClicks += 1 },
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
@@ -111,7 +105,7 @@ class NotificationSettingsUiTest {
             )
         }
 
-        composeRule.onNodeWithText("Открыть расписание quiet hours").assertIsDisplayed().performClick()
+        composeRule.onNodeWithText("Изменить расписание").assertIsDisplayed().performClick()
         composeRule.runOnIdle {
             org.junit.Assert.assertEquals(1, openClicks)
         }
@@ -155,8 +149,8 @@ class NotificationSettingsUiTest {
             )
         }
 
-        composeRule.onNodeWithText("Quiet hours schedule").assertIsDisplayed()
-        composeRule.onNodeWithText("Preview ближайшего окна").assertIsDisplayed()
+        composeRule.onNodeWithText("Временной диапазон").assertIsDisplayed()
+        composeRule.onNodeWithText("Ближайшее окно").assertIsDisplayed()
         composeRule.onNodeWithText("Следующий старт:", substring = true).assertIsDisplayed()
     }
 }
