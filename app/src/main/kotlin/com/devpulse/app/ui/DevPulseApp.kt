@@ -1,5 +1,6 @@
 package com.devpulse.app.ui
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -9,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.OpenUpdatesDigestContextRequest
+import com.devpulse.app.data.local.preferences.AppThemeMode
 import com.devpulse.app.ui.main.MainViewModel
 import com.devpulse.app.ui.navigation.AppNavGraph
 import com.devpulse.app.ui.theme.DevPulseTheme
@@ -23,7 +25,14 @@ fun DevPulseApp(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    DevPulseTheme {
+    val darkTheme =
+        when (uiState.appThemeMode) {
+            AppThemeMode.DARK -> true
+            AppThemeMode.LIGHT -> false
+            AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        }
+
+    DevPulseTheme(darkTheme = darkTheme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,

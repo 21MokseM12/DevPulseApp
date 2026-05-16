@@ -2,6 +2,7 @@ package com.devpulse.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.data.local.preferences.AppThemeMode
 import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPermissionStore
 import com.devpulse.app.data.local.preferences.NotificationPreferences
@@ -9,6 +10,7 @@ import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
+import com.devpulse.app.data.local.preferences.ThemePreferenceStore
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.DigestScheduler
@@ -34,6 +36,7 @@ enum class UnregisterActionStatus {
 data class SettingsUiState(
     val hasRequestedNotificationPermission: Boolean = false,
     val notificationPreferences: NotificationPreferences = NotificationPreferences(),
+    val appThemeMode: AppThemeMode = AppThemeMode.SYSTEM,
     val logoutStatus: LogoutActionStatus = LogoutActionStatus.Idle,
     val unregisterStatus: UnregisterActionStatus = UnregisterActionStatus.Idle,
     val showUnregisterConfirmation: Boolean = false,
@@ -49,6 +52,7 @@ class SettingsViewModel
         private val notificationPreferencesStore: NotificationPreferencesStore,
         private val accountLifecycleUseCase: AccountLifecycleUseCase,
         private val digestScheduler: DigestScheduler,
+        private val themePreferenceStore: ThemePreferenceStore = InMemoryThemePreferenceStore(),
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -67,6 +71,17 @@ class SettingsViewModel
                         state.copy(notificationPreferences = preferences)
                     }
                 }
+            }
+            viewModelScope.launch {
+                themePreferenceStore.observeThemeMode().collect { mode ->
+                    _uiState.update { state -> state.copy(appThemeMode = mode) }
+                }
+            }
+        }
+
+        fun onThemeModeSelected(mode: AppThemeMode) {
+            viewModelScope.launch {
+                themePreferenceStore.setThemeMode(mode)
             }
         }
 
@@ -278,5 +293,15 @@ class SettingsViewModel
         private suspend fun syncDigestScheduler() {
             runCatching { notificationPreferencesStore.getPreferences() }
                 .onSuccess { preferences -> digestScheduler.sync(preferences) }
+        }
+
+        private class InMemoryThemePreferenceStore : ThemePreferenceStore {
+            private val modeFlow = MutableStateFlow(AppThemeMode.SYSTEM)
+
+            override fun observeThemeMode(): StateFlow<AppThemeMode> = modeFlow
+
+            override suspend fun setThemeMode(mode: AppThemeMode) {
+                modeFlow.value = mode
+            }
         }
     }

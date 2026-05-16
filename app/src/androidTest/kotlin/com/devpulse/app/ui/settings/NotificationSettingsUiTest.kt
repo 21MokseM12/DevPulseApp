@@ -24,6 +24,7 @@ class NotificationSettingsUiTest {
         composeRule.setContent {
             SettingsScreen(
                 uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
+                onThemeModeSelected = {},
                 onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
@@ -64,6 +65,7 @@ class NotificationSettingsUiTest {
                                     ),
                             ),
                     ),
+                onThemeModeSelected = {},
                 onOpenQuietHoursSchedule = {},
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},
@@ -90,6 +92,7 @@ class NotificationSettingsUiTest {
         composeRule.setContent {
             SettingsScreen(
                 uiState = SettingsUiState(notificationPreferences = NotificationPreferences()),
+                onThemeModeSelected = {},
                 onOpenQuietHoursSchedule = { openClicks += 1 },
                 onPermissionRequestTriggered = {},
                 onNotificationToggleChanged = {},

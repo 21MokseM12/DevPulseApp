@@ -2,7 +2,9 @@ package com.devpulse.app.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.devpulse.app.data.local.preferences.AppThemeMode
 import com.devpulse.app.data.local.preferences.SessionStore
+import com.devpulse.app.data.local.preferences.ThemePreferenceStore
 import com.devpulse.app.domain.repository.AppBootstrapRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.ui.auth.AuthSuccessEvent
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,6 +30,7 @@ data class MainUiState(
     val isBootstrapping: Boolean = true,
     val hasCachedSession: Boolean = false,
     val startupDestination: StartupDestination = StartupDestination.Loading,
+    val appThemeMode: AppThemeMode = AppThemeMode.SYSTEM,
 )
 
 @HiltViewModel
@@ -36,11 +40,17 @@ class MainViewModel
         private val appBootstrapRepository: AppBootstrapRepository,
         private val sessionStore: SessionStore,
         private val accountLifecycleUseCase: AccountLifecycleUseCase,
+        private val themePreferenceStore: ThemePreferenceStore = DefaultThemePreferenceStore,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(MainUiState())
         val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
         init {
+            viewModelScope.launch {
+                themePreferenceStore.observeThemeMode().collectLatest { mode ->
+                    _uiState.update { state -> state.copy(appThemeMode = mode) }
+                }
+            }
             viewModelScope.launch {
                 val bootstrap = appBootstrapRepository.loadBootstrapInfo()
                 _uiState.update { state ->
@@ -100,5 +110,14 @@ class MainViewModel
             } else {
                 StartupDestination.Auth
             }
+        }
+
+        private companion object {
+            val DefaultThemePreferenceStore: ThemePreferenceStore =
+                object : ThemePreferenceStore {
+                    override fun observeThemeMode() = flowOf(AppThemeMode.SYSTEM)
+
+                    override suspend fun setThemeMode(mode: AppThemeMode) = Unit
+                }
         }
     }

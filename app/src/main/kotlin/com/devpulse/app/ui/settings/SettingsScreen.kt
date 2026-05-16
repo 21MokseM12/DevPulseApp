@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.data.local.preferences.AppThemeMode
 import com.devpulse.app.data.local.preferences.NotificationDigestMode
 import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
@@ -74,6 +76,7 @@ fun SettingsRoute(
     }
     SettingsScreen(
         uiState = uiState,
+        onThemeModeSelected = viewModel::onThemeModeSelected,
         onOpenQuietHoursSchedule = onOpenQuietHoursSchedule,
         onPermissionRequestTriggered = viewModel::onPermissionRequestTriggered,
         onNotificationToggleChanged = viewModel::onNotificationToggleChanged,
@@ -92,6 +95,7 @@ fun SettingsRoute(
 @Composable
 internal fun SettingsScreen(
     uiState: SettingsUiState,
+    onThemeModeSelected: (AppThemeMode) -> Unit,
     onOpenQuietHoursSchedule: () -> Unit,
     onPermissionRequestTriggered: () -> Unit,
     onNotificationToggleChanged: (Boolean) -> Unit,
@@ -169,6 +173,12 @@ internal fun SettingsScreen(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
+        // --- Внешний вид ---
+        ThemeSectionCard(
+            selectedMode = uiState.appThemeMode,
+            onModeSelected = onThemeModeSelected,
+        )
+
         // --- Уведомления ---
         SettingsSectionCard(title = "Уведомления") {
             Row(
@@ -405,6 +415,72 @@ internal fun SettingsScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun ThemeSectionCard(
+    selectedMode: AppThemeMode,
+    onModeSelected: (AppThemeMode) -> Unit,
+) {
+    SettingsSectionCard(title = "Внешний вид") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            ThemeModeButton(
+                label = "Системная",
+                selected = selectedMode == AppThemeMode.SYSTEM,
+                onClick = { onModeSelected(AppThemeMode.SYSTEM) },
+                modifier = Modifier.weight(1f),
+            )
+            ThemeModeButton(
+                label = "Светлая",
+                selected = selectedMode == AppThemeMode.LIGHT,
+                onClick = { onModeSelected(AppThemeMode.LIGHT) },
+                modifier = Modifier.weight(1f),
+            )
+            ThemeModeButton(
+                label = "Тёмная",
+                selected = selectedMode == AppThemeMode.DARK,
+                onClick = { onModeSelected(AppThemeMode.DARK) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            modifier = modifier,
+            contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.sm),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+            contentPadding = PaddingValues(horizontal = Spacing.sm, vertical = Spacing.sm),
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+            )
+        }
     }
 }
 
