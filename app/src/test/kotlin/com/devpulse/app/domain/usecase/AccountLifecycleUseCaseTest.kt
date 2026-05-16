@@ -49,10 +49,14 @@ class AccountLifecycleUseCaseTest {
                     notificationPermissionStore = permissionStore,
                 )
 
-            val result = useCase.unregister()
+            val result = useCase.unregister(password = "Secret123")
 
             assertEquals(AccountLifecycleResult.Success, result)
             assertEquals(1, remote.unregisterCalls)
+            assertEquals(
+                ClientCredentialsRequestDto(login = "moksem", password = "Secret123"),
+                remote.lastUnregisterRequest,
+            )
             assertFalse(sessionStore.hasSession())
             assertTrue(updatesRepository.isCleared)
             assertTrue(pushTokenStore.isCleared)
@@ -82,7 +86,7 @@ class AccountLifecycleUseCaseTest {
                     notificationPermissionStore = permissionStore,
                 )
 
-            val result = useCase.unregister()
+            val result = useCase.unregister(password = "Secret123")
 
             assertEquals(AccountLifecycleResult.Success, result)
             assertEquals(1, remote.unregisterCalls)
@@ -115,7 +119,7 @@ class AccountLifecycleUseCaseTest {
                     notificationPermissionStore = permissionStore,
                 )
 
-            val result = useCase.unregister()
+            val result = useCase.unregister(password = "Secret123")
 
             assertTrue(result is AccountLifecycleResult.Failure)
             assertEquals(timeoutError, (result as AccountLifecycleResult.Failure).error)
@@ -142,7 +146,7 @@ class AccountLifecycleUseCaseTest {
                     notificationPermissionStore = permissionStore,
                 )
 
-            val result = useCase.unregister()
+            val result = useCase.unregister(password = "Secret123")
 
             assertEquals(AccountLifecycleResult.Cancelled, result)
             assertTrue(sessionStore.hasSession())
@@ -156,6 +160,8 @@ class AccountLifecycleUseCaseTest {
     ) : DevPulseRemoteDataSource {
         var unregisterCalls: Int = 0
             private set
+        var lastUnregisterRequest: ClientCredentialsRequestDto? = null
+            private set
 
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
@@ -167,6 +173,7 @@ class AccountLifecycleUseCaseTest {
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             unregisterCalls += 1
+            lastUnregisterRequest = request
             return unregisterResult
         }
 

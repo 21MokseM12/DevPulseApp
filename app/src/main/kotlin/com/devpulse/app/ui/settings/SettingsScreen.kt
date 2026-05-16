@@ -29,6 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -88,6 +90,7 @@ fun SettingsRoute(
         onLogoutRequested = viewModel::onLogoutRequested,
         onUnregisterRequested = viewModel::onUnregisterRequested,
         onUnregisterDismissed = viewModel::onUnregisterDismissed,
+        onUnregisterPasswordChanged = viewModel::onUnregisterPasswordChanged,
         onUnregisterConfirmed = viewModel::onUnregisterConfirmed,
     )
 }
@@ -107,6 +110,7 @@ internal fun SettingsScreen(
     onLogoutRequested: () -> Unit,
     onUnregisterRequested: () -> Unit,
     onUnregisterDismissed: () -> Unit,
+    onUnregisterPasswordChanged: (String) -> Unit,
     onUnregisterConfirmed: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -392,11 +396,29 @@ internal fun SettingsScreen(
             onDismissRequest = onUnregisterDismissed,
             title = { Text(text = "Удалить аккаунт?") },
             text = {
-                Text(
-                    text = "Аккаунт будет удален на сервере, а локальные данные очищены.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Text(
+                        text = "Аккаунт будет удален на сервере, а локальные данные очищены.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = uiState.unregisterPassword,
+                        onValueChange = onUnregisterPasswordChanged,
+                        label = { Text("Пароль") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = uiState.unregisterPasswordErrorMessage != null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (uiState.unregisterPasswordErrorMessage != null) {
+                        Text(
+                            text = uiState.unregisterPasswordErrorMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(

@@ -72,31 +72,37 @@ class SettingsViewModelTest {
     fun onUnregisterConfirmed_setsError_whenUseCaseFails() {
         runTest {
             val store = FakeNotificationPermissionStore()
+            val accountLifecycleUseCase =
+                FakeAccountLifecycleUseCase(
+                    unregisterResult =
+                        AccountLifecycleResult.Failure(
+                            ApiError(
+                                kind = ApiErrorKind.NetworkTimeout,
+                                userMessage = "timeout",
+                            ),
+                        ),
+                )
             val viewModel =
                 SettingsViewModel(
                     store,
                     FakeNotificationPreferencesStore(),
-                    FakeAccountLifecycleUseCase(
-                        unregisterResult =
-                            AccountLifecycleResult.Failure(
-                                ApiError(
-                                    kind = ApiErrorKind.NetworkTimeout,
-                                    userMessage = "timeout",
-                                ),
-                            ),
-                    ),
+                    accountLifecycleUseCase,
                     FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
+            viewModel.onUnregisterPasswordChanged("Secret123")
             viewModel.onUnregisterConfirmed()
             advanceUntilIdle()
 
             assertFalse(viewModel.uiState.value.showUnregisterConfirmation)
             assertEquals(UnregisterActionStatus.Idle, viewModel.uiState.value.unregisterStatus)
             assertEquals("timeout", viewModel.uiState.value.unregisterErrorMessage)
+            assertEquals(null, viewModel.uiState.value.unregisterPasswordErrorMessage)
             assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+            assertEquals(1, accountLifecycleUseCase.unregisterCalls)
+            assertEquals("Secret123", accountLifecycleUseCase.lastUnregisterPassword)
         }
     }
 
@@ -152,24 +158,57 @@ class SettingsViewModelTest {
     fun onUnregisterConfirmed_success_requestsAuthNavigation_andCanBeConsumed() {
         runTest {
             val store = FakeNotificationPermissionStore()
+            val accountLifecycleUseCase =
+                FakeAccountLifecycleUseCase(
+                    unregisterResult = AccountLifecycleResult.Success,
+                )
             val viewModel =
                 SettingsViewModel(
                     store,
                     FakeNotificationPreferencesStore(),
-                    FakeAccountLifecycleUseCase(
-                        unregisterResult = AccountLifecycleResult.Success,
-                    ),
+                    accountLifecycleUseCase,
                     FakeDigestScheduler(),
                 )
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
+            viewModel.onUnregisterPasswordChanged("Secret123")
             viewModel.onUnregisterConfirmed()
             advanceUntilIdle()
 
             assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
+            assertEquals(1, accountLifecycleUseCase.unregisterCalls)
+            assertEquals("Secret123", accountLifecycleUseCase.lastUnregisterPassword)
             viewModel.onAuthNavigationHandled()
             assertFalse(viewModel.uiState.value.shouldNavigateToAuth)
+        }
+    }
+
+    @Test
+    fun onUnregisterConfirmed_withBlankPassword_showsValidationErrorAndSkipsUseCase() {
+        runTest {
+            val store = FakeNotificationPermissionStore()
+            val accountLifecycleUseCase = FakeAccountLifecycleUseCase()
+            val viewModel =
+                SettingsViewModel(
+                    store,
+                    FakeNotificationPreferencesStore(),
+                    accountLifecycleUseCase,
+                    FakeDigestScheduler(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onUnregisterRequested()
+            viewModel.onUnregisterPasswordChanged("   ")
+            viewModel.onUnregisterConfirmed()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.showUnregisterConfirmation)
+            assertEquals(
+                "Введите пароль для удаления аккаунта.",
+                viewModel.uiState.value.unregisterPasswordErrorMessage,
+            )
+            assertEquals(0, accountLifecycleUseCase.unregisterCalls)
         }
     }
 
@@ -330,9 +369,18 @@ class SettingsViewModelTest {
             pushTokenStore = FakePushTokenStore(),
             notificationPermissionStore = FakeNotificationPermissionStore(),
         ) {
+        var unregisterCalls: Int = 0
+            private set
+        var lastUnregisterPassword: String? = null
+            private set
+
         override suspend fun logout(): AccountLifecycleResult = logoutResult
 
-        override suspend fun unregister(): AccountLifecycleResult = unregisterResult
+        override suspend fun unregister(password: String): AccountLifecycleResult {
+            unregisterCalls += 1
+            lastUnregisterPassword = password
+            return unregisterResult
+        }
     }
 
     private class FakeNotificationPreferencesStore : NotificationPreferencesStore {

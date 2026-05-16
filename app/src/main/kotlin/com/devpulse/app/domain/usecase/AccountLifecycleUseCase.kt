@@ -38,7 +38,7 @@ open class AccountLifecycleUseCase
             return AccountLifecycleResult.Success
         }
 
-        open suspend fun unregister(): AccountLifecycleResult {
+        open suspend fun unregister(password: String): AccountLifecycleResult {
             val session = sessionStore.getSession()
             if (session == null) {
                 clearLocalState()
@@ -51,7 +51,7 @@ open class AccountLifecycleUseCase
                         remoteDataSource.unregisterClient(
                             ClientCredentialsRequestDto(
                                 login = session.login,
-                                password = UNREGISTER_PASSWORD_PLACEHOLDER,
+                                password = password,
                             ),
                         )
                 ) {
@@ -83,9 +83,5 @@ open class AccountLifecycleUseCase
             updatesRepository.clearUpdates()
             pushTokenStore.clearToken()
             notificationPermissionStore.clearRequestedFlag()
-        }
-
-        private companion object {
-            private const val UNREGISTER_PASSWORD_PLACEHOLDER = ""
         }
     }

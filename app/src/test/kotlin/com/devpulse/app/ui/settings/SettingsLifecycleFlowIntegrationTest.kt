@@ -73,6 +73,7 @@ class SettingsLifecycleFlowIntegrationTest {
 
             viewModel.onUnregisterRequested()
             assertTrue(viewModel.uiState.value.showUnregisterConfirmation)
+            viewModel.onUnregisterPasswordChanged("Secret123")
             viewModel.onUnregisterConfirmed()
             advanceUntilIdle()
 
@@ -80,6 +81,10 @@ class SettingsLifecycleFlowIntegrationTest {
             assertEquals(null, viewModel.uiState.value.unregisterErrorMessage)
             assertFalse(viewModel.uiState.value.showUnregisterConfirmation)
             assertTrue(viewModel.uiState.value.shouldNavigateToAuth)
+            assertEquals(
+                ClientCredentialsRequestDto(login = "moksem", password = "Secret123"),
+                remote.lastUnregisterRequest,
+            )
             assertEquals(
                 listOf(
                     "remote.unregister",
@@ -161,6 +166,7 @@ class SettingsLifecycleFlowIntegrationTest {
             advanceUntilIdle()
 
             viewModel.onUnregisterRequested()
+            viewModel.onUnregisterPasswordChanged("Secret123")
             viewModel.onUnregisterConfirmed()
             advanceUntilIdle()
 
@@ -174,6 +180,9 @@ class SettingsLifecycleFlowIntegrationTest {
         private val steps: MutableList<String>,
         private val unregisterResult: RemoteCallResult<Unit>,
     ) : DevPulseRemoteDataSource {
+        var lastUnregisterRequest: ClientCredentialsRequestDto? = null
+            private set
+
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }
@@ -184,6 +193,7 @@ class SettingsLifecycleFlowIntegrationTest {
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             steps += "remote.unregister"
+            lastUnregisterRequest = request
             return unregisterResult
         }
 

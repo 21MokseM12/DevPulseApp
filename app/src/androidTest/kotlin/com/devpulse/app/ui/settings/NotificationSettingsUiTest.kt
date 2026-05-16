@@ -36,6 +36,7 @@ class NotificationSettingsUiTest {
                 onLogoutRequested = {},
                 onUnregisterRequested = {},
                 onUnregisterDismissed = {},
+                onUnregisterPasswordChanged = {},
                 onUnregisterConfirmed = {},
             )
         }
@@ -77,6 +78,7 @@ class NotificationSettingsUiTest {
                 onLogoutRequested = {},
                 onUnregisterRequested = {},
                 onUnregisterDismissed = {},
+                onUnregisterPasswordChanged = {},
                 onUnregisterConfirmed = {},
             )
         }
@@ -104,6 +106,7 @@ class NotificationSettingsUiTest {
                 onLogoutRequested = {},
                 onUnregisterRequested = {},
                 onUnregisterDismissed = {},
+                onUnregisterPasswordChanged = {},
                 onUnregisterConfirmed = {},
             )
         }

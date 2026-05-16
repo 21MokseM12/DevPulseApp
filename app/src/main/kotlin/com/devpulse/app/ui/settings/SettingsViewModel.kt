@@ -40,6 +40,8 @@ data class SettingsUiState(
     val logoutStatus: LogoutActionStatus = LogoutActionStatus.Idle,
     val unregisterStatus: UnregisterActionStatus = UnregisterActionStatus.Idle,
     val showUnregisterConfirmation: Boolean = false,
+    val unregisterPassword: String = "",
+    val unregisterPasswordErrorMessage: String? = null,
     val unregisterErrorMessage: String? = null,
     val shouldNavigateToAuth: Boolean = false,
 )
@@ -215,6 +217,8 @@ class SettingsViewModel
             _uiState.update { state ->
                 state.copy(
                     showUnregisterConfirmation = true,
+                    unregisterPassword = "",
+                    unregisterPasswordErrorMessage = null,
                     unregisterErrorMessage = null,
                     shouldNavigateToAuth = false,
                 )
@@ -223,36 +227,61 @@ class SettingsViewModel
 
         fun onUnregisterDismissed() {
             _uiState.update { state ->
-                state.copy(showUnregisterConfirmation = false)
+                state.copy(
+                    showUnregisterConfirmation = false,
+                    unregisterPassword = "",
+                    unregisterPasswordErrorMessage = null,
+                )
+            }
+        }
+
+        fun onUnregisterPasswordChanged(value: String) {
+            _uiState.update { state ->
+                state.copy(
+                    unregisterPassword = value,
+                    unregisterPasswordErrorMessage = null,
+                    unregisterErrorMessage = null,
+                )
             }
         }
 
         fun onUnregisterConfirmed() {
             if (_uiState.value.unregisterStatus == UnregisterActionStatus.InProgress) return
+            val password = _uiState.value.unregisterPassword.trim()
+            if (password.isEmpty()) {
+                _uiState.update { state ->
+                    state.copy(unregisterPasswordErrorMessage = "Введите пароль для удаления аккаунта.")
+                }
+                return
+            }
             _uiState.update { state ->
                 state.copy(
                     showUnregisterConfirmation = false,
                     unregisterStatus = UnregisterActionStatus.InProgress,
+                    unregisterPasswordErrorMessage = null,
                     unregisterErrorMessage = null,
                 )
             }
             viewModelScope.launch {
-                val result = accountLifecycleUseCase.unregister()
+                val result = accountLifecycleUseCase.unregister(password = password)
                 _uiState.update { state ->
                     when (result) {
                         AccountLifecycleResult.Success ->
                             state.copy(
                                 unregisterStatus = UnregisterActionStatus.Idle,
+                                unregisterPassword = "",
                                 shouldNavigateToAuth = true,
                             )
                         is AccountLifecycleResult.Failure ->
                             state.copy(
                                 unregisterStatus = UnregisterActionStatus.Idle,
+                                unregisterPassword = "",
                                 unregisterErrorMessage = result.error.userMessage,
                             )
                         AccountLifecycleResult.Cancelled ->
                             state.copy(
                                 unregisterStatus = UnregisterActionStatus.Idle,
+                                unregisterPassword = "",
                                 unregisterErrorMessage = "Удаление аккаунта отменено.",
                             )
                     }
