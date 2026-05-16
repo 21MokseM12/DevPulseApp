@@ -60,19 +60,19 @@ private val bottomNavItems =
         BottomNavItem(
             route = AppRoute.Subscriptions.route,
             icon = Icons.Filled.Home,
-            label = "Subscriptions",
+            label = "Подписки",
             testTag = SmokeTestTags.UPDATES_OPEN_SUBSCRIPTIONS_BUTTON,
         ),
         BottomNavItem(
             route = AppRoute.Updates.route,
             icon = Icons.Filled.Notifications,
-            label = "Updates",
+            label = "Обновления",
             testTag = SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON,
         ),
         BottomNavItem(
             route = AppRoute.Settings.route,
             icon = Icons.Filled.Settings,
-            label = "Settings",
+            label = "Настройки",
             testTag = SmokeTestTags.SUBSCRIPTIONS_OPEN_SETTINGS_BUTTON,
         ),
     )
@@ -203,9 +203,9 @@ private fun MainTopAppBar(
 ) {
     val (title, titleTag) =
         when (currentRoute) {
-            AppRoute.Subscriptions.route -> "Subscriptions" to SmokeTestTags.SUBSCRIPTIONS_TITLE
-            AppRoute.Updates.route -> "Updates" to SmokeTestTags.UPDATES_TITLE
-            AppRoute.Settings.route -> "Settings" to SmokeTestTags.SETTINGS_TITLE
+            AppRoute.Subscriptions.route -> "Подписки" to SmokeTestTags.SUBSCRIPTIONS_TITLE
+            AppRoute.Updates.route -> "Обновления" to SmokeTestTags.UPDATES_TITLE
+            AppRoute.Settings.route -> "Настройки" to SmokeTestTags.SETTINGS_TITLE
             else -> "DevPulse" to null
         }
     val showLogoutAction = currentRoute == AppRoute.Subscriptions.route

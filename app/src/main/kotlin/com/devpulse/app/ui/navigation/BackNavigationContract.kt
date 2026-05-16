@@ -23,7 +23,7 @@ private val nonMainRouteContracts =
     mapOf(
         AppRoute.QuietHoursSchedule.route to
             NonMainRouteContract(
-                title = "Quiet hours schedule",
+                title = "Расписание тихих часов",
                 backTargetRoute = AppRoute.Settings.route,
             ),
     )

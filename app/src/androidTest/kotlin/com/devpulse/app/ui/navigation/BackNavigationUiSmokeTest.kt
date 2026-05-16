@@ -131,7 +131,7 @@ private fun BackNavigationSmokeHarness() {
                         onClick = { navController.navigate(AppRoute.QuietHoursSchedule.route) },
                         modifier = Modifier.testTag(SmokeTestTags.SETTINGS_OPEN_QUIET_HOURS_BUTTON),
                     ) {
-                        Text(text = "Open quiet hours")
+                        Text(text = "Открыть режим Тихие часы")
                     }
                 }
             }

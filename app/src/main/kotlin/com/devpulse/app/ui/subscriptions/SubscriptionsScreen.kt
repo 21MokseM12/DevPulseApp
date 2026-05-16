@@ -220,7 +220,7 @@ private fun SearchAndFiltersSection(
         OutlinedTextField(
             value = uiState.searchState.query,
             onValueChange = onSearchQueryChanged,
-            label = { Text(text = "Поиск по URL, tags, filters") },
+            label = { Text(text = "Поиск по URL, тегам и фильтрам") },
             singleLine = true,
             modifier =
                 Modifier
@@ -235,7 +235,7 @@ private fun SearchAndFiltersSection(
                 FilterChip(
                     selected = uiState.searchState.onlyTagged,
                     onClick = onOnlyTaggedPresetToggled,
-                    label = { Text(text = "Only tagged") },
+                    label = { Text(text = "Только с тегами") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_ONLY_TAGGED),
                 )
             }
@@ -243,7 +243,7 @@ private fun SearchAndFiltersSection(
                 FilterChip(
                     selected = uiState.searchState.hasFiltersOnly,
                     onClick = onWithFiltersPresetToggled,
-                    label = { Text(text = "With filters") },
+                    label = { Text(text = "С фильтрами") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_WITH_FILTERS),
                 )
             }
@@ -251,7 +251,7 @@ private fun SearchAndFiltersSection(
                 FilterChip(
                     selected = uiState.searchState.sortMode == SubscriptionsSortMode.RECENTLY_ADDED,
                     onClick = { onSortModeSelected(SubscriptionsSortMode.RECENTLY_ADDED) },
-                    label = { Text(text = "Recently added") },
+                    label = { Text(text = "Недавно добавленные") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED),
                 )
             }
@@ -259,7 +259,7 @@ private fun SearchAndFiltersSection(
                 FilterChip(
                     selected = uiState.searchState.sortMode == SubscriptionsSortMode.URL_ASCENDING,
                     onClick = { onSortModeSelected(SubscriptionsSortMode.URL_ASCENDING) },
-                    label = { Text(text = "Sort by URL") },
+                    label = { Text(text = "По URL") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_SORT_BY_URL),
                 )
             }
@@ -449,14 +449,14 @@ private fun LinksContent(
                     }
                     if (link.tags.isNotEmpty()) {
                         Text(
-                            text = "Tags: ${link.tags.joinToString(" · ")}",
+                            text = "Теги: ${link.tags.joinToString(" · ")}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (link.filters.isNotEmpty()) {
                         Text(
-                            text = "Filters: ${link.filters.joinToString(" · ")}",
+                            text = "Фильтры: ${link.filters.joinToString(" · ")}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

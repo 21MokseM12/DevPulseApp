@@ -62,7 +62,7 @@ internal fun formatQuietHoursPreview(
     now: Instant,
     deviceZoneId: ZoneId = ZoneId.systemDefault(),
 ): String {
-    if (!policy.enabled) return "Quiet hours выключены."
+    if (!policy.enabled) return "Тихие часы выключены."
 
     val preview = calculateQuietHoursPreview(policy, now, deviceZoneId)
     val zoneId = preview.zoneId.id
@@ -73,7 +73,7 @@ internal fun formatQuietHoursPreview(
             .joinToString(", ") { it.shortLabel() }
 
     if (preview.nextEnd == null && preview.nextStart == null) {
-        return "Quiet hours включены, но не удалось вычислить ближайшее окно ($zoneId). Дни: $weekdays."
+        return "Тихие часы включены, но не удалось вычислить ближайшее окно ($zoneId). Дни: $weekdays."
     }
 
     val status = if (preview.isQuietNow) "Сейчас активны" else "Сейчас не активны"
@@ -83,7 +83,7 @@ internal fun formatQuietHoursPreview(
     val endText = preview.nextEnd?.format(formatter) ?: "не найден"
 
     return buildString {
-        append("Quiet hours: ")
+        append("Тихие часы: ")
         append(status)
         append(".\n")
         append(startLabel)

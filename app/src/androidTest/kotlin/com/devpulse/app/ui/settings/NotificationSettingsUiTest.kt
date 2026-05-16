@@ -81,7 +81,7 @@ class NotificationSettingsUiTest {
             )
         }
 
-        composeRule.onNodeWithText("Quiet hours:", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Тихие часы:", substring = true).assertIsDisplayed()
         composeRule.onNodeWithText("Ближайший старт:", substring = true).assertIsDisplayed()
         composeRule.onNodeWithText("Ближайшее завершение:", substring = true).assertIsDisplayed()
     }

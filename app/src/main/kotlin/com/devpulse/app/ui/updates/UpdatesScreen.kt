@@ -165,21 +165,21 @@ private fun FiltersSection(
                 FilterChip(
                     selected = false,
                     onClick = { onQuickFilterSelected(UpdatesQuickFilter.UNREAD) },
-                    label = { Text("Quick: unread") },
+                    label = { Text("Быстро: непрочитанные") },
                 )
             }
             item {
                 FilterChip(
                     selected = false,
                     onClick = { onQuickFilterSelected(UpdatesQuickFilter.TODAY) },
-                    label = { Text("Quick: today") },
+                    label = { Text("Быстро: сегодня") },
                 )
             }
             item {
                 FilterChip(
                     selected = false,
                     onClick = { onQuickFilterSelected(UpdatesQuickFilter.GITHUB_ONLY) },
-                    label = { Text("Quick: github-only") },
+                    label = { Text("Быстро: только GitHub") },
                 )
             }
             item {

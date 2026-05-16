@@ -44,6 +44,13 @@ class AppNavGraphLogicTest {
     }
 
     @Test
+    fun resolveNonMainRouteContract_returnsRussianTitle_forQuietHoursRoute() {
+        val contract = resolveNonMainRouteContract(AppRoute.QuietHoursSchedule.route)
+
+        assertEquals("Расписание тихих часов", contract?.title)
+    }
+
+    @Test
     fun resolveNonMainRouteContract_returnsNull_forMainRoute() {
         val contract = resolveNonMainRouteContract(AppRoute.Subscriptions.route)
 

@@ -257,14 +257,14 @@ internal fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
                 DigestModeButton(
-                    title = "Compact",
+                    title = "Кратко",
                     selected = uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Compact,
                     enabled = effectiveNotificationsEnabled,
                     onClick = { onNotificationPresentationModeSelected(NotificationPresentationMode.Compact) },
                     modifier = Modifier.weight(1f),
                 )
                 DigestModeButton(
-                    title = "Detailed",
+                    title = "Подробно",
                     selected =
                         uiState.notificationPreferences.presentationMode == NotificationPresentationMode.Detailed,
                     enabled = effectiveNotificationsEnabled,
@@ -275,23 +275,23 @@ internal fun SettingsScreen(
             Text(
                 text =
                     when (uiState.notificationPreferences.presentationMode) {
-                        NotificationPresentationMode.Compact -> "Compact: короткий текст в шторке без деталей."
-                        NotificationPresentationMode.Detailed -> "Detailed: полный текст обновления в уведомлении."
+                        NotificationPresentationMode.Compact -> "Кратко: короткий текст в шторке без деталей."
+                        NotificationPresentationMode.Detailed -> "Подробно: полный текст обновления в уведомлении."
                     },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        // --- Digest mode ---
-        SettingsSectionCard(title = "Digest mode") {
+        // --- Дайджест ---
+        SettingsSectionCard(title = "Дайджест") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "Включить digest",
+                    text = "Включить дайджест",
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Switch(
@@ -618,7 +618,7 @@ internal fun NotificationPreviewCard(
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
             Text(
-                text = "Preview уведомления",
+                text = "Предпросмотр уведомления",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -643,9 +643,16 @@ internal fun NotificationPreviewCard(
             Text(
                 text =
                     if (digestMode == null) {
-                        "Режим: ${presentationMode.name.lowercase()}"
+                        when (presentationMode) {
+                            NotificationPresentationMode.Compact -> "Режим: кратко"
+                            NotificationPresentationMode.Detailed -> "Режим: подробно"
+                        }
                     } else {
-                        "Режим: digest (${digestMode.name.lowercase()})"
+                        when (digestMode) {
+                            NotificationDigestMode.Hourly -> "Режим: дайджест (каждый час)"
+                            NotificationDigestMode.EverySixHours -> "Режим: дайджест (каждые 6 часов)"
+                            NotificationDigestMode.Daily -> "Режим: дайджест (раз в день)"
+                        }
                     },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
