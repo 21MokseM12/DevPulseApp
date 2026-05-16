@@ -243,7 +243,10 @@ class SubscriptionsViewModel
 
             if (!isSupportedDomain(link)) {
                 updateUiState { state ->
-                    state.copy(addErrorMessage = "Поддерживаются только ссылки на GitHub (github.com) и Stack Overflow (stackoverflow.com).")
+                    state.copy(
+                        addErrorMessage =
+                            "Поддерживаются только ссылки на GitHub (github.com) и Stack Overflow (stackoverflow.com).",
+                    )
                 }
                 return
             }

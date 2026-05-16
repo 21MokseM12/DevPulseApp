@@ -150,14 +150,14 @@ class SubscriptionsSearchViewModelTest {
             advanceSearchDebounce()
             assertEquals(listOf(1L), viewModel.uiState.value.links.map { it.id })
 
-            viewModel.onAddLinkInputChanged("https://example.dev/backend-new")
+            viewModel.onAddLinkInputChanged("https://github.com/example/backend-new")
             viewModel.onAddTagsInputChanged("backend")
             viewModel.onAddFiltersInputChanged("contains:alerts")
             viewModel.addSubscription()
             advanceUntilIdle()
             assertEquals(listOf(1L), viewModel.uiState.value.links.map { it.id })
 
-            viewModel.onAddLinkInputChanged("https://example.dev/kotlin-new")
+            viewModel.onAddLinkInputChanged("https://github.com/example/kotlin-new")
             viewModel.onAddTagsInputChanged("kotlin,mobile")
             viewModel.onAddFiltersInputChanged("contains:kotlin")
             viewModel.addSubscription()

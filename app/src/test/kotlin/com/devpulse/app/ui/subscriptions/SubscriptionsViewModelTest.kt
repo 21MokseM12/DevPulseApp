@@ -307,16 +307,17 @@ class SubscriptionsViewModelTest {
             val repository =
                 FakeSubscriptionsRepository(
                     results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
-                    addResult = SubscriptionsResult.Success(
-                        listOf(
-                            TrackedLink(
-                                id = 1L,
-                                url = "https://github.com/owner/repo",
-                                tags = emptyList(),
-                                filters = emptyList(),
+                    addResult =
+                        SubscriptionsResult.Success(
+                            listOf(
+                                TrackedLink(
+                                    id = 1L,
+                                    url = "https://github.com/owner/repo",
+                                    tags = emptyList(),
+                                    filters = emptyList(),
+                                ),
                             ),
                         ),
-                    ),
                 )
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
@@ -336,16 +337,17 @@ class SubscriptionsViewModelTest {
             val repository =
                 FakeSubscriptionsRepository(
                     results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
-                    addResult = SubscriptionsResult.Success(
-                        listOf(
-                            TrackedLink(
-                                id = 2L,
-                                url = "https://stackoverflow.com/questions/123",
-                                tags = emptyList(),
-                                filters = emptyList(),
+                    addResult =
+                        SubscriptionsResult.Success(
+                            listOf(
+                                TrackedLink(
+                                    id = 2L,
+                                    url = "https://stackoverflow.com/questions/123",
+                                    tags = emptyList(),
+                                    filters = emptyList(),
+                                ),
                             ),
                         ),
-                    ),
                 )
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
@@ -365,16 +367,17 @@ class SubscriptionsViewModelTest {
             val repository =
                 FakeSubscriptionsRepository(
                     results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
-                    addResult = SubscriptionsResult.Success(
-                        listOf(
-                            TrackedLink(
-                                id = 3L,
-                                url = "https://gist.github.com/user/abc123",
-                                tags = emptyList(),
-                                filters = emptyList(),
+                    addResult =
+                        SubscriptionsResult.Success(
+                            listOf(
+                                TrackedLink(
+                                    id = 3L,
+                                    url = "https://gist.github.com/user/abc123",
+                                    tags = emptyList(),
+                                    filters = emptyList(),
+                                ),
                             ),
                         ),
-                    ),
                 )
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
@@ -417,7 +420,7 @@ class SubscriptionsViewModelTest {
                             listOf(
                                 TrackedLink(
                                     id = 42L,
-                                    url = "https://example.com/new",
+                                    url = "https://github.com/example/new",
                                     tags = listOf("dev"),
                                     filters = listOf("contains:kotlin"),
                                 ),
@@ -427,7 +430,7 @@ class SubscriptionsViewModelTest {
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
 
-            viewModel.onAddLinkInputChanged("https://example.com/new")
+            viewModel.onAddLinkInputChanged("https://github.com/example/new")
             viewModel.onAddTagsInputChanged("dev")
             viewModel.onAddFiltersInputChanged("contains:kotlin")
             viewModel.addSubscription()
@@ -457,7 +460,7 @@ class SubscriptionsViewModelTest {
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
 
-            viewModel.onAddLinkInputChanged("https://example.com/existing")
+            viewModel.onAddLinkInputChanged("https://github.com/example/existing")
             viewModel.addSubscription()
             advanceUntilIdle()
 
@@ -544,7 +547,7 @@ class SubscriptionsViewModelTest {
                             listOf(
                                 TrackedLink(
                                     id = 100L,
-                                    url = "https://example.dev/content",
+                                    url = "https://stackoverflow.com/questions/100/content",
                                     tags = listOf("dev"),
                                     filters = emptyList(),
                                 ),
@@ -555,7 +558,7 @@ class SubscriptionsViewModelTest {
             advanceUntilIdle()
             assertEquals(SubscriptionsScreenState.Empty, viewModel.uiState.value.screenState)
 
-            viewModel.onAddLinkInputChanged("https://example.dev/content")
+            viewModel.onAddLinkInputChanged("https://stackoverflow.com/questions/100/content")
             viewModel.addSubscription()
             advanceUntilIdle()
 

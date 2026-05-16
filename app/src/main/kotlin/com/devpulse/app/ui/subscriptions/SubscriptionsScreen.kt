@@ -430,7 +430,7 @@ private fun LinksContent(
                         verticalAlignment = Alignment.Top,
                     ) {
                         Text(
-                            text = link.url,
+                            text = formatLinkDisplayName(link.url),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.weight(1f),
