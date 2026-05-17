@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -31,11 +33,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devpulse.app.R
 import com.devpulse.app.domain.model.SubscriptionsSortMode
 import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.ui.testing.SmokeTestTags
@@ -429,12 +434,17 @@ private fun LinksContent(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Top,
                     ) {
-                        Text(
-                            text = formatLinkDisplayName(link.url),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Medium,
+                        Row(
                             modifier = Modifier.weight(1f),
-                        )
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            LinkPlatformIcon(url = link.url)
+                            Text(
+                                text = formatLinkDisplayName(link.url),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
                         TextButton(
                             onClick = { onRemoveRequested(link) },
                             enabled = !isRemoving,
@@ -465,6 +475,40 @@ private fun LinksContent(
             }
         }
     }
+}
+
+private enum class LinkPlatform { GITHUB, STACKOVERFLOW, UNKNOWN }
+
+private fun detectPlatform(url: String): LinkPlatform {
+    val lower = url.lowercase()
+    return when {
+        lower.contains("github.com") -> LinkPlatform.GITHUB
+        lower.contains("stackoverflow.com") -> LinkPlatform.STACKOVERFLOW
+        else -> LinkPlatform.UNKNOWN
+    }
+}
+
+@Composable
+private fun LinkPlatformIcon(url: String) {
+    val platform = detectPlatform(url)
+    when (platform) {
+        LinkPlatform.GITHUB ->
+            Icon(
+                painter = painterResource(R.drawable.ic_github),
+                contentDescription = "GitHub",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(16.dp),
+            )
+        LinkPlatform.STACKOVERFLOW ->
+            Icon(
+                painter = painterResource(R.drawable.ic_stackoverflow),
+                contentDescription = "Stack Overflow",
+                tint = Color(0xFFF48024),
+                modifier = Modifier.size(16.dp),
+            )
+        LinkPlatform.UNKNOWN -> return
+    }
+    Spacer(modifier = Modifier.width(Spacing.sm))
 }
 
 @Composable

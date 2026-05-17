@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Stack Overflow — только стопка (монохромный, tint задаётся из кода)
+  Source: https://stackoverflow.design/brand/logo
+  Viewport 32×30
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="32"
+    android:viewportHeight="30">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M21.5,26h-15v-4h15V26zM6.748,19.634l14.46,3.024l0.836,-4.001l-14.46,-3.024L6.748,19.634zM9.888,10.09l13.406,6.249l1.713,-3.672L11.6,6.418L9.888,10.09zM15.93,1.375l-1.985,3.37l12.41,7.312l1.985,-3.37L15.93,1.375zM22.596,0L20.32,2.69l9.683,8.12l2.276,-2.69L22.596,0z" />
+</vector>
