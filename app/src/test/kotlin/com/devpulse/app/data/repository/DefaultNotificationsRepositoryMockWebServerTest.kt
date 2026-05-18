@@ -72,6 +72,46 @@ class DefaultNotificationsRepositoryMockWebServerTest {
         }
 
     @Test
+    fun getNotifications_supportsSnakeCaseItemsPayloadFromBackend() =
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(200)
+                        .setBody(
+                            """
+                            {
+                              "items": [
+                                {
+                                  "id": 19,
+                                  "title": "Title from items",
+                                  "content": "Body from items",
+                                  "link": "https://example.org/items",
+                                  "is_read": false,
+                                  "source": "github",
+                                  "tags": ["bot", "alerts"],
+                                  "created_at": "2026-05-14T10:00:00Z"
+                                }
+                              ]
+                            }
+                            """.trimIndent(),
+                        ),
+                )
+                val repository = createRepository(server = server, sessionStore = FakeSessionStore(login = "moksem"))
+
+                val result = repository.getNotifications(limit = 30, offset = 10, tags = emptyList())
+
+                assertTrue(result is NotificationsResult.Success)
+                val notification = (result as NotificationsResult.Success).notifications.single()
+                assertEquals("Body from items", notification.content)
+                assertEquals("https://example.org/items", notification.link)
+                assertEquals(false, notification.isRead)
+                assertEquals("github", notification.updateOwner)
+                assertEquals(listOf("bot", "alerts"), notification.tags)
+            }
+        }
+
+    @Test
     fun getUnreadCount_parsesResponse() =
         runTest {
             MockWebServer().use { server ->

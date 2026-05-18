@@ -32,7 +32,7 @@ class DefaultNotificationsRepository
             ) {
                 is RemoteCallResult.Success -> {
                     NotificationsResult.Success(
-                        notifications = result.data.notifications.map { it.toDomain() },
+                        notifications = result.data.resolvedNotifications.map { it.toDomain() },
                     )
                 }
 

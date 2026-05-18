@@ -116,7 +116,7 @@ class ContractDtoTest {
     }
 
     @Test
-    fun notificationListResponse_deserializesRequiredPagingFields() {
+    fun notificationListResponse_deserializesNotificationsPayload() {
         val adapter = moshi.adapter(NotificationListResponseDto::class.java)
         val dto =
             requireNotNull(
@@ -142,9 +142,46 @@ class ContractDtoTest {
                 ),
             )
 
-        assertEquals(1, dto.notifications.size)
+        assertEquals(1, dto.resolvedNotifications.size)
         assertEquals(20, dto.limit)
         assertEquals(0, dto.offset)
-        assertEquals("https://example.org/a", dto.notifications.first().url)
+        assertEquals("https://example.org/a", dto.resolvedNotifications.first().url)
+    }
+
+    @Test
+    fun notificationListResponse_supportsSnakeCaseItemsContract() {
+        val adapter = moshi.adapter(NotificationListResponseDto::class.java)
+        val dto =
+            requireNotNull(
+                adapter.fromJson(
+                    """
+                    {
+                      "items": [
+                        {
+                          "id": 10,
+                          "title": "Title",
+                          "content": "Body",
+                          "link": "https://example.org/a",
+                          "is_read": false,
+                          "link_id": 77,
+                          "created_at": "2026-05-14T10:00:00Z",
+                          "tags": ["backend", "bot"],
+                          "source": "github"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+            )
+
+        val mapped = dto.resolvedNotifications.single().toDomain()
+        assertEquals(1, dto.resolvedNotifications.size)
+        assertEquals(null, dto.limit)
+        assertEquals(null, dto.offset)
+        assertEquals("Body", mapped.content)
+        assertEquals("https://example.org/a", mapped.link)
+        assertEquals(false, mapped.isRead)
+        assertEquals("github", mapped.updateOwner)
+        assertEquals(listOf("backend", "bot"), mapped.tags)
     }
 }
