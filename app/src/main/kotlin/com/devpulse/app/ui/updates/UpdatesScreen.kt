@@ -16,11 +16,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -60,6 +62,7 @@ fun UpdatesRoute(
     val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
     UpdatesScreen(
         uiState = uiState,
+        onRefresh = viewModel::refresh,
         onMarkAsRead = viewModel::markAsRead,
         onQueryChanged = viewModel::onQueryChanged,
         onUnreadOnlyToggled = viewModel::onUnreadOnlyToggled,
@@ -71,9 +74,11 @@ fun UpdatesRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun UpdatesScreen(
     uiState: UpdatesUiState,
+    onRefresh: () -> Unit,
     onMarkAsRead: (Long) -> Unit,
     onQueryChanged: (String) -> Unit,
     onUnreadOnlyToggled: () -> Unit,
@@ -117,14 +122,23 @@ private fun UpdatesScreen(
         }
 
         when {
-            uiState.isLoading -> LoadingState()
-            uiState.events.isEmpty() -> EmptyState(hasActiveFilters = uiState.filterState.hasActiveFilters)
+            uiState.isLoading && uiState.allEvents.isEmpty() -> LoadingState()
             else ->
-                UpdatesList(
-                    events = uiState.events,
-                    markingIds = uiState.markingIds,
-                    onMarkAsRead = onMarkAsRead,
-                )
+                PullToRefreshBox(
+                    isRefreshing = uiState.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (uiState.events.isEmpty()) {
+                        EmptyState(hasActiveFilters = uiState.filterState.hasActiveFilters)
+                    } else {
+                        UpdatesList(
+                            events = uiState.events,
+                            markingIds = uiState.markingIds,
+                            onMarkAsRead = onMarkAsRead,
+                        )
+                    }
+                }
         }
     }
 }

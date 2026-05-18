@@ -452,6 +452,45 @@ class UpdatesViewModelTest {
     }
 
     @Test
+    fun refresh_withExistingContent_togglesRefreshingStateWithoutBlockingList() {
+        runTest {
+            val refreshGate = CompletableDeferred<Unit>()
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 91L,
+                                        title = "Initial",
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 1),
+                    refreshGate = refreshGate,
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.refresh()
+            runCurrent()
+
+            val refreshingState = viewModel.uiState.value
+            assertTrue(refreshingState.isRefreshing)
+            assertFalse(refreshingState.isLoading)
+            assertEquals(listOf(91L), refreshingState.events.map { it.id })
+
+            refreshGate.complete(Unit)
+            advanceUntilIdle()
+
+            val completedState = viewModel.uiState.value
+            assertFalse(completedState.isRefreshing)
+            assertFalse(completedState.isLoading)
+        }
+    }
+
+    @Test
     fun applyDigestContext_enablesUnreadOnlyFilter() {
         runTest {
             val repository =
@@ -553,10 +592,13 @@ class UpdatesViewModelTest {
         private val unreadResult: UnreadCountResult,
         private val markReadResult: MarkReadResult = MarkReadResult.Success(updatedCount = 1),
         private val markGate: CompletableDeferred<Unit>? = null,
+        private val refreshGate: CompletableDeferred<Unit>? = null,
     ) : NotificationsRepository {
         var lastMarkedIds: List<Long>? = null
             private set
         var markReadCalls: Int = 0
+            private set
+        var notificationsCalls: Int = 0
             private set
         val notificationRequests = mutableListOf<NotificationRequest>()
 
@@ -565,6 +607,10 @@ class UpdatesViewModelTest {
             offset: Int,
             tags: List<String>,
         ): NotificationsResult {
+            notificationsCalls += 1
+            if (notificationsCalls > 1) {
+                refreshGate?.await()
+            }
             notificationRequests += NotificationRequest(limit = limit, offset = offset, tags = tags)
             return notificationsResult
         }

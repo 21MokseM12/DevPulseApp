@@ -27,6 +27,7 @@ import kotlin.math.max
 
 data class UpdatesUiState(
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val events: List<UpdateEvent> = emptyList(),
     val allEvents: List<UpdateEvent> = emptyList(),
     val unreadCount: Int = 0,
@@ -164,8 +165,18 @@ class UpdatesViewModel
         }
 
         private fun loadUpdates() {
+            val currentState = _uiState.value
+            if (currentState.isRefreshing || (currentState.isLoading && currentState.allEvents.isNotEmpty())) {
+                return
+            }
+            val hasExistingContent = currentState.allEvents.isNotEmpty()
             viewModelScope.launch {
-                _uiState.update { it.copy(isLoading = true) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = !hasExistingContent,
+                        isRefreshing = hasExistingContent,
+                    )
+                }
                 val requestTags = _uiState.value.filterState.selectedTags.toList().sorted()
                 val notificationsResult =
                     notificationsRepository.getNotifications(
@@ -189,6 +200,7 @@ class UpdatesViewModel
                         }
                     state.copy(
                         isLoading = false,
+                        isRefreshing = false,
                         allEvents = allEvents,
                         unreadCount = unreadCount,
                         availableSources = allEvents.map { it.source }.filter { it.isNotBlank() }.distinct().sorted(),

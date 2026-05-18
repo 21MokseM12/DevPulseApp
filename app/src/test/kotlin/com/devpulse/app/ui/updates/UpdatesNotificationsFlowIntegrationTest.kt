@@ -15,8 +15,10 @@ import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.data.repository.DefaultNotificationsRepository
 import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -135,6 +137,33 @@ class UpdatesNotificationsFlowIntegrationTest {
             assertEquals(0, lastRequest.offset)
         }
 
+    @Test
+    fun updatesViewModel_refresh_keepsLoadedEventsVisibleWhileRequestInFlight() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            val refreshGate = CompletableDeferred<Unit>()
+            remote.setRefreshGate(refreshGate)
+            viewModel.refresh()
+            runCurrent()
+
+            val refreshingState = viewModel.uiState.value
+            assertTrue(refreshingState.isRefreshing)
+            assertFalse(refreshingState.isLoading)
+            assertEquals(listOf(10L, 11L), refreshingState.events.map { it.id })
+
+            refreshGate.complete(Unit)
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.isRefreshing)
+        }
+
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
         private val notifications =
             mutableListOf(
@@ -162,10 +191,15 @@ class UpdatesNotificationsFlowIntegrationTest {
         var lastMarkReadIds: List<Long>? = null
             private set
         val requestHistory = mutableListOf<NotificationsRequest>()
+        private var refreshGate: CompletableDeferred<Unit>? = null
 
         fun replaceNotifications(next: List<NotificationDto>) {
             notifications.clear()
             notifications.addAll(next)
+        }
+
+        fun setRefreshGate(gate: CompletableDeferred<Unit>) {
+            refreshGate = gate
         }
 
         override suspend fun loginClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
@@ -197,6 +231,10 @@ class UpdatesNotificationsFlowIntegrationTest {
             offset: Int,
             tags: List<String>,
         ): RemoteCallResult<NotificationListResponseDto> {
+            if (requestHistory.isNotEmpty()) {
+                refreshGate?.await()
+                refreshGate = null
+            }
             requestHistory += NotificationsRequest(limit = limit, offset = offset, tags = tags)
             return RemoteCallResult.Success(
                 data =
