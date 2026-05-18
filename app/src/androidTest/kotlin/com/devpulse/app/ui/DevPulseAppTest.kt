@@ -370,6 +370,18 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun updatesEvent_showsOpenButtonInsteadOfRawUrlText() {
+        login()
+        openUpdates()
+
+        composeRule
+            .onNodeWithTag(SmokeTestTags.updateOpenLinkButton(1001L))
+            .assertIsDisplayed()
+            .assertHasClickAction()
+        composeRule.waitUntilNodeWithTextMissing("https://devpulse.app/bootstrap")
+    }
+
+    @Test
     fun updatesNoResultsAndReset_restoresFeed() {
         smokeDataSource.setNotificationsForTesting(
             listOf(

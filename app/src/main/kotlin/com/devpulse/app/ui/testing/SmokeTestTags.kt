@@ -48,4 +48,6 @@ object SmokeTestTags {
     fun subscriptionTagFilter(tag: String): String = "subscriptions_tag_filter_${tag.lowercase()}"
 
     fun updateMarkReadButton(id: Long): String = "updates_mark_read_button_$id"
+
+    fun updateOpenLinkButton(id: Long): String = "updates_open_link_button_$id"
 }

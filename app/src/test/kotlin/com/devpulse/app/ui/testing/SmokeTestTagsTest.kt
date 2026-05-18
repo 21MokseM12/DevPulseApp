@@ -20,6 +20,11 @@ class SmokeTestTagsTest {
     }
 
     @Test
+    fun updateOpenLinkButton_generatesStableTag() {
+        assertEquals("updates_open_link_button_15", SmokeTestTags.updateOpenLinkButton(15))
+    }
+
+    @Test
     fun subscriptionTagFilter_generatesStableTag() {
         assertEquals("subscriptions_tag_filter_android", SmokeTestTags.subscriptionTagFilter("Android"))
     }

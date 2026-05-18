@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,8 +49,11 @@ fun UpdatesRoute(
     onLogout: () -> Unit,
     digestContextRequest: OpenUpdatesDigestContextRequest? = null,
     onDigestContextRequestHandled: () -> Unit = {},
+    onOpenLink: ((String) -> Unit)? = null,
     viewModel: UpdatesViewModel = hiltViewModel(),
 ) {
+    val uriHandler = LocalUriHandler.current
+    val openLinkAction: (String) -> Unit = onOpenLink ?: { link -> uriHandler.openUri(link) }
     LaunchedEffect(digestContextRequest) {
         val request = digestContextRequest ?: return@LaunchedEffect
         viewModel.applyDigestContext(
@@ -71,6 +75,7 @@ fun UpdatesRoute(
         onTagToggled = viewModel::onTagToggled,
         onQuickFilterSelected = viewModel::applyQuickFilter,
         onResetFilters = viewModel::resetFilters,
+        onOpenLink = openLinkAction,
     )
 }
 
@@ -87,6 +92,7 @@ private fun UpdatesScreen(
     onTagToggled: (String) -> Unit,
     onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
     onResetFilters: () -> Unit,
+    onOpenLink: (String) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         if (uiState.unreadCount > 0) {
@@ -136,6 +142,7 @@ private fun UpdatesScreen(
                             events = uiState.events,
                             markingIds = uiState.markingIds,
                             onMarkAsRead = onMarkAsRead,
+                            onOpenLink = onOpenLink,
                         )
                     }
                 }
@@ -292,6 +299,7 @@ private fun UpdatesList(
     events: List<UpdateEvent>,
     markingIds: Set<Long>,
     onMarkAsRead: (Long) -> Unit,
+    onOpenLink: (String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -307,6 +315,7 @@ private fun UpdatesList(
                 event = event,
                 isMarking = event.id in markingIds,
                 onMarkAsRead = onMarkAsRead,
+                onOpenLink = onOpenLink,
             )
         }
     }
@@ -317,7 +326,9 @@ private fun UpdateEventCard(
     event: UpdateEvent,
     isMarking: Boolean,
     onMarkAsRead: (Long) -> Unit,
+    onOpenLink: (String) -> Unit,
 ) {
+    val navigableLink = resolveNavigableUpdateLink(event.linkUrl)
     val containerColor =
         if (!event.isRead) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
@@ -361,11 +372,14 @@ private fun UpdateEventCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Text(
-                text = event.linkUrl,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (navigableLink != null) {
+                OutlinedButton(
+                    onClick = { onOpenLink(navigableLink) },
+                    modifier = Modifier.testTag(SmokeTestTags.updateOpenLinkButton(event.id)),
+                ) {
+                    Text("Перейти")
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
