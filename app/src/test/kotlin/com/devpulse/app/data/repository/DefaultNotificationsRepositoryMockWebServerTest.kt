@@ -47,6 +47,7 @@ class DefaultNotificationsRepositoryMockWebServerTest {
                                   "title": "Title",
                                   "description": "Body",
                                   "url": "https://example.org/x",
+                                  "updateUrl": "https://example.org/x/changeset/9",
                                   "unread": true,
                                   "linkId": 501,
                                   "receivedAt": "2026-05-14T10:00:00Z",
@@ -65,6 +66,10 @@ class DefaultNotificationsRepositoryMockWebServerTest {
 
                 assertTrue(result is NotificationsResult.Success)
                 assertEquals(1, (result as NotificationsResult.Success).notifications.size)
+                assertEquals(
+                    "https://example.org/x/changeset/9",
+                    result.notifications.single().link,
+                )
                 val request = server.takeRequest()
                 assertEquals("/api/v1/notifications?limit=30&offset=10&tags=android", request.path)
                 assertEquals("moksem", request.getHeader("Client-Login"))

@@ -164,4 +164,23 @@ class PushPayloadParserTest {
         requireNotNull(result)
         assertEquals(true, result.isCritical)
     }
+
+    @Test
+    fun parse_withUpdateUrl_prefersChangeLinkOverSubscriptionLink() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "link" to "https://github.com/org/repo",
+                        "update_url" to "https://github.com/org/repo/commit/abc123",
+                        "content" to "Body",
+                    ),
+                notificationTitle = "Title",
+                notificationBody = null,
+                fallbackMessageId = "msg-update-url",
+            )
+
+        requireNotNull(result)
+        assertEquals("https://github.com/org/repo/commit/abc123", result.linkUrl)
+    }
 }

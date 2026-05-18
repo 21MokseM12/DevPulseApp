@@ -25,7 +25,19 @@ class PushPayloadParser
             notificationBody: String?,
             fallbackMessageId: String?,
         ): ParsedPushUpdate? {
-            val linkUrl = payload.firstNotBlank("link", "url") ?: return null
+            val linkUrl =
+                payload.firstNotBlank(
+                    "update_url",
+                    "updateUrl",
+                    "event_url",
+                    "eventUrl",
+                    "target_url",
+                    "targetUrl",
+                    "change_url",
+                    "changeUrl",
+                    "link",
+                    "url",
+                ) ?: return null
             if (!isValidHttpUri(linkUrl)) return null
 
             val content =

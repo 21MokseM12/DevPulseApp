@@ -184,4 +184,32 @@ class ContractDtoTest {
         assertEquals("github", mapped.updateOwner)
         assertEquals(listOf("backend", "bot"), mapped.tags)
     }
+
+    @Test
+    fun notificationListResponse_prefersUpdateUrlWhenProvided() {
+        val adapter = moshi.adapter(NotificationListResponseDto::class.java)
+        val dto =
+            requireNotNull(
+                adapter.fromJson(
+                    """
+                    {
+                      "notifications": [
+                        {
+                          "id": 42,
+                          "title": "Title",
+                          "description": "Body",
+                          "url": "https://github.com/org/repo",
+                          "update_url": "https://github.com/org/repo/commit/abc123",
+                          "unread": true,
+                          "receivedAt": "2026-05-14T10:00:00Z"
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+            )
+
+        val mapped = dto.resolvedNotifications.single().toDomain()
+        assertEquals("https://github.com/org/repo/commit/abc123", mapped.link)
+    }
 }

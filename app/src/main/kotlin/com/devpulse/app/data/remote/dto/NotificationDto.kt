@@ -16,6 +16,22 @@ data class NotificationDto(
     val url: String? = null,
     @param:Json(name = "link")
     val link: String? = null,
+    @param:Json(name = "updateUrl")
+    val updateUrl: String? = null,
+    @param:Json(name = "update_url")
+    val updateUrlSnakeCase: String? = null,
+    @param:Json(name = "eventUrl")
+    val eventUrl: String? = null,
+    @param:Json(name = "event_url")
+    val eventUrlSnakeCase: String? = null,
+    @param:Json(name = "targetUrl")
+    val targetUrl: String? = null,
+    @param:Json(name = "target_url")
+    val targetUrlSnakeCase: String? = null,
+    @param:Json(name = "changeUrl")
+    val changeUrl: String? = null,
+    @param:Json(name = "change_url")
+    val changeUrlSnakeCase: String? = null,
     @param:Json(name = "unread")
     val unread: Boolean? = null,
     @param:Json(name = "isRead")
@@ -55,11 +71,20 @@ fun NotificationDto.toDomain(): RemoteNotification {
     val resolvedCreationDate = receivedAt ?: receivedAtSnakeCase ?: createdAt ?: createdAtSnakeCase
     val resolvedOwner =
         updateOwner ?: updateOwnerSnakeCase ?: source ?: linkId ?: linkIdSnakeCase
+    val resolvedUpdateUrl =
+        updateUrl
+            ?: updateUrlSnakeCase
+            ?: eventUrl
+            ?: eventUrlSnakeCase
+            ?: targetUrl
+            ?: targetUrlSnakeCase
+            ?: changeUrl
+            ?: changeUrlSnakeCase
     return RemoteNotification(
         id = id ?: 0L,
         title = title.orEmpty(),
         content = description ?: content.orEmpty(),
-        link = url ?: link.orEmpty(),
+        link = resolvedUpdateUrl ?: url ?: link.orEmpty(),
         tags = tags.orEmpty(),
         isRead = resolvedIsRead,
         updateOwner = resolvedOwner?.toString() ?: "unknown",
