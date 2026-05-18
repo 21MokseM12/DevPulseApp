@@ -372,25 +372,25 @@ private fun UpdateEventCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            if (navigableLink != null) {
-                OutlinedButton(
-                    onClick = { onOpenLink(navigableLink) },
-                    modifier = Modifier.testTag(SmokeTestTags.updateOpenLinkButton(event.id)),
-                ) {
-                    Text("Перейти")
-                }
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = formatTimestamp(event.receivedAtEpochMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
                 )
+                if (navigableLink != null) {
+                    OutlinedButton(
+                        onClick = { onOpenLink(navigableLink) },
+                        modifier = Modifier.testTag(SmokeTestTags.updateOpenLinkButton(event.id)),
+                    ) {
+                        Text("Перейти")
+                    }
+                }
                 if (!event.isRead) {
                     OutlinedButton(
                         onClick = { onMarkAsRead(event.id) },
