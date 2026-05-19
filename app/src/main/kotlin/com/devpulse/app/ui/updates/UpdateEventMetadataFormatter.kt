@@ -32,7 +32,7 @@ internal fun buildUpdateEventMetadata(event: UpdateEvent): List<String> {
 private fun extractGithubRepositoryName(uri: URI): String? {
     val segments = uri.path.split("/").filter { it.isNotBlank() }
     if (segments.size < 2) return null
-    return "${segments[0]}/${segments[1]}"
+    return segments[1]
 }
 
 private fun extractStackOverflowQuestionTitle(uri: URI): String? {

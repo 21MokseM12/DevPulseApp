@@ -192,7 +192,7 @@ class UpdatesNotificationsFlowIntegrationTest {
             val metadata = buildUpdateEventMetadata(viewModel.uiState.value.events.single())
 
             assertEquals(
-                listOf("Автор: octocat", "Репозиторий: devpulse/mobile-app"),
+                listOf("Автор: octocat", "Репозиторий: mobile-app"),
                 metadata,
             )
         }

@@ -16,7 +16,7 @@ class UpdateEventMetadataFormatterTest {
         val metadata = buildUpdateEventMetadata(event)
 
         assertEquals(
-            listOf("Автор: alice", "Репозиторий: octocat/Hello-World"),
+            listOf("Автор: alice", "Репозиторий: Hello-World"),
             metadata,
         )
     }
