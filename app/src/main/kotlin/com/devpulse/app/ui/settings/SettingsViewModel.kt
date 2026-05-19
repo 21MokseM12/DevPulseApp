@@ -101,16 +101,7 @@ class SettingsViewModel
         }
 
         fun onSystemNotificationCapabilityChanged(canPostNotifications: Boolean) {
-            if (canPostNotifications) return
-            viewModelScope.launch {
-                runCatching { notificationPreferencesStore.getPreferences() }
-                    .onSuccess { current ->
-                        if (current.enabled) {
-                            notificationPreferencesStore.setEnabled(false)
-                            syncDigestScheduler()
-                        }
-                    }
-            }
+            if (!canPostNotifications) return
         }
 
         fun onNotificationPresentationModeSelected(mode: NotificationPresentationMode) {

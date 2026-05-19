@@ -261,7 +261,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun onSystemNotificationCapabilityChanged_whenDenied_forcesDisabledPreference() {
+    fun onSystemNotificationCapabilityChanged_whenDenied_keepsUserPreferenceUntouched() {
         runTest {
             val store = FakeNotificationPermissionStore()
             val preferencesStore = FakeNotificationPreferencesStore()
@@ -278,7 +278,7 @@ class SettingsViewModelTest {
             viewModel.onSystemNotificationCapabilityChanged(canPostNotifications = false)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.notificationPreferences.enabled)
+            assertTrue(viewModel.uiState.value.notificationPreferences.enabled)
         }
     }
 
