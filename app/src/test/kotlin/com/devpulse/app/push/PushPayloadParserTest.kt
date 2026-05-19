@@ -1,7 +1,6 @@
 package com.devpulse.app.push
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PushPayloadParserTest {
@@ -84,7 +83,7 @@ class PushPayloadParserTest {
     }
 
     @Test
-    fun parse_missingLink_returnsNull() {
+    fun parse_missingLink_usesEmptyLinkFallback() {
         val result =
             parser.parse(
                 payload = mapOf("content" to "payload without url"),
@@ -93,7 +92,9 @@ class PushPayloadParserTest {
                 fallbackMessageId = null,
             )
 
-        assertNull(result)
+        requireNotNull(result)
+        assertEquals("", result.linkUrl)
+        assertEquals("payload without url", result.content)
     }
 
     @Test
@@ -111,7 +112,7 @@ class PushPayloadParserTest {
     }
 
     @Test
-    fun parse_invalidLink_returnsNull() {
+    fun parse_invalidLink_keepsNotificationWithEmptyLink() {
         val result =
             parser.parse(
                 payload =
@@ -124,7 +125,26 @@ class PushPayloadParserTest {
                 fallbackMessageId = "msg-11",
             )
 
-        assertNull(result)
+        requireNotNull(result)
+        assertEquals("", result.linkUrl)
+        assertEquals("Body", result.content)
+    }
+
+    @Test
+    fun parse_notificationOnlyWithoutDataLink_buildsFallbackUpdate() {
+        val result =
+            parser.parse(
+                payload = emptyMap(),
+                notificationTitle = "Событие",
+                notificationBody = "Обновление по подписке",
+                fallbackMessageId = "msg-notification-only",
+            )
+
+        requireNotNull(result)
+        assertEquals("", result.linkUrl)
+        assertEquals("Событие", result.title)
+        assertEquals("Обновление по подписке", result.content)
+        assertEquals("msg-notification-only", result.remoteEventId)
     }
 
     @Test

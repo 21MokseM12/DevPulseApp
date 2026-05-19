@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PushHandlingIntegrationTest {
@@ -82,7 +81,7 @@ class PushHandlingIntegrationTest {
     }
 
     @Test
-    fun handle_malformedPayload_isIgnoredWithoutSaving() {
+    fun handle_malformedPayloadWithContent_savesUsingEmptyLinkFallback() {
         runTest {
             val repository = CapturingUpdatesRepository()
             val handler =
@@ -106,9 +105,10 @@ class PushHandlingIntegrationTest {
                     receivedAtEpochMs = 500L,
                 )
 
-            assertEquals(PushHandleResult.IgnoredInvalidPayload, outcome.result)
-            assertNull(outcome.update)
-            assertNull(repository.lastUpdate)
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            val saved = requireNotNull(repository.lastUpdate)
+            assertEquals("", saved.linkUrl)
+            assertEquals("Body", saved.content)
         }
     }
 
