@@ -27,6 +27,7 @@ import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleResult
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.DigestScheduler
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -368,6 +369,7 @@ class SettingsViewModelTest {
             updatesRepository = FakeUpdatesRepository(),
             pushTokenStore = FakePushTokenStore(),
             notificationPermissionStore = FakeNotificationPermissionStore(),
+            pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
         ) {
         var unregisterCalls: Int = 0
             private set
@@ -494,5 +496,19 @@ class SettingsViewModelTest {
 
     private class FakeDigestScheduler : DigestScheduler {
         override fun sync(preferences: NotificationPreferences) = Unit
+    }
+
+    private object NoopPushTokenSyncCoordinator : PushTokenSyncCoordinator {
+        override suspend fun queueRegister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun queueUnregister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun syncPending(reason: String) = Unit
     }
 }

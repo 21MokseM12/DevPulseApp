@@ -8,6 +8,8 @@ import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.data.local.preferences.QuietHoursTimezoneMode
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
+import com.devpulse.app.push.AppVisibilityProvider
+import com.devpulse.app.push.NotificationCapabilityProvider
 import com.devpulse.app.push.ParsedPushUpdate
 import com.devpulse.app.push.PushHandleResult
 import com.devpulse.app.push.PushMessageHandler
@@ -22,6 +24,14 @@ import org.junit.Test
 import java.util.TimeZone
 
 class QuietHoursTimezoneChangeRuntimeE2eTest {
+    private object AlwaysBackgroundVisibilityProvider : AppVisibilityProvider {
+        override fun isAppInForeground(): Boolean = false
+    }
+
+    private object AlwaysCanPostNotificationCapabilityProvider : NotificationCapabilityProvider {
+        override fun canPostNotifications(): Boolean = true
+    }
+
     @Test
     fun runtime_timezoneChange_deviceMode_recalculatesQuietHoursSuppression() =
         runTest {
@@ -111,6 +121,8 @@ class QuietHoursTimezoneChangeRuntimeE2eTest {
             updatesRepository = InMemoryUpdatesRepository(),
             notificationPreferencesStore = StaticPreferencesStore(preferences),
             quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+            appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+            notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
         )
     }
 

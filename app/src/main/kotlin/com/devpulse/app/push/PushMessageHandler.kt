@@ -19,9 +19,20 @@ data class PushHandleOutcome(
     val update: ParsedPushUpdate? = null,
     val shouldShowSystemNotification: Boolean = false,
     val suppressedByQuietHours: Boolean = false,
+    val suppressionReason: NotificationSuppressionReason? = null,
+    val appInForeground: Boolean = false,
+    val permissionGranted: Boolean = false,
     val presentationMode: NotificationPresentationMode = NotificationPresentationMode.Detailed,
     val digestMode: NotificationDigestMode? = null,
 )
+
+enum class NotificationSuppressionReason {
+    Foreground,
+    DigestMode,
+    QuietHours,
+    PermissionDenied,
+    DisabledInPreferences,
+}
 
 @Singleton
 class PushMessageHandler
@@ -31,6 +42,8 @@ class PushMessageHandler
         private val updatesRepository: UpdatesRepository,
         private val notificationPreferencesStore: NotificationPreferencesStore,
         private val quietHoursPolicyEvaluator: QuietHoursPolicyEvaluator,
+        private val appVisibilityTracker: AppVisibilityProvider,
+        private val notificationCapabilityChecker: NotificationCapabilityProvider,
     ) {
         suspend fun handle(
             payload: Map<String, String>,
@@ -64,11 +77,23 @@ class PushMessageHandler
                         update = parsed,
                         now = java.time.Instant.ofEpochMilli(receivedAtEpochMs),
                     )
+                val appInForeground = appVisibilityTracker.isAppInForeground()
+                val permissionGranted = notificationCapabilityChecker.canPostNotifications()
+                val suppressionReason =
+                    resolveSuppressionReason(
+                        preferences = preferences,
+                        appInForeground = appInForeground,
+                        permissionGranted = permissionGranted,
+                        suppressedByQuietHours = suppressedByQuietHours,
+                    )
                 PushHandleOutcome(
                     result = PushHandleResult.Saved,
                     update = parsed,
-                    shouldShowSystemNotification = preferences.enabled && !suppressedByQuietHours,
+                    shouldShowSystemNotification = suppressionReason == null,
                     suppressedByQuietHours = suppressedByQuietHours,
+                    suppressionReason = suppressionReason,
+                    appInForeground = appInForeground,
+                    permissionGranted = permissionGranted,
                     presentationMode = preferences.presentationMode,
                     digestMode = preferences.digestMode,
                 )
@@ -78,6 +103,20 @@ class PushMessageHandler
                     update = parsed,
                 )
             }
+        }
+
+        private fun resolveSuppressionReason(
+            preferences: NotificationPreferences,
+            appInForeground: Boolean,
+            permissionGranted: Boolean,
+            suppressedByQuietHours: Boolean,
+        ): NotificationSuppressionReason? {
+            if (!preferences.enabled) return NotificationSuppressionReason.DisabledInPreferences
+            if (appInForeground) return NotificationSuppressionReason.Foreground
+            if (!permissionGranted) return NotificationSuppressionReason.PermissionDenied
+            if (suppressedByQuietHours) return NotificationSuppressionReason.QuietHours
+            if (preferences.digestMode != null) return NotificationSuppressionReason.DigestMode
+            return null
         }
 
         private companion object {

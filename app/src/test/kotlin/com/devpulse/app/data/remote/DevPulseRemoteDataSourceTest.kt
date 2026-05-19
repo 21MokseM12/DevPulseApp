@@ -3,6 +3,7 @@ package com.devpulse.app.data.remote
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
 import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
+import com.devpulse.app.data.remote.dto.DeviceTokenRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
@@ -133,6 +134,12 @@ class DevPulseRemoteDataSourceTest {
                         throw CancellationException("cancelled")
 
                     override suspend fun unregisterClient(request: ClientCredentialsRequestDto) =
+                        throw UnsupportedOperationException()
+
+                    override suspend fun registerDeviceToken(request: DeviceTokenRequestDto) =
+                        throw UnsupportedOperationException()
+
+                    override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto) =
                         throw UnsupportedOperationException()
 
                     override suspend fun getLinks() = throw UnsupportedOperationException()
@@ -580,6 +587,10 @@ class DevPulseRemoteDataSourceTest {
             { throw UnsupportedOperationException() },
         private val onUnregisterClient: suspend (ClientCredentialsRequestDto) -> Response<Unit> =
             { throw UnsupportedOperationException() },
+        private val onRegisterDeviceToken: suspend (DeviceTokenRequestDto) -> Response<Unit> =
+            { throw UnsupportedOperationException() },
+        private val onUnregisterDeviceToken: suspend (DeviceTokenRequestDto) -> Response<Unit> =
+            { throw UnsupportedOperationException() },
         private val onGetLinks: suspend () -> Response<List<LinkResponseDto>> =
             { throw UnsupportedOperationException() },
         private val onAddLink: suspend (AddLinkRequestDto) -> Response<LinkResponseDto> =
@@ -600,6 +611,12 @@ class DevPulseRemoteDataSourceTest {
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): Response<Unit> =
             onUnregisterClient(request)
+
+        override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): Response<Unit> =
+            onRegisterDeviceToken(request)
+
+        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): Response<Unit> =
+            onUnregisterDeviceToken(request)
 
         override suspend fun getLinks(): Response<List<LinkResponseDto>> = onGetLinks()
 

@@ -33,6 +33,8 @@ class PushMessageHandlerTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(),
                 )
 
             val result =
@@ -75,6 +77,8 @@ class PushMessageHandlerTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(),
                 )
 
             val result =
@@ -109,6 +113,8 @@ class PushMessageHandlerTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(),
                 )
 
             val result =
@@ -148,6 +154,8 @@ class PushMessageHandlerTest {
                             failOnGet = true,
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(),
                 )
 
             val result =
@@ -194,6 +202,8 @@ class PushMessageHandlerTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(),
                 )
 
             val result =
@@ -214,6 +224,80 @@ class PushMessageHandlerTest {
             assertEquals(false, result.shouldShowSystemNotification)
             assertEquals(true, result.suppressedByQuietHours)
             assertEquals(1, repository.saveCalls)
+        }
+    }
+
+    @Test
+    fun handle_appInForeground_suppressesSystemNotification() {
+        runTest {
+            val repository = FakeUpdatesRepository(saveResult = true)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(enabled = true),
+                        ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(inForeground = true),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(canPost = true),
+                )
+
+            val result =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-foreground",
+                            "url" to "https://example.com/news",
+                            "content" to "News body",
+                        ),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-foreground",
+                    receivedAtEpochMs = 1000L,
+                )
+
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertEquals(false, result.shouldShowSystemNotification)
+            assertEquals(NotificationSuppressionReason.Foreground, result.suppressionReason)
+        }
+    }
+
+    @Test
+    fun handle_notificationPermissionDenied_suppressesSystemNotification() {
+        runTest {
+            val repository = FakeUpdatesRepository(saveResult = true)
+            val handler =
+                PushMessageHandler(
+                    payloadParser = parser,
+                    updatesRepository = repository,
+                    notificationPreferencesStore =
+                        FakeNotificationPreferencesStore(
+                            NotificationPreferences(enabled = true),
+                        ),
+                    quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = FakeAppVisibilityProvider(inForeground = false),
+                    notificationCapabilityChecker = FakeNotificationCapabilityProvider(canPost = false),
+                )
+
+            val result =
+                handler.handle(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-permission",
+                            "url" to "https://example.com/news",
+                            "content" to "News body",
+                        ),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-permission",
+                    receivedAtEpochMs = 1000L,
+                )
+
+            assertEquals(PushHandleResult.Saved, result.result)
+            assertEquals(false, result.shouldShowSystemNotification)
+            assertEquals(NotificationSuppressionReason.PermissionDenied, result.suppressionReason)
         }
     }
 
@@ -267,5 +351,17 @@ class PushMessageHandlerTest {
             Unit
 
         override suspend fun reset() = Unit
+    }
+
+    private class FakeAppVisibilityProvider(
+        private val inForeground: Boolean = false,
+    ) : AppVisibilityProvider {
+        override fun isAppInForeground(): Boolean = inForeground
+    }
+
+    private class FakeNotificationCapabilityProvider(
+        private val canPost: Boolean = true,
+    ) : NotificationCapabilityProvider {
+        override fun canPostNotifications(): Boolean = canPost
     }
 }

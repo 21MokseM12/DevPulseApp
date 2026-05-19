@@ -4,6 +4,7 @@ import com.devpulse.app.data.remote.dto.AddLinkRequestDto
 import com.devpulse.app.data.remote.dto.ApiErrorResponseDto
 import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
+import com.devpulse.app.data.remote.dto.DeviceTokenRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
@@ -23,6 +24,14 @@ interface DevPulseRemoteDataSource {
     suspend fun registerClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
 
     suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit>
+
+    suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        return RemoteCallResult.Success(Unit, 200)
+    }
+
+    suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        return RemoteCallResult.Success(Unit, 200)
+    }
 
     suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>>
 
@@ -65,6 +74,14 @@ class DefaultDevPulseRemoteDataSource
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             authTransportSecurityViolation()?.let { return it }
             return executeUnit { api.unregisterClient(request) }
+        }
+
+        override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return executeUnit { api.registerDeviceToken(request) }
+        }
+
+        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return executeUnit { api.unregisterDeviceToken(request) }
         }
 
         override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {

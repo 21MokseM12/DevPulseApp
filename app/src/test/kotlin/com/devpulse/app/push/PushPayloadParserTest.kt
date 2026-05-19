@@ -83,6 +83,29 @@ class PushPayloadParserTest {
     }
 
     @Test
+    fun parse_withBackendPushContractAliases_mapsCreatedAtAndSource() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "event_id" to "evt-contract",
+                        "url" to "https://example.com/contract",
+                        "title" to "Contract title",
+                        "content" to "Contract content",
+                        "created_at" to "2026-05-15T11:00:00Z",
+                        "source" to "scrapper",
+                    ),
+                notificationTitle = null,
+                notificationBody = null,
+                fallbackMessageId = null,
+            )
+
+        requireNotNull(result)
+        assertEquals("scrapper", result.updateOwner)
+        assertEquals("2026-05-15T11:00:00Z", result.creationDate)
+    }
+
+    @Test
     fun parse_missingLink_usesEmptyLinkFallback() {
         val result =
             parser.parse(

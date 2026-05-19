@@ -15,6 +15,14 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 
 class PushHandlingIntegrationTest {
+    private object AlwaysBackgroundVisibilityProvider : AppVisibilityProvider {
+        override fun isAppInForeground(): Boolean = false
+    }
+
+    private object AlwaysCanPostNotificationCapabilityProvider : NotificationCapabilityProvider {
+        override fun canPostNotifications(): Boolean = true
+    }
+
     @Test
     fun handle_payloadWithoutContent_usesFallbackAndSavesUpdate() {
         runTest {
@@ -25,6 +33,8 @@ class PushHandlingIntegrationTest {
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =
@@ -56,6 +66,8 @@ class PushHandlingIntegrationTest {
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =
@@ -90,6 +102,8 @@ class PushHandlingIntegrationTest {
                     updatesRepository = repository,
                     notificationPreferencesStore = StaticNotificationPreferencesStore(),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =
@@ -128,6 +142,8 @@ class PushHandlingIntegrationTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =
@@ -166,6 +182,8 @@ class PushHandlingIntegrationTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =
@@ -183,7 +201,8 @@ class PushHandlingIntegrationTest {
 
             assertEquals(PushHandleResult.Saved, outcome.result)
             assertEquals(NotificationDigestMode.Daily, outcome.digestMode)
-            assertEquals(true, outcome.shouldShowSystemNotification)
+            assertEquals(false, outcome.shouldShowSystemNotification)
+            assertEquals(NotificationSuppressionReason.DigestMode, outcome.suppressionReason)
         }
     }
 
@@ -208,6 +227,8 @@ class PushHandlingIntegrationTest {
                             ),
                         ),
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             val outcome =

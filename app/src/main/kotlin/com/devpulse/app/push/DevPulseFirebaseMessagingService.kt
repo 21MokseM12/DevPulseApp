@@ -22,14 +22,21 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var pushNotifier: PushNotifier
 
+    @Inject
+    lateinit var pushTokenSyncOrchestrator: PushTokenSyncCoordinator
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
         if (token.isBlank()) return
         scope.launch {
             pushTokenStore.saveToken(token)
+            pushTokenSyncOrchestrator.queueRegister(
+                token = token,
+                reason = "on_new_token",
+            )
         }
-        Log.d(LOG_TAG, "FCM token обновлен")
+        Log.d(LOG_TAG, "fcm_token_received source=on_new_token")
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -70,8 +77,11 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
             )
         Log.d(
             LOG_TAG,
-            "Получен push: messageId=$messageId, result=${outcome.result}, " +
-                "quietSuppressed=${outcome.suppressedByQuietHours}, dataKeys=${payload.keys}",
+            "push_received messageId=$messageId result=${outcome.result} " +
+                "should_show_system=${outcome.shouldShowSystemNotification} " +
+                "suppression_reason=${outcome.suppressionReason} " +
+                "foreground=${outcome.appInForeground} permission=${outcome.permissionGranted} " +
+                "quiet_suppressed=${outcome.suppressedByQuietHours} data_keys=${payload.keys}",
         )
         return outcome
     }
@@ -101,8 +111,7 @@ internal suspend fun processIncomingPush(
     if (
         outcome.result == PushHandleResult.Saved &&
         outcome.update != null &&
-        outcome.shouldShowSystemNotification &&
-        outcome.digestMode == null
+        outcome.shouldShowSystemNotification
     ) {
         pushNotifier.showUpdateNotification(
             update = outcome.update,

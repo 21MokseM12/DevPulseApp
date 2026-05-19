@@ -7,8 +7,10 @@ import com.devpulse.app.data.local.preferences.NotificationPresentationMode
 import com.devpulse.app.data.local.preferences.QuietHoursPolicy
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
+import com.devpulse.app.push.AppVisibilityProvider
 import com.devpulse.app.push.DigestSummaryPayload
 import com.devpulse.app.push.DigestUpdateAggregator
+import com.devpulse.app.push.NotificationCapabilityProvider
 import com.devpulse.app.push.ParsedPushUpdate
 import com.devpulse.app.push.PushMessageHandler
 import com.devpulse.app.push.PushNotifier
@@ -24,6 +26,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DigestPipelineNoDuplicatesE2eTest {
+    private object AlwaysBackgroundVisibilityProvider : AppVisibilityProvider {
+        override fun isAppInForeground(): Boolean = false
+    }
+
+    private object AlwaysCanPostNotificationCapabilityProvider : NotificationCapabilityProvider {
+        override fun canPostNotifications(): Boolean = true
+    }
+
     @Test
     fun endToEnd_digestMode_enabled_deliversDigestWithoutInstantDuplicates() =
         runTest {
@@ -43,6 +53,8 @@ class DigestPipelineNoDuplicatesE2eTest {
                     updatesRepository = updatesRepository,
                     notificationPreferencesStore = preferencesStore,
                     quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+                    appVisibilityTracker = AlwaysBackgroundVisibilityProvider,
+                    notificationCapabilityChecker = AlwaysCanPostNotificationCapabilityProvider,
                 )
 
             processIncomingPush(

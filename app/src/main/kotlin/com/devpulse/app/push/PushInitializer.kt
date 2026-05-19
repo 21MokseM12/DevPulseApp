@@ -7,11 +7,15 @@ import android.util.Log
 import com.devpulse.app.BuildConfig
 import com.devpulse.app.data.local.preferences.NotificationPreferencesStore
 import com.devpulse.app.data.local.preferences.PushTokenStore
+import com.devpulse.app.data.local.preferences.SessionStore
 import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,14 +26,18 @@ class PushInitializer
     constructor(
         @param:ApplicationContext private val context: Context,
         private val pushTokenStore: PushTokenStore,
+        private val sessionStore: SessionStore,
         private val notificationPreferencesStore: NotificationPreferencesStore,
         private val digestScheduler: DigestScheduler,
+        private val pushTokenSyncOrchestrator: PushTokenSyncCoordinator,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
         fun initialize() {
             ensureNotificationChannel()
             syncDigestScheduler()
+            observeTokenAndSession()
+            syncPendingTokenState()
             requestAndStoreToken()
         }
 
@@ -68,8 +76,35 @@ class PushInitializer
 
                 scope.launch {
                     pushTokenStore.saveToken(token)
+                    pushTokenSyncOrchestrator.queueRegister(
+                        token = token,
+                        reason = "app_start_token_fetch",
+                    )
                 }
-                Log.d(LOG_TAG, "FCM token получен и сохранен")
+                Log.d(LOG_TAG, "fcm_token_received source=app_start")
+            }
+        }
+
+        private fun observeTokenAndSession() {
+            scope.launch {
+                combine(
+                    pushTokenStore.observeToken(),
+                    sessionStore.observeClientLogin(),
+                ) { token, login -> token to login }
+                    .distinctUntilChanged()
+                    .collect { (token, login) ->
+                        if (token.isNullOrBlank()) return@collect
+                        pushTokenSyncOrchestrator.queueRegister(
+                            token = token,
+                            reason = if (login.isNullOrBlank()) "token_changed" else "session_or_token_changed",
+                        )
+                    }
+            }
+        }
+
+        private fun syncPendingTokenState() {
+            scope.launch {
+                pushTokenSyncOrchestrator.syncPending(reason = "app_start_pending_sync")
             }
         }
 

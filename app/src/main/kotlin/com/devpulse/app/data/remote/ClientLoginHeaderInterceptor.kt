@@ -35,7 +35,9 @@ class ClientLoginHeaderInterceptor : Interceptor {
     }
 
     private fun requiresClientLoginHeader(path: String): Boolean {
-        return path.startsWith("/api/v1/links") || path.startsWith("/api/v1/notifications")
+        return path.startsWith("/api/v1/links") ||
+            path.startsWith("/api/v1/notifications") ||
+            path.startsWith("/api/v1/push-tokens")
     }
 
     private companion object {

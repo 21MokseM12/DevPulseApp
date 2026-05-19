@@ -26,6 +26,7 @@ import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.DigestScheduler
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import com.devpulse.app.ui.main.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -42,6 +43,20 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsLifecycleFlowIntegrationTest {
+    private object NoopPushTokenSyncCoordinator : PushTokenSyncCoordinator {
+        override suspend fun queueRegister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun queueUnregister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun syncPending(reason: String) = Unit
+    }
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -61,6 +76,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     updatesRepository = updatesRepository,
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val viewModel =
                 SettingsViewModel(
@@ -109,6 +125,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     updatesRepository = RecordingUpdatesRepository(steps),
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val viewModel =
                 SettingsViewModel(
@@ -155,6 +172,7 @@ class SettingsLifecycleFlowIntegrationTest {
                     updatesRepository = RecordingUpdatesRepository(steps),
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val viewModel =
                 SettingsViewModel(

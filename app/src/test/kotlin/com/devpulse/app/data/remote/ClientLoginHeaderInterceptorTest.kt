@@ -115,6 +115,28 @@ class ClientLoginHeaderInterceptorTest {
         }
     }
 
+    @Test
+    fun addsClientLoginHeader_forPushTokenEndpoints() {
+        runTest {
+            MockWebServer().use { server ->
+                server.enqueue(MockResponse().setResponseCode(200))
+                val sessionStore = FakeSessionStore()
+                sessionStore.saveSession(login = "moksem")
+                val client = buildClient(sessionStore)
+
+                client.newCall(
+                    Request.Builder()
+                        .url(server.url("/api/v1/push-tokens"))
+                        .post("""{"platform":"android","token":"token-1234567890"}""".toRequestBody(null))
+                        .build(),
+                ).execute().close()
+
+                val recorded = server.takeRequest()
+                assertEquals("moksem", recorded.getHeader("Client-Login"))
+            }
+        }
+    }
+
     private fun buildClient(sessionStore: SessionStore): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(ClientLoginHeaderInterceptor(sessionStore))

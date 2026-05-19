@@ -27,6 +27,7 @@ import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.domain.usecase.LoginClientUseCase
 import com.devpulse.app.domain.usecase.RegisterClientUseCase
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import com.devpulse.app.ui.auth.AuthAction
 import com.devpulse.app.ui.auth.AuthViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -162,8 +163,23 @@ class AuthLifecycleRegressionIntegrationTest {
                     updatesRepository = NoopUpdatesRepository(),
                     pushTokenStore = NoopPushTokenStore(),
                     notificationPermissionStore = NoopNotificationPermissionStore(),
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 ),
         )
+    }
+
+    private object NoopPushTokenSyncCoordinator : PushTokenSyncCoordinator {
+        override suspend fun queueRegister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun queueUnregister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun syncPending(reason: String) = Unit
     }
 
     private class SequenceAuthRepository(

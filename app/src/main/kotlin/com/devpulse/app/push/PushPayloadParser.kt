@@ -66,10 +66,10 @@ class PushPayloadParser
                 payload.firstNotBlank("id", "update_id", "linkUpdateId", "link_update_id")
                     ?.toLongOrNull()
             val updateOwner =
-                payload.firstNotBlank("updateOwner", "update_owner")
+                payload.firstNotBlank("updateOwner", "update_owner", "source")
                     ?: DEFAULT_UPDATE_OWNER
             val creationDate =
-                payload.firstNotBlank("creationDate", "creation_date")
+                payload.firstNotBlank("creationDate", "creation_date", "created_at", "createdAt")
                     ?: DEFAULT_CREATION_DATE
             val isCritical = payload.toCriticalFlag()
 

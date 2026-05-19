@@ -69,6 +69,37 @@ class FcmNotificationPipelineIntegrationTest {
     }
 
     @Test
+    fun processIncomingPayload_appInForeground_savesButSkipsSystemNotification() {
+        runTest {
+            val repository = RecordingUpdatesRepository()
+            val notifier = RecordingNotifier()
+            val handler =
+                createHandler(
+                    repository,
+                    StaticPreferencesStore(NotificationPreferences(enabled = true)),
+                    appInForeground = true,
+                )
+
+            val outcome =
+                processIncomingPush(
+                    payload = validPayload(eventId = "evt-foreground"),
+                    notificationTitle = "Title",
+                    notificationBody = null,
+                    messageId = "msg-foreground",
+                    receivedAtEpochMs = 250L,
+                    pushMessageHandler = handler,
+                    pushNotifier = notifier,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals(false, outcome.shouldShowSystemNotification)
+            assertEquals(NotificationSuppressionReason.Foreground, outcome.suppressionReason)
+            assertEquals(1, repository.saveCalls)
+            assertEquals(0, notifier.calls.size)
+        }
+    }
+
+    @Test
     fun processIncomingPayload_preferencesReadFailure_savesEventAndUsesFailClosed() {
         runTest {
             val repository = RecordingUpdatesRepository()
@@ -197,12 +228,22 @@ class FcmNotificationPipelineIntegrationTest {
     private fun createHandler(
         repository: RecordingUpdatesRepository,
         preferencesStore: NotificationPreferencesStore,
+        appInForeground: Boolean = false,
+        permissionGranted: Boolean = true,
     ): PushMessageHandler =
         PushMessageHandler(
             payloadParser = PushPayloadParser(),
             updatesRepository = repository,
             notificationPreferencesStore = preferencesStore,
             quietHoursPolicyEvaluator = QuietHoursPolicyEvaluator(),
+            appVisibilityTracker =
+                object : AppVisibilityProvider {
+                    override fun isAppInForeground(): Boolean = appInForeground
+                },
+            notificationCapabilityChecker =
+                object : NotificationCapabilityProvider {
+                    override fun canPostNotifications(): Boolean = permissionGranted
+                },
         )
 
     private fun validPayload(eventId: String): Map<String, String> =

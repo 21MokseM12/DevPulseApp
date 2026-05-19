@@ -9,6 +9,7 @@ import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
 import com.devpulse.app.data.remote.dto.BotApiMessageResponseDto
 import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
+import com.devpulse.app.data.remote.dto.DeviceTokenRequestDto
 import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
@@ -20,6 +21,7 @@ import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +49,7 @@ class AccountLifecycleUseCaseTest {
                     updatesRepository = updatesRepository,
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = FakePushTokenSyncCoordinator(),
                 )
 
             val result = useCase.unregister(password = "Secret123")
@@ -84,6 +87,7 @@ class AccountLifecycleUseCaseTest {
                     updatesRepository = updatesRepository,
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = FakePushTokenSyncCoordinator(),
                 )
 
             val result = useCase.unregister(password = "Secret123")
@@ -117,6 +121,7 @@ class AccountLifecycleUseCaseTest {
                     updatesRepository = updatesRepository,
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = FakePushTokenSyncCoordinator(),
                 )
 
             val result = useCase.unregister(password = "Secret123")
@@ -144,6 +149,7 @@ class AccountLifecycleUseCaseTest {
                     updatesRepository = updatesRepository,
                     pushTokenStore = pushTokenStore,
                     notificationPermissionStore = permissionStore,
+                    pushTokenSyncOrchestrator = FakePushTokenSyncCoordinator(),
                 )
 
             val result = useCase.unregister(password = "Secret123")
@@ -175,6 +181,14 @@ class AccountLifecycleUseCaseTest {
             unregisterCalls += 1
             lastUnregisterRequest = request
             return unregisterResult
+        }
+
+        override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
+        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
         }
 
         override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {
@@ -217,6 +231,14 @@ class AccountLifecycleUseCaseTest {
 
         override suspend fun unregisterClient(request: ClientCredentialsRequestDto): RemoteCallResult<Unit> {
             throw CancellationException("cancelled")
+        }
+
+        override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
+        }
+
+        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+            return RemoteCallResult.Success(Unit, 200)
         }
 
         override suspend fun getLinks(): RemoteCallResult<List<LinkResponseDto>> {
@@ -328,5 +350,19 @@ class AccountLifecycleUseCaseTest {
         override suspend fun clearRequestedFlag() {
             requested.value = false
         }
+    }
+
+    private class FakePushTokenSyncCoordinator : PushTokenSyncCoordinator {
+        override suspend fun queueRegister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun queueUnregister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun syncPending(reason: String) = Unit
     }
 }

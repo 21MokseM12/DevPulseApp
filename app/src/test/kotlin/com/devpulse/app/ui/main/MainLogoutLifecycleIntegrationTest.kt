@@ -21,6 +21,7 @@ import com.devpulse.app.domain.repository.AppBootstrapRepository
 import com.devpulse.app.domain.repository.UpdatesRepository
 import com.devpulse.app.domain.usecase.AccountLifecycleUseCase
 import com.devpulse.app.push.ParsedPushUpdate
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import com.devpulse.app.ui.auth.AuthAction
 import com.devpulse.app.ui.auth.AuthSuccessEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,6 +39,20 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainLogoutLifecycleIntegrationTest {
+    private object NoopPushTokenSyncCoordinator : PushTokenSyncCoordinator {
+        override suspend fun queueRegister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun queueUnregister(
+            token: String,
+            reason: String,
+        ) = Unit
+
+        override suspend fun syncPending(reason: String) = Unit
+    }
+
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -72,6 +87,7 @@ class MainLogoutLifecycleIntegrationTest {
                             updatesRepository = RecordingUpdatesRepository(mutableListOf()),
                             pushTokenStore = RecordingPushTokenStore(mutableListOf()),
                             notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                            pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                         ),
                 )
             advanceUntilIdle()
@@ -92,6 +108,7 @@ class MainLogoutLifecycleIntegrationTest {
                     updatesRepository = RecordingUpdatesRepository(steps),
                     pushTokenStore = RecordingPushTokenStore(steps),
                     notificationPermissionStore = RecordingNotificationPermissionStore(steps),
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val viewModel =
                 MainViewModel(
@@ -147,6 +164,7 @@ class MainLogoutLifecycleIntegrationTest {
                             updatesRepository = RecordingUpdatesRepository(steps),
                             pushTokenStore = RecordingPushTokenStore(steps),
                             notificationPermissionStore = RecordingNotificationPermissionStore(steps),
+                            pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                         ),
                 )
             advanceUntilIdle()
@@ -181,6 +199,7 @@ class MainLogoutLifecycleIntegrationTest {
                     updatesRepository = RecordingUpdatesRepository(mutableListOf()),
                     pushTokenStore = RecordingPushTokenStore(mutableListOf()),
                     notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val firstProcessViewModel =
                 MainViewModel(
@@ -230,6 +249,7 @@ class MainLogoutLifecycleIntegrationTest {
                     updatesRepository = RecordingUpdatesRepository(mutableListOf()),
                     pushTokenStore = RecordingPushTokenStore(mutableListOf()),
                     notificationPermissionStore = RecordingNotificationPermissionStore(mutableListOf()),
+                    pushTokenSyncOrchestrator = NoopPushTokenSyncCoordinator,
                 )
             val firstProcessViewModel =
                 MainViewModel(

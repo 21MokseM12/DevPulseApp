@@ -9,6 +9,7 @@ import com.devpulse.app.data.remote.dto.ClientCredentialsRequestDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.repository.UpdatesRepository
+import com.devpulse.app.push.PushTokenSyncCoordinator
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.cancellation.CancellationException
@@ -32,16 +33,17 @@ open class AccountLifecycleUseCase
         private val updatesRepository: UpdatesRepository,
         private val pushTokenStore: PushTokenStore,
         private val notificationPermissionStore: NotificationPermissionStore,
+        private val pushTokenSyncOrchestrator: PushTokenSyncCoordinator,
     ) {
         open suspend fun logout(): AccountLifecycleResult {
-            clearLocalState()
+            clearLocalState(reason = "logout")
             return AccountLifecycleResult.Success
         }
 
         open suspend fun unregister(password: String): AccountLifecycleResult {
             val session = sessionStore.getSession()
             if (session == null) {
-                clearLocalState()
+                clearLocalState(reason = "unregister_without_session")
                 return AccountLifecycleResult.Success
             }
 
@@ -56,13 +58,13 @@ open class AccountLifecycleUseCase
                         )
                 ) {
                     is RemoteCallResult.Success -> {
-                        clearLocalState()
+                        clearLocalState(reason = "unregister_success")
                         AccountLifecycleResult.Success
                     }
 
                     is RemoteCallResult.ApiFailure -> {
                         if (result.error.kind == ApiErrorKind.NotFound) {
-                            clearLocalState()
+                            clearLocalState(reason = "unregister_not_found")
                             AccountLifecycleResult.Success
                         } else {
                             AccountLifecycleResult.Failure(result.error)
@@ -78,7 +80,14 @@ open class AccountLifecycleUseCase
             }
         }
 
-        private suspend fun clearLocalState() {
+        private suspend fun clearLocalState(reason: String) {
+            val currentToken = pushTokenStore.getToken()
+            if (!currentToken.isNullOrBlank()) {
+                pushTokenSyncOrchestrator.queueUnregister(
+                    token = currentToken,
+                    reason = reason,
+                )
+            }
             sessionStore.clearSession()
             updatesRepository.clearUpdates()
             pushTokenStore.clearToken()
