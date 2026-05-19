@@ -372,6 +372,15 @@ private fun UpdateEventCard(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
+            val metadataLines = buildUpdateEventMetadata(event)
+            metadataLines.forEach { line ->
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),

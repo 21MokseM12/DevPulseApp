@@ -37,8 +37,8 @@ android {
         applicationId = "com.devpulse.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 86
-        versionName = "1.66.0"
+        versionCode = 87
+        versionName = "1.67.0"
         buildConfigField("boolean", "FIREBASE_CONFIGURED", hasFirebaseConfig.toString())
 
         testInstrumentationRunner = "com.devpulse.app.HiltTestRunner"
@@ -139,7 +139,8 @@ tasks.named("check").configure {
 
 tasks.matching { task ->
     task.name == "lintAnalyzeDebug" ||
-        task.name == "lintAnalyzeDebugUnitTest"
+        task.name == "lintAnalyzeDebugUnitTest" ||
+        task.name == "lintAnalyzeDebugAndroidTest"
 }.configureEach {
     // AGP 9 + Compose lint bug: NoClassDefFoundError in ComposableFlowOperatorDetector.
     enabled = false

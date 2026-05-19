@@ -164,6 +164,72 @@ class UpdatesNotificationsFlowIntegrationTest {
             assertFalse(viewModel.uiState.value.isRefreshing)
         }
 
+    @Test
+    fun updatesViewModel_githubNotification_exposesMetadataForAuthorAndRepository() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 21L,
+                        title = "PR merged",
+                        description = "Merged in main",
+                        updateUrl = "https://github.com/devpulse/mobile-app/pull/21",
+                        unread = true,
+                        updateOwner = "octocat",
+                        receivedAt = "2026-05-14T12:00:00Z",
+                    ),
+                ),
+            )
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            val metadata = buildUpdateEventMetadata(viewModel.uiState.value.events.single())
+
+            assertEquals(
+                listOf("Автор: octocat", "Репозиторий: devpulse/mobile-app"),
+                metadata,
+            )
+        }
+
+    @Test
+    fun updatesViewModel_stackOverflowNotification_exposesMetadataForAuthorAndQuestionTitle() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 31L,
+                        title = "Answer added",
+                        description = "New answer posted",
+                        updateUrl = "https://stackoverflow.com/questions/356897/how-to-center-a-div-in-css/356905",
+                        unread = true,
+                        updateOwner = "stackoverflow-bot",
+                        receivedAt = "2026-05-14T12:30:00Z",
+                    ),
+                ),
+            )
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            val metadata = buildUpdateEventMetadata(viewModel.uiState.value.events.single())
+
+            assertEquals(
+                listOf("Автор: stackoverflow-bot", "Вопрос: how to center a div in css"),
+                metadata,
+            )
+        }
+
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
         private val notifications =
             mutableListOf(
