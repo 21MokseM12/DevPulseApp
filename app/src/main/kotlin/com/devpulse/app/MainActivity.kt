@@ -1,16 +1,23 @@
 package com.devpulse.app
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
+import com.devpulse.app.push.PushAnalyticsTracker
 import com.devpulse.app.push.PushNotificationNavigation
 import com.devpulse.app.ui.DevPulseApp
 import dagger.hilt.android.AndroidEntryPoint
+import java.net.URI
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var pushAnalyticsLogger: PushAnalyticsTracker
+
     private val openUpdatesRequest = mutableStateOf(false)
     private val openUpdatesDigestContextRequest = mutableStateOf<OpenUpdatesDigestContextRequest?>(null)
 
@@ -44,6 +51,21 @@ class MainActivity : ComponentActivity() {
                 current = openUpdatesDigestContextRequest.value,
                 incoming = intent?.toDigestContextRequest(),
             )
+        val pushOpenRequest = intent?.toPushOpenRequest() ?: return
+        pushAnalyticsLogger.pushOpened(
+            eventId = pushOpenRequest.eventId,
+            url = pushOpenRequest.url,
+        )
+        openUrlIfNeeded(pushOpenRequest.url)
+        intent.removeExtra(PushNotificationNavigation.EXTRA_PUSH_EVENT_ID)
+        intent.removeExtra(PushNotificationNavigation.EXTRA_PUSH_URL)
+    }
+
+    private fun openUrlIfNeeded(url: String?) {
+        val normalizedUrl = url?.trim()?.takeIf { isValidHttpUri(it) } ?: return
+        runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(normalizedUrl)))
+        }
     }
 }
 
@@ -116,4 +138,39 @@ internal fun mergeDigestContextRequest(
 ): OpenUpdatesDigestContextRequest? {
     if (incoming == null) return current
     return incoming
+}
+
+data class PushOpenRequest(
+    val eventId: String?,
+    val url: String?,
+)
+
+internal fun Intent.toPushOpenRequest(): PushOpenRequest? {
+    return pushOpenRequestFromExtras(
+        eventIdRaw = getStringExtra(PushNotificationNavigation.EXTRA_PUSH_EVENT_ID),
+        urlRaw = getStringExtra(PushNotificationNavigation.EXTRA_PUSH_URL),
+    )
+}
+
+internal fun pushOpenRequestFromExtras(
+    eventIdRaw: String?,
+    urlRaw: String?,
+): PushOpenRequest? {
+    val eventId = eventIdRaw?.trim()?.takeIf { it.isNotBlank() }
+    val url = urlRaw?.trim()?.takeIf { it.isNotBlank() }
+    if (eventId == null && url == null) {
+        return null
+    }
+    return PushOpenRequest(
+        eventId = eventId,
+        url = url,
+    )
+}
+
+internal fun isValidHttpUri(value: String): Boolean {
+    return runCatching { URI(value.trim()) }
+        .map { uri ->
+            val scheme = uri.scheme?.lowercase()
+            (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+        }.getOrDefault(false)
 }

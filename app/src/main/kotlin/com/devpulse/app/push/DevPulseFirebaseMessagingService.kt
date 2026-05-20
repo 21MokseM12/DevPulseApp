@@ -25,6 +25,9 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var pushTokenSyncOrchestrator: PushTokenSyncCoordinator
 
+    @Inject
+    lateinit var analyticsLogger: PushAnalyticsTracker
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -36,6 +39,7 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
                 reason = "on_new_token",
             )
         }
+        analyticsLogger.tokenRefresh(source = "on_new_token")
         Log.d(LOG_TAG, "fcm_token_received source=on_new_token")
     }
 
@@ -82,6 +86,10 @@ class DevPulseFirebaseMessagingService : FirebaseMessagingService() {
                 "suppression_reason=${outcome.suppressionReason} " +
                 "foreground=${outcome.appInForeground} permission=${outcome.permissionGranted} " +
                 "quiet_suppressed=${outcome.suppressedByQuietHours} data_keys=${payload.keys}",
+        )
+        analyticsLogger.pushReceived(
+            result = outcome.result,
+            messageId = messageId,
         )
         return outcome
     }

@@ -17,6 +17,8 @@ class PushTokenSyncOrchestrator
     constructor(
         private val remoteDataSource: DevPulseRemoteDataSource,
         private val stateStore: PushTokenSyncStateStore,
+        private val metadataProvider: PushTokenMetadataSource,
+        private val analyticsLogger: PushAnalyticsTracker,
     ) : PushTokenSyncCoordinator {
         override suspend fun queueRegister(
             token: String,
@@ -52,7 +54,13 @@ class PushTokenSyncOrchestrator
 
         override suspend fun syncPending(reason: String) {
             val pending = stateStore.getPendingSync() ?: return
-            val request = DeviceTokenRequestDto(token = pending.token)
+            val metadata = metadataProvider.getMetadata()
+            val request =
+                DeviceTokenRequestDto(
+                    token = pending.token,
+                    appVersion = metadata.appVersion,
+                    deviceId = metadata.deviceId,
+                )
             repeat(MAX_ATTEMPTS) { index ->
                 val attempt = index + 1
                 val result =
@@ -63,6 +71,13 @@ class PushTokenSyncOrchestrator
                 when (result) {
                     is RemoteCallResult.Success -> {
                         stateStore.clearPendingSync()
+                        if (pending.action == PushTokenSyncAction.Register) {
+                            analyticsLogger.tokenRegistered(
+                                statusCode = result.statusCode,
+                                reason = reason,
+                                source = "push_token_sync",
+                            )
+                        }
                         logDebug(
                             "push_token_sync_result status=success action=${pending.action.name.lowercase()} " +
                                 "code=${result.statusCode} attempt=$attempt reason=$reason",

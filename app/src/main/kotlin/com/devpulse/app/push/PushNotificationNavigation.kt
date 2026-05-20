@@ -5,4 +5,6 @@ object PushNotificationNavigation {
     const val EXTRA_FILTER_UNREAD_ONLY = "extra_filter_unread_only"
     const val EXTRA_DIGEST_PERIOD_START_EPOCH_MS = "extra_digest_period_start_epoch_ms"
     const val EXTRA_DIGEST_PERIOD_END_EPOCH_MS = "extra_digest_period_end_epoch_ms"
+    const val EXTRA_PUSH_EVENT_ID = "extra_push_event_id"
+    const val EXTRA_PUSH_URL = "extra_push_url"
 }

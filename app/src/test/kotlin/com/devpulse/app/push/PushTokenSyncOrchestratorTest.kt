@@ -28,12 +28,22 @@ class PushTokenSyncOrchestratorTest {
         runTest {
             val stateStore = InMemoryPushTokenSyncStateStore()
             val remote = FakeRemoteDataSource(registerResponses = listOf(RemoteCallResult.Success(Unit, 200)))
-            val orchestrator = PushTokenSyncOrchestrator(remoteDataSource = remote, stateStore = stateStore)
+            val analytics = RecordingPushAnalyticsLogger()
+            val orchestrator =
+                PushTokenSyncOrchestrator(
+                    remoteDataSource = remote,
+                    stateStore = stateStore,
+                    metadataProvider = StaticPushTokenMetadataProvider(),
+                    analyticsLogger = analytics,
+                )
 
             orchestrator.queueRegister(token = "abc", reason = "test")
 
             assertEquals(1, remote.registerCalls)
             assertNull(stateStore.pending)
+            assertEquals("1.73.0", remote.lastRegisterRequest?.appVersion)
+            assertEquals("device-1", remote.lastRegisterRequest?.deviceId)
+            assertEquals(1, analytics.tokenRegisteredCalls)
         }
 
     @Test
@@ -58,7 +68,13 @@ class PushTokenSyncOrchestratorTest {
                             ),
                         ),
                 )
-            val orchestrator = PushTokenSyncOrchestrator(remoteDataSource = remote, stateStore = stateStore)
+            val orchestrator =
+                PushTokenSyncOrchestrator(
+                    remoteDataSource = remote,
+                    stateStore = stateStore,
+                    metadataProvider = StaticPushTokenMetadataProvider(),
+                    analyticsLogger = RecordingPushAnalyticsLogger(),
+                )
 
             orchestrator.queueRegister(token = "abc", reason = "test")
 
@@ -86,7 +102,13 @@ class PushTokenSyncOrchestratorTest {
                             ),
                         ),
                 )
-            val orchestrator = PushTokenSyncOrchestrator(remoteDataSource = remote, stateStore = stateStore)
+            val orchestrator =
+                PushTokenSyncOrchestrator(
+                    remoteDataSource = remote,
+                    stateStore = stateStore,
+                    metadataProvider = StaticPushTokenMetadataProvider(),
+                    analyticsLogger = RecordingPushAnalyticsLogger(),
+                )
 
             orchestrator.queueUnregister(token = "abc", reason = "logout")
 
@@ -114,10 +136,12 @@ class PushTokenSyncOrchestratorTest {
     ) : DevPulseRemoteDataSource {
         var registerCalls: Int = 0
         var unregisterCalls: Int = 0
+        var lastRegisterRequest: DeviceTokenRequestDto? = null
 
         override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
             val index = registerCalls
             registerCalls += 1
+            lastRegisterRequest = request
             return registerResponses.getOrElse(index) { registerResponses.last() }
         }
 
@@ -166,5 +190,33 @@ class PushTokenSyncOrchestratorTest {
         override suspend fun markNotificationsRead(request: MarkReadRequestDto): RemoteCallResult<MarkReadResponseDto> {
             error("not used")
         }
+    }
+
+    private class StaticPushTokenMetadataProvider : PushTokenMetadataSource {
+        override fun getMetadata(): PushTokenMetadata = PushTokenMetadata(appVersion = "1.73.0", deviceId = "device-1")
+    }
+
+    private class RecordingPushAnalyticsLogger : PushAnalyticsTracker {
+        var tokenRegisteredCalls: Int = 0
+
+        override fun tokenRegistered(
+            statusCode: Int,
+            reason: String,
+            source: String,
+        ) {
+            tokenRegisteredCalls += 1
+        }
+
+        override fun tokenRefresh(source: String) = Unit
+
+        override fun pushReceived(
+            result: PushHandleResult,
+            messageId: String?,
+        ) = Unit
+
+        override fun pushOpened(
+            eventId: String?,
+            url: String?,
+        ) = Unit
     }
 }

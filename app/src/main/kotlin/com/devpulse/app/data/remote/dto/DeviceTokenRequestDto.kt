@@ -7,4 +7,8 @@ data class DeviceTokenRequestDto(
     val token: String,
     @param:Json(name = "platform")
     val platform: String = "android",
+    @param:Json(name = "appVersion")
+    val appVersion: String? = null,
+    @param:Json(name = "deviceId")
+    val deviceId: String? = null,
 )

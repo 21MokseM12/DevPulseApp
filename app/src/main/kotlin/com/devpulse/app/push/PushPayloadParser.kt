@@ -63,7 +63,7 @@ class PushPayloadParser
                 payload.firstNotBlank("event_id", "eventId", "id")
                     ?: fallbackMessageId?.trim()
             val linkUpdateId =
-                payload.firstNotBlank("id", "update_id", "linkUpdateId", "link_update_id")
+                payload.firstNotBlank("id", "update_id", "linkUpdateId", "link_update_id", "link_id")
                     ?.toLongOrNull()
             val updateOwner =
                 payload.firstNotBlank("updateOwner", "update_owner", "source")

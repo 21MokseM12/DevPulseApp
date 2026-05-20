@@ -105,4 +105,16 @@ class PushNotificationManagerLogicTest {
 
         assertNull(window)
     }
+
+    @Test
+    fun normalizePushNavigationExtras_trimsAndKeepsNonBlankFields() {
+        val extras =
+            normalizePushNavigationExtras(
+                pushEventId = " evt-11 ",
+                pushUrl = " https://example.com/news ",
+            )
+
+        assertEquals("evt-11", extras.eventId)
+        assertEquals("https://example.com/news", extras.url)
+    }
 }

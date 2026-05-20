@@ -30,6 +30,7 @@ class PushInitializer
         private val notificationPreferencesStore: NotificationPreferencesStore,
         private val digestScheduler: DigestScheduler,
         private val pushTokenSyncOrchestrator: PushTokenSyncCoordinator,
+        private val analyticsLogger: PushAnalyticsTracker,
     ) {
         private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -81,6 +82,7 @@ class PushInitializer
                         reason = "app_start_token_fetch",
                     )
                 }
+                analyticsLogger.tokenRefresh(source = "app_start_token_fetch")
                 Log.d(LOG_TAG, "fcm_token_received source=app_start")
             }
         }

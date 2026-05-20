@@ -36,7 +36,12 @@ class PushNotificationManager
             if (!canPostNotifications()) return
 
             val notificationId = notificationIdForUpdate(update)
-            val contentIntent = buildOpenUpdatesPendingIntent(filterUnreadOnly = false)
+            val contentIntent =
+                buildOpenUpdatesPendingIntent(
+                    filterUnreadOnly = false,
+                    pushEventId = update.remoteEventId,
+                    pushUrl = update.linkUrl,
+                )
             val title = textResolver.resolveTitle(update.title)
             val body = textResolver.resolveBody(update.content, presentationMode)
             val notification =
@@ -148,6 +153,26 @@ class PushNotificationManager
 
         private fun buildOpenUpdatesPendingIntent(
             filterUnreadOnly: Boolean,
+            pushEventId: String?,
+            pushUrl: String?,
+        ): PendingIntent {
+            val intent =
+                buildOpenUpdatesIntent(
+                    context = context,
+                    filterUnreadOnly = filterUnreadOnly,
+                    pushEventId = pushEventId,
+                    pushUrl = pushUrl,
+                )
+            return PendingIntent.getActivity(
+                context,
+                if (filterUnreadOnly) DIGEST_UPDATES_INTENT_REQUEST_CODE else UPDATES_INTENT_REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
+        private fun buildOpenUpdatesPendingIntent(
+            filterUnreadOnly: Boolean,
             digestPeriodStartEpochMs: Long?,
             digestPeriodEndEpochMs: Long?,
         ): PendingIntent {
@@ -217,11 +242,15 @@ internal fun buildOpenUpdatesIntent(
     filterUnreadOnly: Boolean,
     digestPeriodStartEpochMs: Long? = null,
     digestPeriodEndEpochMs: Long? = null,
+    pushEventId: String? = null,
+    pushUrl: String? = null,
 ): Intent {
     return Intent(context, MainActivity::class.java).applyOpenUpdatesExtras(
         filterUnreadOnly = filterUnreadOnly,
         digestPeriodStartEpochMs = digestPeriodStartEpochMs,
         digestPeriodEndEpochMs = digestPeriodEndEpochMs,
+        pushEventId = pushEventId,
+        pushUrl = pushUrl,
     )
 }
 
@@ -229,6 +258,8 @@ internal fun Intent.applyOpenUpdatesExtras(
     filterUnreadOnly: Boolean,
     digestPeriodStartEpochMs: Long? = null,
     digestPeriodEndEpochMs: Long? = null,
+    pushEventId: String? = null,
+    pushUrl: String? = null,
 ): Intent {
     putExtra(PushNotificationNavigation.EXTRA_OPEN_UPDATES, true)
     putExtra(PushNotificationNavigation.EXTRA_FILTER_UNREAD_ONLY, filterUnreadOnly)
@@ -241,8 +272,34 @@ internal fun Intent.applyOpenUpdatesExtras(
         putExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_START_EPOCH_MS, digestWindow.first)
         putExtra(PushNotificationNavigation.EXTRA_DIGEST_PERIOD_END_EPOCH_MS, digestWindow.second)
     }
+    val normalizedPushExtras =
+        normalizePushNavigationExtras(
+            pushEventId = pushEventId,
+            pushUrl = pushUrl,
+        )
+    if (normalizedPushExtras.eventId != null) {
+        putExtra(PushNotificationNavigation.EXTRA_PUSH_EVENT_ID, normalizedPushExtras.eventId)
+    }
+    if (normalizedPushExtras.url != null) {
+        putExtra(PushNotificationNavigation.EXTRA_PUSH_URL, normalizedPushExtras.url)
+    }
     flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
     return this
+}
+
+internal data class PushNavigationExtras(
+    val eventId: String?,
+    val url: String?,
+)
+
+internal fun normalizePushNavigationExtras(
+    pushEventId: String?,
+    pushUrl: String?,
+): PushNavigationExtras {
+    return PushNavigationExtras(
+        eventId = pushEventId?.trim()?.takeIf { it.isNotBlank() },
+        url = pushUrl?.trim()?.takeIf { it.isNotBlank() },
+    )
 }
 
 internal fun digestWindowOrNull(

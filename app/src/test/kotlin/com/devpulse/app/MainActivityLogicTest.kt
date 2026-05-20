@@ -87,4 +87,28 @@ class MainActivityLogicTest {
 
         assertNull(request)
     }
+
+    @Test
+    fun toPushOpenRequest_returnsRequest_whenPushExtrasPresent() {
+        val request =
+            pushOpenRequestFromExtras(
+                eventIdRaw = "evt-1",
+                urlRaw = "https://example.com/post",
+            )
+
+        assertTrue(request?.eventId == "evt-1")
+        assertTrue(request?.url == "https://example.com/post")
+    }
+
+    @Test
+    fun toPushOpenRequest_returnsNull_whenNoPushExtras() {
+        val request = pushOpenRequestFromExtras(eventIdRaw = null, urlRaw = null)
+
+        assertNull(request)
+    }
+
+    @Test
+    fun isValidHttpUri_returnsFalse_forNonHttpScheme() {
+        assertFalse(isValidHttpUri("ftp://example.com/file"))
+    }
 }

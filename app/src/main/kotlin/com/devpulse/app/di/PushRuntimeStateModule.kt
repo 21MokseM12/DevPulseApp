@@ -4,6 +4,10 @@ import com.devpulse.app.push.AppVisibilityProvider
 import com.devpulse.app.push.AppVisibilityTracker
 import com.devpulse.app.push.NotificationCapabilityChecker
 import com.devpulse.app.push.NotificationCapabilityProvider
+import com.devpulse.app.push.PushAnalyticsLogger
+import com.devpulse.app.push.PushAnalyticsTracker
+import com.devpulse.app.push.PushTokenMetadataProvider
+import com.devpulse.app.push.PushTokenMetadataSource
 import com.devpulse.app.push.PushTokenSyncCoordinator
 import com.devpulse.app.push.PushTokenSyncOrchestrator
 import dagger.Binds
@@ -28,4 +32,12 @@ abstract class PushRuntimeStateModule {
     @Binds
     @Singleton
     abstract fun bindPushTokenSyncCoordinator(implementation: PushTokenSyncOrchestrator): PushTokenSyncCoordinator
+
+    @Binds
+    @Singleton
+    abstract fun bindPushTokenMetadataSource(implementation: PushTokenMetadataProvider): PushTokenMetadataSource
+
+    @Binds
+    @Singleton
+    abstract fun bindPushAnalyticsTracker(implementation: PushAnalyticsLogger): PushAnalyticsTracker
 }

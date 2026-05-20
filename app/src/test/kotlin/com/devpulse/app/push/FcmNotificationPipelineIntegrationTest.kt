@@ -225,6 +225,41 @@ class FcmNotificationPipelineIntegrationTest {
         }
     }
 
+    @Test
+    fun processIncomingPayload_mapsExpectedFcmV1DataFields() {
+        runTest {
+            val repository = RecordingUpdatesRepository()
+            val notifier = RecordingNotifier()
+            val handler = createHandler(repository, StaticPreferencesStore(NotificationPreferences()))
+
+            val outcome =
+                processIncomingPush(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-7",
+                            "title" to "Новый релиз",
+                            "content" to "Доступно обновление",
+                            "url" to "https://example.com/release",
+                            "created_at" to "2026-05-20T14:01:00Z",
+                            "source" to "scrapper",
+                            "link_id" to "42",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "msg-7",
+                    receivedAtEpochMs = 700L,
+                    pushMessageHandler = handler,
+                    pushNotifier = notifier,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals(42L, repository.lastUpdate?.linkUpdateId)
+            assertEquals("scrapper", repository.lastUpdate?.updateOwner)
+            assertEquals("2026-05-20T14:01:00Z", repository.lastUpdate?.creationDate)
+            assertEquals("https://example.com/release", repository.lastUpdate?.linkUrl)
+        }
+    }
+
     private fun createHandler(
         repository: RecordingUpdatesRepository,
         preferencesStore: NotificationPreferencesStore,
