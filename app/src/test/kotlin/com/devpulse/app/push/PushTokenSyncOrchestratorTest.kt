@@ -3,6 +3,8 @@ package com.devpulse.app.push
 import com.devpulse.app.data.local.preferences.PendingPushTokenSync
 import com.devpulse.app.data.local.preferences.PushTokenSyncAction
 import com.devpulse.app.data.local.preferences.PushTokenSyncStateStore
+import com.devpulse.app.data.local.preferences.SessionStore
+import com.devpulse.app.data.local.preferences.StoredSession
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.AddLinkRequestDto
@@ -18,6 +20,9 @@ import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -34,6 +39,7 @@ class PushTokenSyncOrchestratorTest {
                 PushTokenSyncOrchestrator(
                     remoteDataSource = remote,
                     stateStore = stateStore,
+                    sessionStore = FakeSessionStore(login = "moksem"),
                     metadataProvider = StaticPushTokenMetadataProvider(),
                     analyticsLogger = analytics,
                 )
@@ -73,6 +79,7 @@ class PushTokenSyncOrchestratorTest {
                 PushTokenSyncOrchestrator(
                     remoteDataSource = remote,
                     stateStore = stateStore,
+                    sessionStore = FakeSessionStore(login = "moksem"),
                     metadataProvider = StaticPushTokenMetadataProvider(),
                     analyticsLogger = RecordingPushAnalyticsLogger(),
                 )
@@ -107,6 +114,7 @@ class PushTokenSyncOrchestratorTest {
                 PushTokenSyncOrchestrator(
                     remoteDataSource = remote,
                     stateStore = stateStore,
+                    sessionStore = FakeSessionStore(login = "moksem"),
                     metadataProvider = StaticPushTokenMetadataProvider(),
                     analyticsLogger = RecordingPushAnalyticsLogger(),
                 )
@@ -116,6 +124,32 @@ class PushTokenSyncOrchestratorTest {
             assertEquals(1, remote.unregisterCalls)
             assertEquals("abc", remote.lastUnregisterRequest?.token)
             assertNull(stateStore.pending)
+        }
+
+    @Test
+    fun queueRegister_withoutSession_doesNotCallBackendAndKeepsPendingState() =
+        runTest {
+            val stateStore = InMemoryPushTokenSyncStateStore()
+            val remote = FakeRemoteDataSource(registerResponses = listOf(RemoteCallResult.Success(Unit, 200)))
+            val orchestrator =
+                PushTokenSyncOrchestrator(
+                    remoteDataSource = remote,
+                    stateStore = stateStore,
+                    sessionStore = FakeSessionStore(login = null),
+                    metadataProvider = StaticPushTokenMetadataProvider(),
+                    analyticsLogger = RecordingPushAnalyticsLogger(),
+                )
+
+            orchestrator.queueRegister(token = "abc", reason = "token_refresh")
+
+            assertEquals(0, remote.registerCalls)
+            assertEquals(
+                PendingPushTokenSync(
+                    action = PushTokenSyncAction.Register,
+                    token = "abc",
+                ),
+                stateStore.pending,
+            )
         }
 
     private class InMemoryPushTokenSyncStateStore : PushTokenSyncStateStore {
@@ -198,6 +232,41 @@ class PushTokenSyncOrchestratorTest {
 
     private class StaticPushTokenMetadataProvider : PushTokenMetadataSource {
         override fun getMetadata(): PushTokenMetadata = PushTokenMetadata(appVersion = "1.73.0", deviceId = "device-1")
+    }
+
+    private class FakeSessionStore(login: String?) : SessionStore {
+        private val state =
+            MutableStateFlow(
+                login?.let {
+                    StoredSession(
+                        login = it,
+                        isRegistered = true,
+                        updatedAtEpochMs = 1L,
+                    )
+                },
+            )
+
+        override fun observeSession(): Flow<StoredSession?> = state
+
+        override fun observeClientLogin(): Flow<String?> = state.map { it?.login }
+
+        override suspend fun getSession(): StoredSession? = state.value
+
+        override suspend fun saveSession(
+            login: String,
+            isRegistered: Boolean,
+        ) {
+            state.value =
+                StoredSession(
+                    login = login,
+                    isRegistered = isRegistered,
+                    updatedAtEpochMs = 1L,
+                )
+        }
+
+        override suspend fun clearSession() {
+            state.value = null
+        }
     }
 
     private class RecordingPushAnalyticsLogger : PushAnalyticsTracker {

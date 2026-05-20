@@ -4,6 +4,7 @@ import android.util.Log
 import com.devpulse.app.data.local.preferences.PendingPushTokenSync
 import com.devpulse.app.data.local.preferences.PushTokenSyncAction
 import com.devpulse.app.data.local.preferences.PushTokenSyncStateStore
+import com.devpulse.app.data.local.preferences.SessionStore
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.DeviceTokenRequestDto
@@ -18,6 +19,7 @@ class PushTokenSyncOrchestrator
     constructor(
         private val remoteDataSource: DevPulseRemoteDataSource,
         private val stateStore: PushTokenSyncStateStore,
+        private val sessionStore: SessionStore,
         private val metadataProvider: PushTokenMetadataSource,
         private val analyticsLogger: PushAnalyticsTracker,
     ) : PushTokenSyncCoordinator {
@@ -55,6 +57,12 @@ class PushTokenSyncOrchestrator
 
         override suspend fun syncPending(reason: String) {
             val pending = stateStore.getPendingSync() ?: return
+            if (pending.action == PushTokenSyncAction.Register && !hasClientSession()) {
+                logDebug(
+                    "push_token_sync_result status=skipped action=register reason=no_client_session trigger=$reason",
+                )
+                return
+            }
             val metadata = metadataProvider.getMetadata()
             val registerRequest =
                 DeviceTokenRequestDto(
@@ -112,6 +120,10 @@ class PushTokenSyncOrchestrator
                     delay(RETRY_DELAYS_MS[index])
                 }
             }
+        }
+
+        private suspend fun hasClientSession(): Boolean {
+            return !sessionStore.getSession()?.login.isNullOrBlank()
         }
 
         private companion object {

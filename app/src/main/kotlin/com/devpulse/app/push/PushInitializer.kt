@@ -95,10 +95,10 @@ class PushInitializer
                 ) { token, login -> token to login }
                     .distinctUntilChanged()
                     .collect { (token, login) ->
-                        if (token.isNullOrBlank()) return@collect
+                        if (!shouldQueueTokenRegistration(token = token, login = login)) return@collect
                         pushTokenSyncOrchestrator.queueRegister(
-                            token = token,
-                            reason = if (login.isNullOrBlank()) "token_changed" else "session_or_token_changed",
+                            token = token.orEmpty(),
+                            reason = "session_or_token_changed",
                         )
                     }
             }
@@ -133,6 +133,13 @@ internal fun shouldSaveToken(
 }
 
 internal fun shouldRequestFcmToken(firebaseConfigured: Boolean): Boolean = firebaseConfigured
+
+internal fun shouldQueueTokenRegistration(
+    token: String?,
+    login: String?,
+): Boolean {
+    return !token.isNullOrBlank() && !login.isNullOrBlank()
+}
 
 internal data class NotificationChannelConfig(
     val id: String,

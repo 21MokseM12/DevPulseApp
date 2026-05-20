@@ -33,6 +33,21 @@ class PushInitializerLogicTest {
     }
 
     @Test
+    fun shouldQueueTokenRegistration_returnsFalse_whenLoginMissing() {
+        assertFalse(shouldQueueTokenRegistration(token = "fcm-token", login = null))
+    }
+
+    @Test
+    fun shouldQueueTokenRegistration_returnsFalse_whenTokenMissing() {
+        assertFalse(shouldQueueTokenRegistration(token = "   ", login = "moksem"))
+    }
+
+    @Test
+    fun shouldQueueTokenRegistration_returnsTrue_whenTokenAndLoginPresent() {
+        assertTrue(shouldQueueTokenRegistration(token = "fcm-token", login = "moksem"))
+    }
+
+    @Test
     fun updatesNotificationChannelConfig_returnsStableUpdatesChannelContract() {
         val channelConfig = updatesNotificationChannelConfig()
 
