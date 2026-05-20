@@ -54,6 +54,7 @@ class PushPayloadParser
                 payload.firstNotBlank("title")
                     ?: notificationTitle?.trim()
                     ?: DEFAULT_TITLE
+            val normalizedTitle = normalizeTitle(title = title, linkUrl = linkUrl)
 
             if (linkUrl.isEmpty() && rawContent == null) {
                 return null
@@ -79,7 +80,7 @@ class PushPayloadParser
                 updateOwner = updateOwner,
                 creationDate = creationDate,
                 linkUrl = linkUrl.trim(),
-                title = title,
+                title = normalizedTitle,
                 content = content,
                 isCritical = isCritical,
             )
@@ -97,6 +98,24 @@ class PushPayloadParser
                     val scheme = uri.scheme?.lowercase()
                     (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
                 }.getOrDefault(false)
+        }
+
+        private fun normalizeTitle(
+            title: String,
+            linkUrl: String,
+        ): String {
+            if (linkUrl.isBlank()) return title
+            val uri = runCatching { URI(linkUrl) }.getOrNull() ?: return title
+            val host = uri.host?.lowercase() ?: return title
+            if (host != "github.com" && !host.endsWith(".github.com")) return title
+            val repositoryName = extractGithubRepositoryName(uri) ?: return title
+            return repositoryName
+        }
+
+        private fun extractGithubRepositoryName(uri: URI): String? {
+            val segments = uri.path.split("/").filter { it.isNotBlank() }
+            if (segments.size < 2) return null
+            return segments[1]
         }
 
         private fun Map<String, String>.toCriticalFlag(): Boolean {

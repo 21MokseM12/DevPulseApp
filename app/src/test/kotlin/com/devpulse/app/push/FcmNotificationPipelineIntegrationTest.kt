@@ -260,6 +260,35 @@ class FcmNotificationPipelineIntegrationTest {
         }
     }
 
+    @Test
+    fun processIncomingPayload_githubEvent_usesRepositoryAsNotificationTitle() {
+        runTest {
+            val repository = RecordingUpdatesRepository()
+            val notifier = RecordingNotifier()
+            val handler = createHandler(repository, StaticPreferencesStore(NotificationPreferences()))
+
+            val outcome =
+                processIncomingPush(
+                    payload =
+                        mapOf(
+                            "event_id" to "evt-gh",
+                            "url" to "https://github.com/org/devpulse-backend/compare/main...feature",
+                            "title" to "feature/new-notifier-format",
+                            "content" to "Body",
+                        ),
+                    notificationTitle = null,
+                    notificationBody = null,
+                    messageId = "msg-gh",
+                    receivedAtEpochMs = 701L,
+                    pushMessageHandler = handler,
+                    pushNotifier = notifier,
+                )
+
+            assertEquals(PushHandleResult.Saved, outcome.result)
+            assertEquals("devpulse-backend", notifier.calls.single().update.title)
+        }
+    }
+
     private fun createHandler(
         repository: RecordingUpdatesRepository,
         preferencesStore: NotificationPreferencesStore,

@@ -226,4 +226,23 @@ class PushPayloadParserTest {
         requireNotNull(result)
         assertEquals("https://github.com/org/repo/commit/abc123", result.linkUrl)
     }
+
+    @Test
+    fun parse_githubPayload_replacesTitleWithRepositoryName() {
+        val result =
+            parser.parse(
+                payload =
+                    mapOf(
+                        "url" to "https://github.com/octocat/Hello-World/pull/42",
+                        "title" to "feature/some-branch",
+                        "content" to "Body",
+                    ),
+                notificationTitle = null,
+                notificationBody = null,
+                fallbackMessageId = "msg-github-title",
+            )
+
+        requireNotNull(result)
+        assertEquals("Hello-World", result.title)
+    }
 }
