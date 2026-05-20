@@ -279,6 +279,95 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun subscriptionsGroupedByTags_rendersSectionsInExpectedOrder() {
+        smokeDataSource.setLinksForTesting(
+            listOf(
+                LinkResponseDto(
+                    id = 201L,
+                    url = "https://example.dev/no-tag-item",
+                    tags = emptyList(),
+                    filters = emptyList(),
+                ),
+                LinkResponseDto(
+                    id = 202L,
+                    url = "https://example.dev/beta-item",
+                    tags = listOf("beta"),
+                    filters = emptyList(),
+                ),
+                LinkResponseDto(
+                    id = 203L,
+                    url = "https://example.dev/alpha-item",
+                    tags = listOf("Alpha"),
+                    filters = emptyList(),
+                ),
+            ),
+        )
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("Alpha"))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("beta"))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader(null))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionRow(203L))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionRow(202L))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionRow(201L))
+
+        composeRule.assertTagIsAbove(
+            SmokeTestTags.subscriptionTagGroupHeader("Alpha"),
+            SmokeTestTags.subscriptionRow(203L),
+        )
+        composeRule.assertTagIsAbove(
+            SmokeTestTags.subscriptionRow(203L),
+            SmokeTestTags.subscriptionTagGroupHeader("beta"),
+        )
+        composeRule.assertTagIsAbove(
+            SmokeTestTags.subscriptionTagGroupHeader("beta"),
+            SmokeTestTags.subscriptionRow(202L),
+        )
+        composeRule.assertTagIsAbove(
+            SmokeTestTags.subscriptionRow(202L),
+            SmokeTestTags.subscriptionTagGroupHeader(null),
+        )
+        composeRule.assertTagIsAbove(
+            SmokeTestTags.subscriptionTagGroupHeader(null),
+            SmokeTestTags.subscriptionRow(201L),
+        )
+    }
+
+    @Test
+    fun subscriptionsRemove_updatesGroupsAndHidesEmptySection() {
+        smokeDataSource.setLinksForTesting(
+            listOf(
+                LinkResponseDto(
+                    id = 301L,
+                    url = "https://example.dev/alpha-remove",
+                    tags = listOf("alpha"),
+                    filters = emptyList(),
+                ),
+                LinkResponseDto(
+                    id = 302L,
+                    url = "https://example.dev/beta-keep",
+                    tags = listOf("beta"),
+                    filters = emptyList(),
+                ),
+            ),
+        )
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("alpha"))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("beta"))
+
+        composeRule.onNodeWithTag(SmokeTestTags.subscriptionRemoveButton(301L)).performClick()
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON).performClick()
+
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.subscriptionTagGroupHeader("alpha"))
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("beta"))
+        composeRule.waitUntilNodeWithTextMissing("https://example.dev/alpha-remove")
+        composeRule.waitUntilNodeWithTextExists("https://example.dev/beta-keep")
+    }
+
+    @Test
     fun subscriptionsSearch_filtersAndResetResultList() {
         val kotlinUrl = "https://example.dev/kotlin-news"
         val backendUrl = "https://example.dev/backend-feed"
@@ -532,5 +621,16 @@ private fun ComposeContentTestRule.waitUntilAnyTextExists(vararg texts: String) 
 private fun ComposeContentTestRule.waitUntilNotAllTextsExist(vararg texts: String) {
     waitUntil(timeoutMillis = 5_000) {
         texts.count { text -> onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() } < texts.size
+    }
+}
+
+private fun ComposeContentTestRule.assertTagIsAbove(
+    upperTag: String,
+    lowerTag: String,
+) {
+    val upperTop = onAllNodesWithTag(upperTag).fetchSemanticsNodes().first().boundsInRoot.top
+    val lowerTop = onAllNodesWithTag(lowerTag).fetchSemanticsNodes().first().boundsInRoot.top
+    check(upperTop < lowerTop) {
+        "Expected node '$upperTag' above '$lowerTag', but got $upperTop >= $lowerTop"
     }
 }

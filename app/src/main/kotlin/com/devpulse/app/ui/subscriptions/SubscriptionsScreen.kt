@@ -166,11 +166,11 @@ private fun SubscriptionsScreen(
                 }
 
                 SubscriptionsScreenState.Content -> {
-                    if (uiState.links.isEmpty()) {
+                    if (uiState.groupedLinks.isEmpty()) {
                         NoResultsState(onClearSearch = onClearSearch)
                     } else {
                         LinksContent(
-                            links = uiState.links,
+                            groups = uiState.groupedLinks,
                             isRemoving = uiState.isRemoving,
                             onRemoveRequested = onRemoveRequested,
                         )
@@ -400,7 +400,7 @@ private fun AddSubscriptionForm(
 
 @Composable
 private fun LinksContent(
-    links: List<TrackedLink>,
+    groups: List<SubscriptionTagGroup>,
     isRemoving: Boolean,
     onRemoveRequested: (TrackedLink) -> Unit,
 ) {
@@ -413,63 +413,81 @@ private fun LinksContent(
             ),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        items(items = links, key = { it.id }) { link ->
-            Card(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag(SmokeTestTags.subscriptionRow(link.id)),
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            ) {
-                Column(
-                    modifier = Modifier.padding(Spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        groups.forEach { group ->
+            val groupKey = group.tag?.trim().orEmpty().ifBlank { "untagged" }.lowercase()
+            item(key = "header_$groupKey") {
+                Text(
+                    text = group.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = Spacing.xs, bottom = Spacing.xs)
+                            .testTag(SmokeTestTags.subscriptionTagGroupHeader(group.tag)),
+                )
+            }
+            items(
+                items = group.items,
+                key = { link -> "${groupKey}_${link.id}" },
+            ) { link ->
+                Card(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag(SmokeTestTags.subscriptionRow(link.id)),
+                    colors =
+                        CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top,
+                    Column(
+                        modifier = Modifier.padding(Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                     ) {
                         Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top,
                         ) {
-                            LinkPlatformIcon(url = link.url)
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                LinkPlatformIcon(url = link.url)
+                                Text(
+                                    text = formatLinkDisplayName(link.url),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
+                            TextButton(
+                                onClick = { onRemoveRequested(link) },
+                                enabled = !isRemoving,
+                                modifier = Modifier.testTag(SmokeTestTags.subscriptionRemoveButton(link.id)),
+                            ) {
+                                Text(
+                                    text = "Удалить",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                        if (link.tags.isNotEmpty()) {
                             Text(
-                                text = formatLinkDisplayName(link.url),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium,
+                                text = "Теги: ${link.tags.joinToString(" · ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                        TextButton(
-                            onClick = { onRemoveRequested(link) },
-                            enabled = !isRemoving,
-                            modifier = Modifier.testTag(SmokeTestTags.subscriptionRemoveButton(link.id)),
-                        ) {
+                        if (link.filters.isNotEmpty()) {
                             Text(
-                                text = "Удалить",
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "Фильтры: ${link.filters.joinToString(" · ")}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                    }
-                    if (link.tags.isNotEmpty()) {
-                        Text(
-                            text = "Теги: ${link.tags.joinToString(" · ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (link.filters.isNotEmpty()) {
-                        Text(
-                            text = "Фильтры: ${link.filters.joinToString(" · ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                     }
                 }
             }

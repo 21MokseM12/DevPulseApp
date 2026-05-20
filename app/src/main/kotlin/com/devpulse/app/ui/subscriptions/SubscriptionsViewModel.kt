@@ -28,6 +28,7 @@ data class SubscriptionsUiState(
     val isRemoving: Boolean = false,
     val allLinks: List<TrackedLink> = emptyList(),
     val links: List<TrackedLink> = emptyList(),
+    val groupedLinks: List<SubscriptionTagGroup> = emptyList(),
     val searchState: SubscriptionsSearchState = SubscriptionsSearchState(),
     val availableTags: List<String> = emptyList(),
     val isStaleData: Boolean = false,
@@ -40,6 +41,12 @@ data class SubscriptionsUiState(
     val addFiltersInput: String = "",
     val addErrorMessage: String? = null,
     val pendingRemoval: TrackedLink? = null,
+)
+
+data class SubscriptionTagGroup(
+    val tag: String?,
+    val title: String,
+    val items: List<TrackedLink>,
 )
 
 enum class SubscriptionsScreenState {
@@ -398,11 +405,70 @@ class SubscriptionsViewModel
                         links = state.allLinks,
                         state = state.searchState.copy(query = debouncedNormalizedQuery),
                     )
+                val groupedLinks =
+                    buildTagGroups(
+                        links = filteredLinks,
+                        sortMode = state.searchState.sortMode,
+                    )
                 state.copy(
                     links = filteredLinks,
+                    groupedLinks = groupedLinks,
                     availableTags = availableTags,
                 )
             }
+        }
+
+        internal fun buildTagGroups(
+            links: List<TrackedLink>,
+            sortMode: SubscriptionsSortMode,
+        ): List<SubscriptionTagGroup> {
+            val sortedLinks =
+                when (sortMode) {
+                    SubscriptionsSortMode.RECENTLY_ADDED -> links.sortedByDescending { it.id }
+                    SubscriptionsSortMode.URL_ASCENDING -> links.sortedBy { normalizeQuery(it.url) }
+                }
+            val bucketsByNormalizedTag = linkedMapOf<String, MutableList<TrackedLink>>()
+            val displayTagByNormalizedTag = linkedMapOf<String, String>()
+            val linksWithoutTags = mutableListOf<TrackedLink>()
+
+            sortedLinks.forEach { link ->
+                val normalizedUniqueTags =
+                    link.tags
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .distinctBy { it.lowercase() }
+                if (normalizedUniqueTags.isEmpty()) {
+                    linksWithoutTags += link
+                    return@forEach
+                }
+                normalizedUniqueTags.forEach { tag ->
+                    val normalizedTag = tag.lowercase()
+                    displayTagByNormalizedTag.putIfAbsent(normalizedTag, tag)
+                    bucketsByNormalizedTag.getOrPut(normalizedTag) { mutableListOf() } += link
+                }
+            }
+
+            val tagGroups =
+                bucketsByNormalizedTag
+                    .keys
+                    .sortedBy { it.lowercase() }
+                    .map { normalizedTag ->
+                        val displayTag = requireNotNull(displayTagByNormalizedTag[normalizedTag])
+                        SubscriptionTagGroup(
+                            tag = displayTag,
+                            title = "#$displayTag",
+                            items = bucketsByNormalizedTag[normalizedTag].orEmpty(),
+                        )
+                    }
+            if (linksWithoutTags.isNotEmpty()) {
+                return tagGroups +
+                    SubscriptionTagGroup(
+                        tag = null,
+                        title = "Без тегов",
+                        items = linksWithoutTags,
+                    )
+            }
+            return tagGroups
         }
 
         private fun collectAvailableTags(links: List<TrackedLink>): List<String> {

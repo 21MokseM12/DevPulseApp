@@ -2,6 +2,7 @@ package com.devpulse.app.ui.subscriptions
 
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
+import com.devpulse.app.domain.model.SubscriptionsSortMode
 import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.domain.repository.SubscriptionsRepository
 import com.devpulse.app.domain.repository.SubscriptionsResult
@@ -672,6 +673,133 @@ class SubscriptionsViewModelTest {
             assertEquals(1, repository.removeCalls)
             gate.complete(Unit)
             advanceUntilIdle()
+        }
+    }
+
+    @Test
+    fun buildTagGroups_groupsMultiTagLinksCaseInsensitively() {
+        runTest {
+            val viewModel = SubscriptionsViewModel(FakeSubscriptionsRepository(ArrayDeque()))
+            val first =
+                TrackedLink(
+                    id = 1L,
+                    url = "https://example.dev/first",
+                    tags = listOf(" Dev ", "android", "dev"),
+                    filters = emptyList(),
+                )
+            val second =
+                TrackedLink(
+                    id = 2L,
+                    url = "https://example.dev/second",
+                    tags = listOf("DEV"),
+                    filters = emptyList(),
+                )
+
+            val groups =
+                viewModel.buildTagGroups(
+                    links = listOf(first, second),
+                    sortMode = SubscriptionsSortMode.RECENTLY_ADDED,
+                )
+
+            assertEquals(listOf("#android", "#dev"), groups.map { it.title.lowercase() })
+            assertEquals(listOf(1L), groups.first { it.title == "#android" }.items.map { it.id })
+            assertEquals(
+                listOf(2L, 1L),
+                groups.first { it.title.lowercase() == "#dev" }.items.map { it.id },
+            )
+        }
+    }
+
+    @Test
+    fun buildTagGroups_putsNoTagGroupLast() {
+        runTest {
+            val viewModel = SubscriptionsViewModel(FakeSubscriptionsRepository(ArrayDeque()))
+            val tagged =
+                TrackedLink(
+                    id = 10L,
+                    url = "https://example.dev/tagged",
+                    tags = listOf("backend"),
+                    filters = emptyList(),
+                )
+            val untagged =
+                TrackedLink(
+                    id = 11L,
+                    url = "https://example.dev/untagged",
+                    tags = listOf(" ", ""),
+                    filters = emptyList(),
+                )
+
+            val groups =
+                viewModel.buildTagGroups(
+                    links = listOf(tagged, untagged),
+                    sortMode = SubscriptionsSortMode.RECENTLY_ADDED,
+                )
+
+            assertEquals(listOf("#backend", "Без тегов"), groups.map { it.title })
+            assertEquals(null, groups.last().tag)
+            assertEquals(listOf(11L), groups.last().items.map { it.id })
+        }
+    }
+
+    @Test
+    fun buildTagGroups_keepsItemsOrderedBySelectedSortMode() {
+        runTest {
+            val viewModel = SubscriptionsViewModel(FakeSubscriptionsRepository(ArrayDeque()))
+            val highId =
+                TrackedLink(
+                    id = 20L,
+                    url = "https://example.dev/zeta",
+                    tags = listOf("dev"),
+                    filters = emptyList(),
+                )
+            val lowId =
+                TrackedLink(
+                    id = 5L,
+                    url = "https://example.dev/alpha",
+                    tags = listOf("dev"),
+                    filters = emptyList(),
+                )
+
+            val recentGroups =
+                viewModel.buildTagGroups(
+                    links = listOf(lowId, highId),
+                    sortMode = SubscriptionsSortMode.RECENTLY_ADDED,
+                )
+            val urlGroups =
+                viewModel.buildTagGroups(
+                    links = listOf(lowId, highId),
+                    sortMode = SubscriptionsSortMode.URL_ASCENDING,
+                )
+
+            assertEquals(listOf(20L, 5L), recentGroups.single().items.map { it.id })
+            assertEquals(listOf(5L, 20L), urlGroups.single().items.map { it.id })
+        }
+    }
+
+    @Test
+    fun confirmRemove_removesEmptyTagGroupFromGroupedLinks() {
+        runTest {
+            val onlyTagged =
+                TrackedLink(
+                    id = 31L,
+                    url = "https://example.dev/only-dev",
+                    tags = listOf("dev"),
+                    filters = emptyList(),
+                )
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(listOf(onlyTagged)))),
+                    removeResult = SubscriptionsResult.Success(emptyList()),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+            assertEquals(listOf("#dev"), viewModel.uiState.value.groupedLinks.map { it.title })
+
+            viewModel.onRemoveRequested(onlyTagged)
+            viewModel.confirmRemove()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.groupedLinks.isEmpty())
         }
     }
 

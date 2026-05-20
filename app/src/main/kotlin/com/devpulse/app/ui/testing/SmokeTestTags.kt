@@ -47,6 +47,11 @@ object SmokeTestTags {
 
     fun subscriptionTagFilter(tag: String): String = "subscriptions_tag_filter_${tag.lowercase()}"
 
+    fun subscriptionTagGroupHeader(tag: String?): String {
+        val normalized = tag?.trim().orEmpty().ifBlank { "untagged" }.lowercase()
+        return "subscriptions_tag_group_header_$normalized"
+    }
+
     fun updateMarkReadButton(id: Long): String = "updates_mark_read_button_$id"
 
     fun updateOpenLinkButton(id: Long): String = "updates_open_link_button_$id"
