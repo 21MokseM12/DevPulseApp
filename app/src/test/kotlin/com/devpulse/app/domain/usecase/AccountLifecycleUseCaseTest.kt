@@ -14,6 +14,7 @@ import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
@@ -187,7 +188,7 @@ class AccountLifecycleUseCaseTest {
             return RemoteCallResult.Success(Unit, 200)
         }
 
-        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }
 
@@ -237,7 +238,7 @@ class AccountLifecycleUseCaseTest {
             return RemoteCallResult.Success(Unit, 200)
         }
 
-        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
             return RemoteCallResult.Success(Unit, 200)
         }
 

@@ -7,6 +7,7 @@ import com.devpulse.app.data.local.preferences.PushTokenSyncStateStore
 import com.devpulse.app.data.remote.DevPulseRemoteDataSource
 import com.devpulse.app.data.remote.RemoteCallResult
 import com.devpulse.app.data.remote.dto.DeviceTokenRequestDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -55,18 +56,19 @@ class PushTokenSyncOrchestrator
         override suspend fun syncPending(reason: String) {
             val pending = stateStore.getPendingSync() ?: return
             val metadata = metadataProvider.getMetadata()
-            val request =
+            val registerRequest =
                 DeviceTokenRequestDto(
                     token = pending.token,
                     appVersion = metadata.appVersion,
                     deviceId = metadata.deviceId,
                 )
+            val unregisterRequest = PushTokenDeactivateRequestDto(token = pending.token)
             repeat(MAX_ATTEMPTS) { index ->
                 val attempt = index + 1
                 val result =
                     when (pending.action) {
-                        PushTokenSyncAction.Register -> remoteDataSource.registerDeviceToken(request)
-                        PushTokenSyncAction.Unregister -> remoteDataSource.unregisterDeviceToken(request)
+                        PushTokenSyncAction.Register -> remoteDataSource.registerDeviceToken(registerRequest)
+                        PushTokenSyncAction.Unregister -> remoteDataSource.unregisterDeviceToken(unregisterRequest)
                     }
                 when (result) {
                     is RemoteCallResult.Success -> {

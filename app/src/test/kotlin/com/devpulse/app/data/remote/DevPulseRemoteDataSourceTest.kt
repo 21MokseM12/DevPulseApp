@@ -8,6 +8,7 @@ import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiErrorKind
@@ -139,7 +140,7 @@ class DevPulseRemoteDataSourceTest {
                     override suspend fun registerDeviceToken(request: DeviceTokenRequestDto) =
                         throw UnsupportedOperationException()
 
-                    override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto) =
+                    override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto) =
                         throw UnsupportedOperationException()
 
                     override suspend fun getLinks() = throw UnsupportedOperationException()
@@ -589,7 +590,7 @@ class DevPulseRemoteDataSourceTest {
             { throw UnsupportedOperationException() },
         private val onRegisterDeviceToken: suspend (DeviceTokenRequestDto) -> Response<Unit> =
             { throw UnsupportedOperationException() },
-        private val onUnregisterDeviceToken: suspend (DeviceTokenRequestDto) -> Response<Unit> =
+        private val onUnregisterDeviceToken: suspend (PushTokenDeactivateRequestDto) -> Response<Unit> =
             { throw UnsupportedOperationException() },
         private val onGetLinks: suspend () -> Response<List<LinkResponseDto>> =
             { throw UnsupportedOperationException() },
@@ -615,7 +616,7 @@ class DevPulseRemoteDataSourceTest {
         override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): Response<Unit> =
             onRegisterDeviceToken(request)
 
-        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): Response<Unit> =
+        override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): Response<Unit> =
             onUnregisterDeviceToken(request)
 
         override suspend fun getLinks(): Response<List<LinkResponseDto>> = onGetLinks()

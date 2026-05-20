@@ -9,6 +9,7 @@ import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.squareup.moshi.Moshi
@@ -29,7 +30,7 @@ interface DevPulseRemoteDataSource {
         return RemoteCallResult.Success(Unit, 200)
     }
 
-    suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+    suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
         return RemoteCallResult.Success(Unit, 200)
     }
 
@@ -80,7 +81,7 @@ class DefaultDevPulseRemoteDataSource
             return executeUnit { api.registerDeviceToken(request) }
         }
 
-        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
             return executeUnit { api.unregisterDeviceToken(request) }
         }
 

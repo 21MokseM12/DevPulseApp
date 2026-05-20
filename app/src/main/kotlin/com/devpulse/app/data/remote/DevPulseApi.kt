@@ -8,6 +8,7 @@ import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import retrofit2.Response
@@ -40,7 +41,7 @@ interface DevPulseApi {
 
     @HTTP(method = "DELETE", path = "/api/v1/push-tokens/current", hasBody = true)
     suspend fun unregisterDeviceToken(
-        @Body request: DeviceTokenRequestDto,
+        @Body request: PushTokenDeactivateRequestDto,
     ): Response<Unit>
 
     @GET("/api/v1/links")

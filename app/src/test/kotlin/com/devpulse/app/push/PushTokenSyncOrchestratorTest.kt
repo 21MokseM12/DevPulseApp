@@ -13,6 +13,7 @@ import com.devpulse.app.data.remote.dto.LinkResponseDto
 import com.devpulse.app.data.remote.dto.MarkReadRequestDto
 import com.devpulse.app.data.remote.dto.MarkReadResponseDto
 import com.devpulse.app.data.remote.dto.NotificationListResponseDto
+import com.devpulse.app.data.remote.dto.PushTokenDeactivateRequestDto
 import com.devpulse.app.data.remote.dto.RemoveLinkRequestDto
 import com.devpulse.app.data.remote.dto.UnreadCountResponseDto
 import com.devpulse.app.domain.model.ApiError
@@ -113,6 +114,7 @@ class PushTokenSyncOrchestratorTest {
             orchestrator.queueUnregister(token = "abc", reason = "logout")
 
             assertEquals(1, remote.unregisterCalls)
+            assertEquals("abc", remote.lastUnregisterRequest?.token)
             assertNull(stateStore.pending)
         }
 
@@ -137,6 +139,7 @@ class PushTokenSyncOrchestratorTest {
         var registerCalls: Int = 0
         var unregisterCalls: Int = 0
         var lastRegisterRequest: DeviceTokenRequestDto? = null
+        var lastUnregisterRequest: PushTokenDeactivateRequestDto? = null
 
         override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
             val index = registerCalls
@@ -145,9 +148,10 @@ class PushTokenSyncOrchestratorTest {
             return registerResponses.getOrElse(index) { registerResponses.last() }
         }
 
-        override suspend fun unregisterDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
+        override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
             val index = unregisterCalls
             unregisterCalls += 1
+            lastUnregisterRequest = request
             return unregisterResponses.getOrElse(index) { unregisterResponses.last() }
         }
 
