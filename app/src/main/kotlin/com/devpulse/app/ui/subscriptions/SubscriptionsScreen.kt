@@ -66,8 +66,6 @@ fun SubscriptionsRoute(
         onAddSubscription = viewModel::addSubscription,
         onPrepareFirstSubscriptionDraft = viewModel::prepareFirstSubscriptionDraft,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
-        onTagFilterSelected = viewModel::onTagFilterSelected,
-        onOnlyTaggedPresetToggled = viewModel::onOnlyTaggedPresetToggled,
         onGroupByTagsPresetToggled = viewModel::onGroupByTagsPresetToggled,
         onSortModeSelected = viewModel::onSortModeSelected,
         onClearSearch = viewModel::clearSearch,
@@ -89,8 +87,6 @@ private fun SubscriptionsScreen(
     onAddSubscription: () -> Unit,
     onPrepareFirstSubscriptionDraft: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
-    onTagFilterSelected: (String?) -> Unit,
-    onOnlyTaggedPresetToggled: () -> Unit,
     onGroupByTagsPresetToggled: () -> Unit,
     onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
@@ -113,8 +109,6 @@ private fun SubscriptionsScreen(
         SearchAndFiltersSection(
             uiState = uiState,
             onSearchQueryChanged = onSearchQueryChanged,
-            onTagFilterSelected = onTagFilterSelected,
-            onOnlyTaggedPresetToggled = onOnlyTaggedPresetToggled,
             onGroupByTagsPresetToggled = onGroupByTagsPresetToggled,
             onSortModeSelected = onSortModeSelected,
             onClearSearch = onClearSearch,
@@ -220,8 +214,6 @@ private fun SubscriptionsScreen(
 private fun SearchAndFiltersSection(
     uiState: SubscriptionsUiState,
     onSearchQueryChanged: (String) -> Unit,
-    onTagFilterSelected: (String?) -> Unit,
-    onOnlyTaggedPresetToggled: () -> Unit,
     onGroupByTagsPresetToggled: () -> Unit,
     onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
@@ -246,14 +238,6 @@ private fun SearchAndFiltersSection(
         ) {
             item {
                 FilterChip(
-                    selected = uiState.searchState.onlyTagged,
-                    onClick = onOnlyTaggedPresetToggled,
-                    label = { Text(text = "Только с тегами") },
-                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_ONLY_TAGGED),
-                )
-            }
-            item {
-                FilterChip(
                     selected = uiState.searchState.groupByTags,
                     onClick = onGroupByTagsPresetToggled,
                     label = { Text(text = "По тегам") },
@@ -266,25 +250,6 @@ private fun SearchAndFiltersSection(
                     onClick = { onSortModeSelected(SubscriptionsSortMode.RECENTLY_ADDED) },
                     label = { Text(text = "Недавно добавленные") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED),
-                )
-            }
-            item {
-                FilterChip(
-                    selected = uiState.searchState.sortMode == SubscriptionsSortMode.URL_ASCENDING,
-                    onClick = { onSortModeSelected(SubscriptionsSortMode.URL_ASCENDING) },
-                    label = { Text(text = "По URL") },
-                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_SORT_BY_URL),
-                )
-            }
-            items(uiState.availableTags, key = { tag -> tag }) { tag ->
-                FilterChip(
-                    selected = uiState.searchState.tagFilter.equals(tag, ignoreCase = true),
-                    onClick = {
-                        val next = if (uiState.searchState.tagFilter.equals(tag, ignoreCase = true)) null else tag
-                        onTagFilterSelected(next)
-                    },
-                    label = { Text(text = "#$tag") },
-                    modifier = Modifier.testTag(SmokeTestTags.subscriptionTagFilter(tag)),
                 )
             }
         }

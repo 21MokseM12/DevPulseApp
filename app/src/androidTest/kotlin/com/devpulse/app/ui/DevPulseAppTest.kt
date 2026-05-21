@@ -439,6 +439,24 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun subscriptionsFiltersBar_showsOnlyGroupByTagsAndRecentlyAdded() {
+        val taggedUrl = "https://example.dev/no-tag-chip"
+
+        login()
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS)
+        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_PRESET_ONLY_TAGGED)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_SORT_BY_URL)
+
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_LINK_INPUT).performTextInput(taggedUrl)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_TAGS_INPUT).performTextInput("android")
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
+        composeRule.waitUntilNodeWithTextExists(taggedUrl)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.subscriptionTagFilter("android"))
+    }
+
+    @Test
     fun updatesMarkRead_changesUnreadCounter() {
         login()
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_OPEN_UPDATES_BUTTON).performClick()
