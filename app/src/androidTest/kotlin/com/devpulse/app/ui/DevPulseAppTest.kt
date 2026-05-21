@@ -439,13 +439,13 @@ class DevPulseAppTest {
     }
 
     @Test
-    fun subscriptionsFiltersBar_showsOnlyGroupByTagsAndRecentlyAdded() {
+    fun subscriptionsFiltersBar_showsOnlyGroupByTags() {
         val taggedUrl = "https://example.dev/no-tag-chip"
 
         login()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS)
-        composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED)
+        composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED)
         composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_PRESET_ONLY_TAGGED)
         composeRule.waitUntilNodeWithTagMissing(SmokeTestTags.SUBSCRIPTIONS_SORT_BY_URL)
 

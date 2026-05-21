@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.R
-import com.devpulse.app.domain.model.SubscriptionsSortMode
 import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.ui.testing.SmokeTestTags
 import com.devpulse.app.ui.theme.Spacing
@@ -67,7 +66,6 @@ fun SubscriptionsRoute(
         onPrepareFirstSubscriptionDraft = viewModel::prepareFirstSubscriptionDraft,
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onGroupByTagsPresetToggled = viewModel::onGroupByTagsPresetToggled,
-        onSortModeSelected = viewModel::onSortModeSelected,
         onClearSearch = viewModel::clearSearch,
         onRemoveRequested = viewModel::onRemoveRequested,
         onRemoveDismissed = viewModel::onRemoveDismissed,
@@ -88,7 +86,6 @@ private fun SubscriptionsScreen(
     onPrepareFirstSubscriptionDraft: () -> Unit,
     onSearchQueryChanged: (String) -> Unit,
     onGroupByTagsPresetToggled: () -> Unit,
-    onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
     onRemoveRequested: (TrackedLink) -> Unit,
     onRemoveDismissed: () -> Unit,
@@ -110,7 +107,6 @@ private fun SubscriptionsScreen(
             uiState = uiState,
             onSearchQueryChanged = onSearchQueryChanged,
             onGroupByTagsPresetToggled = onGroupByTagsPresetToggled,
-            onSortModeSelected = onSortModeSelected,
             onClearSearch = onClearSearch,
         )
 
@@ -215,7 +211,6 @@ private fun SearchAndFiltersSection(
     uiState: SubscriptionsUiState,
     onSearchQueryChanged: (String) -> Unit,
     onGroupByTagsPresetToggled: () -> Unit,
-    onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
 ) {
     Column(
@@ -242,14 +237,6 @@ private fun SearchAndFiltersSection(
                     onClick = onGroupByTagsPresetToggled,
                     label = { Text(text = "По тегам") },
                     modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS),
-                )
-            }
-            item {
-                FilterChip(
-                    selected = uiState.searchState.sortMode == SubscriptionsSortMode.RECENTLY_ADDED,
-                    onClick = { onSortModeSelected(SubscriptionsSortMode.RECENTLY_ADDED) },
-                    label = { Text(text = "Недавно добавленные") },
-                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_RECENTLY_ADDED),
                 )
             }
         }
