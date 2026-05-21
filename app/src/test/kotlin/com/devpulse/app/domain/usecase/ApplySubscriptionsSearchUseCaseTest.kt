@@ -52,13 +52,6 @@ class ApplySubscriptionsSearchUseCaseTest {
                 state = SubscriptionsSearchState(onlyTagged = true),
             )
         assertEquals(listOf(3L, 2L, 1L), onlyTagged.map { it.id })
-
-        val withFiltersOnly =
-            useCase(
-                links = links,
-                state = SubscriptionsSearchState(hasFiltersOnly = true),
-            )
-        assertEquals(listOf(2L, 1L), withFiltersOnly.map { it.id })
     }
 
     @Test

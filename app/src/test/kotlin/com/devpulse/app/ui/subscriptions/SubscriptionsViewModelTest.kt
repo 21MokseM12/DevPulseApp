@@ -793,12 +793,42 @@ class SubscriptionsViewModelTest {
                 )
             val viewModel = SubscriptionsViewModel(repository)
             advanceUntilIdle()
+            viewModel.onGroupByTagsPresetToggled()
+            advanceUntilIdle()
             assertEquals(listOf("#dev"), viewModel.uiState.value.groupedLinks.map { it.title })
 
             viewModel.onRemoveRequested(onlyTagged)
             viewModel.confirmRemove()
             advanceUntilIdle()
 
+            assertTrue(viewModel.uiState.value.groupedLinks.isEmpty())
+        }
+    }
+
+    @Test
+    fun groupByTagsToggle_switchesBetweenFlatAndGroupedPresentation() {
+        runTest {
+            val link =
+                TrackedLink(
+                    id = 41L,
+                    url = "https://example.dev/one",
+                    tags = listOf("kotlin"),
+                    filters = emptyList(),
+                )
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(listOf(link)))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.groupedLinks.isEmpty())
+            viewModel.onGroupByTagsPresetToggled()
+            advanceUntilIdle()
+            assertEquals(listOf("#kotlin"), viewModel.uiState.value.groupedLinks.map { it.title.lowercase() })
+
+            viewModel.onGroupByTagsPresetToggled()
+            advanceUntilIdle()
             assertTrue(viewModel.uiState.value.groupedLinks.isEmpty())
         }
     }

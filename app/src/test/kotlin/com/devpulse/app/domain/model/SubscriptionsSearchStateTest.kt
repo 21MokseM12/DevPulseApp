@@ -18,7 +18,7 @@ class SubscriptionsSearchStateTest {
         assertFalse(SubscriptionsSearchState().hasActiveCriteria())
         assertTrue(SubscriptionsSearchState(query = " kotlin ").hasActiveCriteria())
         assertTrue(SubscriptionsSearchState(tagFilter = "release").hasActiveCriteria())
-        assertTrue(SubscriptionsSearchState(hasFiltersOnly = true).hasActiveCriteria())
+        assertTrue(SubscriptionsSearchState(groupByTags = true).hasActiveCriteria())
         assertTrue(SubscriptionsSearchState(onlyTagged = true).hasActiveCriteria())
         assertTrue(
             SubscriptionsSearchState(sortMode = SubscriptionsSortMode.URL_ASCENDING).hasActiveCriteria(),

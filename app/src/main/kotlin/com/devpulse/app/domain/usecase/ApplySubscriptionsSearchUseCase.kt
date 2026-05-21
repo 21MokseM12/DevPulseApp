@@ -165,9 +165,6 @@ class ApplySubscriptionsSearchUseCase
             if (state.onlyTagged) {
                 candidates = intersectSorted(candidates, searchIndex.taggedIndexes)
             }
-            if (state.hasFiltersOnly) {
-                candidates = intersectSorted(candidates, searchIndex.filteredIndexes)
-            }
             if (candidates.isEmpty()) {
                 return candidates
             }
@@ -311,9 +308,6 @@ class ApplySubscriptionsSearchUseCase
             normalizedTagFilter: String,
         ): Boolean {
             if (state.onlyTagged && !entry.hasTags) {
-                return false
-            }
-            if (state.hasFiltersOnly && !entry.hasFilters) {
                 return false
             }
             if (normalizedTagFilter.isNotEmpty()) {

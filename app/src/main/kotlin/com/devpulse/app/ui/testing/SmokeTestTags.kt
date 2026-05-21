@@ -23,7 +23,7 @@ object SmokeTestTags {
     const val SUBSCRIPTIONS_REMOVE_CONFIRM_BUTTON = "subscriptions_remove_confirm_button"
     const val SUBSCRIPTIONS_SEARCH_INPUT = "subscriptions_search_input"
     const val SUBSCRIPTIONS_PRESET_ONLY_TAGGED = "subscriptions_preset_only_tagged"
-    const val SUBSCRIPTIONS_PRESET_WITH_FILTERS = "subscriptions_preset_with_filters"
+    const val SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS = "subscriptions_preset_group_by_tags"
     const val SUBSCRIPTIONS_PRESET_RECENTLY_ADDED = "subscriptions_preset_recently_added"
     const val SUBSCRIPTIONS_SORT_BY_URL = "subscriptions_sort_by_url"
     const val SUBSCRIPTIONS_CLEAR_SEARCH_BUTTON = "subscriptions_clear_search_button"

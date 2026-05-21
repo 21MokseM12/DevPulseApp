@@ -305,6 +305,7 @@ class DevPulseAppTest {
 
         login()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("Alpha"))
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("beta"))
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader(null))
@@ -355,6 +356,7 @@ class DevPulseAppTest {
 
         login()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.SUBSCRIPTIONS_TITLE)
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS).performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("alpha"))
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.subscriptionTagGroupHeader("beta"))
 
@@ -417,7 +419,7 @@ class DevPulseAppTest {
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_ADD_BUTTON).performClick()
         composeRule.waitUntilNodeWithTextExists(backendUrl)
 
-        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_WITH_FILTERS).performClick()
+        composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS).performClick()
         composeRule.onNodeWithTag(SmokeTestTags.SUBSCRIPTIONS_SEARCH_INPUT).performTextInput("tag:kotlin")
         composeRule.waitUntilNodeWithTextExists(kotlinUrl)
         composeRule.waitUntilNodeWithTextMissing(backendUrl)

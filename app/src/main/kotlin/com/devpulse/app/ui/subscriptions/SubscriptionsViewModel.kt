@@ -116,10 +116,10 @@ class SubscriptionsViewModel
             )
         }
 
-        fun onWithFiltersPresetToggled() {
+        fun onGroupByTagsPresetToggled() {
             updateSearchState(
                 transform = { current ->
-                    current.copy(hasFiltersOnly = !current.hasFiltersOnly)
+                    current.copy(groupByTags = !current.groupByTags)
                 },
             )
         }
@@ -406,10 +406,14 @@ class SubscriptionsViewModel
                         state = state.searchState.copy(query = debouncedNormalizedQuery),
                     )
                 val groupedLinks =
-                    buildTagGroups(
-                        links = filteredLinks,
-                        sortMode = state.searchState.sortMode,
-                    )
+                    if (state.searchState.groupByTags) {
+                        buildTagGroups(
+                            links = filteredLinks,
+                            sortMode = state.searchState.sortMode,
+                        )
+                    } else {
+                        emptyList()
+                    }
                 state.copy(
                     links = filteredLinks,
                     groupedLinks = groupedLinks,
@@ -516,7 +520,7 @@ class SubscriptionsViewModel
             return SubscriptionsSearchState(
                 query = savedStateHandle.get<String>(KEY_SEARCH_QUERY).orEmpty(),
                 tagFilter = savedStateHandle.get<String?>(KEY_SEARCH_TAG_FILTER),
-                hasFiltersOnly = savedStateHandle.get<Boolean>(KEY_SEARCH_HAS_FILTERS_ONLY) ?: false,
+                groupByTags = savedStateHandle.get<Boolean>(KEY_SEARCH_GROUP_BY_TAGS) ?: false,
                 onlyTagged = savedStateHandle.get<Boolean>(KEY_SEARCH_ONLY_TAGGED) ?: false,
                 sortMode = sortMode,
             )
@@ -525,7 +529,7 @@ class SubscriptionsViewModel
         private fun persistSearchState(state: SubscriptionsSearchState) {
             savedStateHandle[KEY_SEARCH_QUERY] = state.query
             savedStateHandle[KEY_SEARCH_TAG_FILTER] = state.tagFilter
-            savedStateHandle[KEY_SEARCH_HAS_FILTERS_ONLY] = state.hasFiltersOnly
+            savedStateHandle[KEY_SEARCH_GROUP_BY_TAGS] = state.groupByTags
             savedStateHandle[KEY_SEARCH_ONLY_TAGGED] = state.onlyTagged
             savedStateHandle[KEY_SEARCH_SORT_MODE] = state.sortMode.name
         }
@@ -536,7 +540,7 @@ class SubscriptionsViewModel
             const val SEARCH_DEBOUNCE_MS = 250L
             const val KEY_SEARCH_QUERY = "subscriptions_search_query"
             const val KEY_SEARCH_TAG_FILTER = "subscriptions_search_tag_filter"
-            const val KEY_SEARCH_HAS_FILTERS_ONLY = "subscriptions_search_has_filters_only"
+            const val KEY_SEARCH_GROUP_BY_TAGS = "subscriptions_search_group_by_tags"
             const val KEY_SEARCH_ONLY_TAGGED = "subscriptions_search_only_tagged"
             const val KEY_SEARCH_SORT_MODE = "subscriptions_search_sort_mode"
             const val DEFAULT_URL_DRAFT = "https://"

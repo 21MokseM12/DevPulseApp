@@ -8,7 +8,7 @@ enum class SubscriptionsSortMode {
 data class SubscriptionsSearchState(
     val query: String = "",
     val tagFilter: String? = null,
-    val hasFiltersOnly: Boolean = false,
+    val groupByTags: Boolean = false,
     val onlyTagged: Boolean = false,
     val sortMode: SubscriptionsSortMode = SubscriptionsSortMode.RECENTLY_ADDED,
 ) {
@@ -17,7 +17,7 @@ data class SubscriptionsSearchState(
     fun hasActiveCriteria(): Boolean {
         return normalizedQuery().isNotBlank() ||
             tagFilter != null ||
-            hasFiltersOnly ||
+            groupByTags ||
             onlyTagged ||
             sortMode != SubscriptionsSortMode.RECENTLY_ADDED
     }

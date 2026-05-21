@@ -68,7 +68,7 @@ fun SubscriptionsRoute(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onTagFilterSelected = viewModel::onTagFilterSelected,
         onOnlyTaggedPresetToggled = viewModel::onOnlyTaggedPresetToggled,
-        onWithFiltersPresetToggled = viewModel::onWithFiltersPresetToggled,
+        onGroupByTagsPresetToggled = viewModel::onGroupByTagsPresetToggled,
         onSortModeSelected = viewModel::onSortModeSelected,
         onClearSearch = viewModel::clearSearch,
         onRemoveRequested = viewModel::onRemoveRequested,
@@ -91,7 +91,7 @@ private fun SubscriptionsScreen(
     onSearchQueryChanged: (String) -> Unit,
     onTagFilterSelected: (String?) -> Unit,
     onOnlyTaggedPresetToggled: () -> Unit,
-    onWithFiltersPresetToggled: () -> Unit,
+    onGroupByTagsPresetToggled: () -> Unit,
     onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
     onRemoveRequested: (TrackedLink) -> Unit,
@@ -115,7 +115,7 @@ private fun SubscriptionsScreen(
             onSearchQueryChanged = onSearchQueryChanged,
             onTagFilterSelected = onTagFilterSelected,
             onOnlyTaggedPresetToggled = onOnlyTaggedPresetToggled,
-            onWithFiltersPresetToggled = onWithFiltersPresetToggled,
+            onGroupByTagsPresetToggled = onGroupByTagsPresetToggled,
             onSortModeSelected = onSortModeSelected,
             onClearSearch = onClearSearch,
         )
@@ -166,14 +166,22 @@ private fun SubscriptionsScreen(
                 }
 
                 SubscriptionsScreenState.Content -> {
-                    if (uiState.groupedLinks.isEmpty()) {
+                    if (uiState.links.isEmpty()) {
                         NoResultsState(onClearSearch = onClearSearch)
                     } else {
-                        LinksContent(
-                            groups = uiState.groupedLinks,
-                            isRemoving = uiState.isRemoving,
-                            onRemoveRequested = onRemoveRequested,
-                        )
+                        if (uiState.searchState.groupByTags) {
+                            LinksContentGrouped(
+                                groups = uiState.groupedLinks,
+                                isRemoving = uiState.isRemoving,
+                                onRemoveRequested = onRemoveRequested,
+                            )
+                        } else {
+                            LinksContentFlat(
+                                links = uiState.links,
+                                isRemoving = uiState.isRemoving,
+                                onRemoveRequested = onRemoveRequested,
+                            )
+                        }
                     }
                 }
             }
@@ -214,7 +222,7 @@ private fun SearchAndFiltersSection(
     onSearchQueryChanged: (String) -> Unit,
     onTagFilterSelected: (String?) -> Unit,
     onOnlyTaggedPresetToggled: () -> Unit,
-    onWithFiltersPresetToggled: () -> Unit,
+    onGroupByTagsPresetToggled: () -> Unit,
     onSortModeSelected: (SubscriptionsSortMode) -> Unit,
     onClearSearch: () -> Unit,
 ) {
@@ -246,10 +254,10 @@ private fun SearchAndFiltersSection(
             }
             item {
                 FilterChip(
-                    selected = uiState.searchState.hasFiltersOnly,
-                    onClick = onWithFiltersPresetToggled,
-                    label = { Text(text = "С фильтрами") },
-                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_WITH_FILTERS),
+                    selected = uiState.searchState.groupByTags,
+                    onClick = onGroupByTagsPresetToggled,
+                    label = { Text(text = "По тегам") },
+                    modifier = Modifier.testTag(SmokeTestTags.SUBSCRIPTIONS_PRESET_GROUP_BY_TAGS),
                 )
             }
             item {
@@ -399,7 +407,7 @@ private fun AddSubscriptionForm(
 }
 
 @Composable
-private fun LinksContent(
+private fun LinksContentGrouped(
     groups: List<SubscriptionTagGroup>,
     isRemoving: Boolean,
     onRemoveRequested: (TrackedLink) -> Unit,
@@ -431,65 +439,103 @@ private fun LinksContent(
                 items = group.items,
                 key = { link -> "${groupKey}_${link.id}" },
             ) { link ->
-                Card(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag(SmokeTestTags.subscriptionRow(link.id)),
-                    colors =
-                        CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface,
-                        ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                SubscriptionLinkCard(
+                    link = link,
+                    isRemoving = isRemoving,
+                    onRemoveRequested = onRemoveRequested,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LinksContentFlat(
+    links: List<TrackedLink>,
+    isRemoving: Boolean,
+    onRemoveRequested: (TrackedLink) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding =
+            PaddingValues(
+                horizontal = Spacing.lg,
+                vertical = Spacing.sm,
+            ),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        items(items = links, key = { it.id }) { link ->
+            SubscriptionLinkCard(
+                link = link,
+                isRemoving = isRemoving,
+                onRemoveRequested = onRemoveRequested,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SubscriptionLinkCard(
+    link: TrackedLink,
+    isRemoving: Boolean,
+    onRemoveRequested: (TrackedLink) -> Unit,
+) {
+    Card(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .testTag(SmokeTestTags.subscriptionRow(link.id)),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Column(
-                        modifier = Modifier.padding(Spacing.lg),
-                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                LinkPlatformIcon(url = link.url)
-                                Text(
-                                    text = formatLinkDisplayName(link.url),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            }
-                            TextButton(
-                                onClick = { onRemoveRequested(link) },
-                                enabled = !isRemoving,
-                                modifier = Modifier.testTag(SmokeTestTags.subscriptionRemoveButton(link.id)),
-                            ) {
-                                Text(
-                                    text = "Удалить",
-                                    color = MaterialTheme.colorScheme.error,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                            }
-                        }
-                        if (link.tags.isNotEmpty()) {
-                            Text(
-                                text = "Теги: ${link.tags.joinToString(" · ")}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (link.filters.isNotEmpty()) {
-                            Text(
-                                text = "Фильтры: ${link.filters.joinToString(" · ")}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    LinkPlatformIcon(url = link.url)
+                    Text(
+                        text = formatLinkDisplayName(link.url),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
+                TextButton(
+                    onClick = { onRemoveRequested(link) },
+                    enabled = !isRemoving,
+                    modifier = Modifier.testTag(SmokeTestTags.subscriptionRemoveButton(link.id)),
+                ) {
+                    Text(
+                        text = "Удалить",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
+            if (link.tags.isNotEmpty()) {
+                Text(
+                    text = "Теги: ${link.tags.joinToString(" · ")}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (link.filters.isNotEmpty()) {
+                Text(
+                    text = "Фильтры: ${link.filters.joinToString(" · ")}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

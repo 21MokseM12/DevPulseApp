@@ -22,7 +22,7 @@ class SubscriptionsSearchViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun search_filtersByTokensAndPresets() {
+    fun search_filtersByTokensAndGroupByTagsToggle() {
         runTest {
             val repository =
                 FakeSearchRepository(
@@ -56,14 +56,15 @@ class SubscriptionsSearchViewModelTest {
             advanceUntilIdle()
             assertEquals(listOf(1L), viewModel.uiState.value.links.map { it.id })
 
-            viewModel.onWithFiltersPresetToggled()
+            viewModel.onGroupByTagsPresetToggled()
             advanceUntilIdle()
             assertEquals(listOf(1L), viewModel.uiState.value.links.map { it.id })
+            assertEquals(true, viewModel.uiState.value.searchState.groupByTags)
 
             viewModel.onSearchQueryChanged("")
             advanceTimeBy(300)
             advanceUntilIdle()
-            assertEquals(listOf(2L, 1L), viewModel.uiState.value.links.map { it.id })
+            assertEquals(listOf(3L, 2L, 1L), viewModel.uiState.value.links.map { it.id })
         }
     }
 
@@ -101,7 +102,7 @@ class SubscriptionsSearchViewModelTest {
                 SavedStateHandle(
                     mapOf(
                         "subscriptions_search_query" to "beta",
-                        "subscriptions_search_has_filters_only" to true,
+                        "subscriptions_search_group_by_tags" to true,
                         "subscriptions_search_only_tagged" to true,
                         "subscriptions_search_sort_mode" to SubscriptionsSortMode.RECENTLY_ADDED.name,
                     ),
@@ -116,6 +117,7 @@ class SubscriptionsSearchViewModelTest {
 
             assertEquals(listOf(12L), viewModel.uiState.value.links.map { it.id })
             assertEquals("beta", viewModel.uiState.value.searchState.query)
+            assertEquals(true, viewModel.uiState.value.searchState.groupByTags)
             assertEquals(2, repository.calls)
         }
     }
@@ -145,7 +147,7 @@ class SubscriptionsSearchViewModelTest {
             advanceUntilIdle()
 
             viewModel.onTagFilterSelected("kotlin")
-            viewModel.onWithFiltersPresetToggled()
+            viewModel.onGroupByTagsPresetToggled()
             viewModel.onSearchQueryChanged("tag:kotlin")
             advanceSearchDebounce()
             assertEquals(listOf(1L), viewModel.uiState.value.links.map { it.id })
