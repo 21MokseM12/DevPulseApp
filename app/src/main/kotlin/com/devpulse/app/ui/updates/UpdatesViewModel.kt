@@ -3,13 +3,15 @@ package com.devpulse.app.ui.updates
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.devpulse.app.domain.model.RemoteNotification
+import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesFilterState
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
-import com.devpulse.app.domain.model.UpdatesQuickFilter
 import com.devpulse.app.domain.repository.MarkReadResult
 import com.devpulse.app.domain.repository.NotificationsRepository
 import com.devpulse.app.domain.repository.NotificationsResult
+import com.devpulse.app.domain.repository.SubscriptionsRepository
+import com.devpulse.app.domain.repository.SubscriptionsResult
 import com.devpulse.app.domain.repository.UnreadCountResult
 import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +35,7 @@ data class UpdatesUiState(
     val unreadCount: Int = 0,
     val filterState: UpdatesFilterState = UpdatesFilterState(),
     val availableSources: List<String> = emptyList(),
+    val availableLinkFilters: List<String> = emptyList(),
     val availableTags: List<String> = emptyList(),
     val markingIds: Set<Long> = emptySet(),
     val actionErrorMessage: String? = null,
@@ -43,8 +46,18 @@ class UpdatesViewModel
     @Inject
     constructor(
         private val notificationsRepository: NotificationsRepository,
+        private val subscriptionsRepository: SubscriptionsRepository,
         private val applyUpdatesFiltersUseCase: ApplyUpdatesFiltersUseCase,
     ) : ViewModel() {
+        constructor(
+            notificationsRepository: NotificationsRepository,
+            applyUpdatesFiltersUseCase: ApplyUpdatesFiltersUseCase,
+        ) : this(
+            notificationsRepository = notificationsRepository,
+            subscriptionsRepository = NoOpSubscriptionsRepository,
+            applyUpdatesFiltersUseCase = applyUpdatesFiltersUseCase,
+        )
+
         private val _uiState = MutableStateFlow(UpdatesUiState())
         val uiState: StateFlow<UpdatesUiState> = _uiState.asStateFlow()
         private var searchDebounceJob: Job? = null
@@ -116,25 +129,16 @@ class UpdatesViewModel
             applyFilters()
         }
 
-        fun applyQuickFilter(filter: UpdatesQuickFilter) {
+        fun onLinkFilterToggled(filter: String) {
+            val normalizedFilter = normalizeLinkFilter(filter) ?: return
             _uiState.update { state ->
-                val nextState =
-                    when (filter) {
-                        UpdatesQuickFilter.UNREAD ->
-                            state.filterState.copy(
-                                unreadOnly = true,
-                                periodStartEpochMs = null,
-                                periodEndEpochMs = null,
-                            )
-                        UpdatesQuickFilter.TODAY ->
-                            state.filterState.copy(
-                                period = UpdatesPeriodFilter.TODAY,
-                                periodStartEpochMs = null,
-                                periodEndEpochMs = null,
-                            )
-                        UpdatesQuickFilter.GITHUB_ONLY -> state.filterState.copy(source = SOURCE_GITHUB)
+                val nextFilters =
+                    if (normalizedFilter in state.filterState.selectedLinkFilters) {
+                        state.filterState.selectedLinkFilters - normalizedFilter
+                    } else {
+                        state.filterState.selectedLinkFilters + normalizedFilter
                     }
-                state.copy(filterState = nextState)
+                state.copy(filterState = state.filterState.copy(selectedLinkFilters = nextFilters))
             }
             applyFilters()
         }
@@ -191,12 +195,29 @@ class UpdatesViewModel
                         tags = requestTags,
                     )
                 val unreadResult = notificationsRepository.getUnreadCount()
+                val subscriptionsResult = subscriptionsRepository.getSubscriptions(forceRefresh = false)
 
                 _uiState.update { state ->
+                    val links =
+                        when (subscriptionsResult) {
+                            is SubscriptionsResult.Success -> subscriptionsResult.links
+                            is SubscriptionsResult.Failure -> emptyList()
+                        }
+                    val linkFiltersByNormalizedUrl =
+                        links
+                            .mapNotNull { link ->
+                                val normalizedUrl = normalizeUrl(link.url) ?: return@mapNotNull null
+                                normalizedUrl to collectDistinctLinkFilters(link.filters)
+                            }.filter { it.second.isNotEmpty() }
+                            .sortedByDescending { it.first.length }
                     val allEvents =
                         when (notificationsResult) {
                             is NotificationsResult.Success ->
-                                notificationsResult.notifications.map { it.toUpdateEvent() }
+                                notificationsResult.notifications.map { notification ->
+                                    notification.toUpdateEvent(
+                                        linkFilters = resolveLinkFilters(notification.link, linkFiltersByNormalizedUrl),
+                                    )
+                                }
                             is NotificationsResult.Failure -> emptyList()
                         }
                     val unreadCount =
@@ -211,14 +232,25 @@ class UpdatesViewModel
                             .mapNotNull(::normalizeTag)
                             .filter { it in availableTagKeys }
                             .toSet()
+                    val availableLinkFilters = collectAvailableLinkFilters(links)
+                    val selectedLinkFilters =
+                        state.filterState.selectedLinkFilters
+                            .mapNotNull(::normalizeLinkFilter)
+                            .filter { it in availableLinkFilters.mapNotNull(::normalizeLinkFilter).toSet() }
+                            .toSet()
                     state.copy(
                         isLoading = false,
                         isRefreshing = false,
                         allEvents = allEvents,
                         unreadCount = unreadCount,
                         availableSources = allEvents.map { it.source }.filter { it.isNotBlank() }.distinct().sorted(),
+                        availableLinkFilters = availableLinkFilters,
                         availableTags = availableTags,
-                        filterState = state.filterState.copy(selectedTags = selectedTags),
+                        filterState =
+                            state.filterState.copy(
+                                selectedTags = selectedTags,
+                                selectedLinkFilters = selectedLinkFilters,
+                            ),
                         actionErrorMessage = resolveError(notificationsResult, unreadResult),
                     )
                 }
@@ -293,7 +325,7 @@ class UpdatesViewModel
             }
         }
 
-        private fun RemoteNotification.toUpdateEvent(): UpdateEvent {
+        private fun RemoteNotification.toUpdateEvent(linkFilters: List<String>): UpdateEvent {
             return UpdateEvent(
                 id = id,
                 remoteEventId = id.toString(),
@@ -304,6 +336,7 @@ class UpdatesViewModel
                 isRead = isRead,
                 source = updateOwner,
                 tags = tags,
+                linkFilters = linkFilters,
             )
         }
 
@@ -319,7 +352,24 @@ class UpdatesViewModel
             const val FEED_LIMIT = 100
             const val FEED_OFFSET = 0
             const val SEARCH_DEBOUNCE_MS = 300L
-            const val SOURCE_GITHUB = "github"
+        }
+
+        private object NoOpSubscriptionsRepository : SubscriptionsRepository {
+            override suspend fun getSubscriptions(forceRefresh: Boolean): SubscriptionsResult {
+                return SubscriptionsResult.Success(emptyList())
+            }
+
+            override suspend fun addSubscription(
+                link: String,
+                tags: List<String>,
+                filters: List<String>,
+            ): SubscriptionsResult {
+                return SubscriptionsResult.Success(emptyList())
+            }
+
+            override suspend fun removeSubscription(link: String): SubscriptionsResult {
+                return SubscriptionsResult.Success(emptyList())
+            }
         }
 
         private fun collectAvailableTags(events: List<UpdateEvent>): List<String> {
@@ -334,4 +384,41 @@ class UpdatesViewModel
         }
 
         private fun normalizeTag(rawTag: String): String? = rawTag.trim().lowercase().takeIf { it.isNotEmpty() }
+
+        private fun collectAvailableLinkFilters(links: List<TrackedLink>): List<String> {
+            val filtersByNormalized = linkedMapOf<String, String>()
+            links.forEach { link ->
+                link.filters.forEach { rawFilter ->
+                    val normalizedFilter = normalizeLinkFilter(rawFilter) ?: return@forEach
+                    filtersByNormalized.putIfAbsent(normalizedFilter, rawFilter.trim())
+                }
+            }
+            return filtersByNormalized.entries.sortedBy { it.key }.map { it.value }
+        }
+
+        private fun collectDistinctLinkFilters(filters: List<String>): List<String> {
+            return filters
+                .mapNotNull(::normalizeLinkFilter)
+                .distinct()
+        }
+
+        private fun resolveLinkFilters(
+            eventUrl: String,
+            linkFiltersByNormalizedUrl: List<Pair<String, List<String>>>,
+        ): List<String> {
+            val normalizedEventUrl = normalizeUrl(eventUrl) ?: return emptyList()
+            return linkFiltersByNormalizedUrl
+                .firstOrNull { (normalizedUrl, _) -> normalizedEventUrl.startsWith(normalizedUrl) }
+                ?.second
+                .orEmpty()
+        }
+
+        private fun normalizeUrl(value: String): String? {
+            val normalized = value.trim().lowercase().trimEnd('/')
+            return normalized.takeIf { it.isNotEmpty() }
+        }
+
+        private fun normalizeLinkFilter(rawFilter: String): String? {
+            return rawFilter.trim().lowercase().takeIf { it.isNotEmpty() }
+        }
     }

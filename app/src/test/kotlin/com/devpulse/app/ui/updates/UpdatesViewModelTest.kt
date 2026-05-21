@@ -3,10 +3,13 @@ package com.devpulse.app.ui.updates
 import com.devpulse.app.domain.model.ApiError
 import com.devpulse.app.domain.model.ApiErrorKind
 import com.devpulse.app.domain.model.RemoteNotification
+import com.devpulse.app.domain.model.TrackedLink
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
 import com.devpulse.app.domain.repository.MarkReadResult
 import com.devpulse.app.domain.repository.NotificationsRepository
 import com.devpulse.app.domain.repository.NotificationsResult
+import com.devpulse.app.domain.repository.SubscriptionsRepository
+import com.devpulse.app.domain.repository.SubscriptionsResult
 import com.devpulse.app.domain.repository.UnreadCountResult
 import com.devpulse.app.domain.usecase.ApplyUpdatesFiltersUseCase
 import com.devpulse.app.ui.main.MainDispatcherRule
@@ -642,11 +645,68 @@ class UpdatesViewModelTest {
         }
     }
 
+    @Test
+    fun loadAndToggleLinkFilters_filtersBySubscriptionFilters() {
+        runTest {
+            val notificationsRepository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(id = 101L, link = "https://github.com/org/repo/pull/1"),
+                                    remoteNotification(id = 102L, link = "https://github.com/org/repo/pull/2"),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val subscriptionsRepository =
+                FakeSubscriptionsRepository(
+                    SubscriptionsResult.Success(
+                        links =
+                            listOf(
+                                TrackedLink(
+                                    id = 1L,
+                                    url = "https://github.com/org/repo/pull/1",
+                                    tags = emptyList(),
+                                    filters = listOf("contains:kotlin", "author:team"),
+                                ),
+                                TrackedLink(
+                                    id = 2L,
+                                    url = "https://github.com/org/repo/pull/2",
+                                    tags = emptyList(),
+                                    filters = listOf("contains:android"),
+                                ),
+                            ),
+                    ),
+                )
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = notificationsRepository,
+                    subscriptionsRepository = subscriptionsRepository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("author:team", "contains:android", "contains:kotlin"),
+                viewModel.uiState.value.availableLinkFilters,
+            )
+            assertEquals(listOf(101L, 102L), viewModel.uiState.value.events.map { it.id })
+
+            viewModel.onLinkFilterToggled("  Contains:Kotlin ")
+            advanceUntilIdle()
+            assertEquals(setOf("contains:kotlin"), viewModel.uiState.value.filterState.selectedLinkFilters)
+            assertEquals(listOf(101L), viewModel.uiState.value.events.map { it.id })
+        }
+    }
+
     private fun remoteNotification(
         id: Long,
         title: String = "Update$id",
         content: String = "Payload$id",
         source: String = "bot",
+        link: String = "https://example.com/$id",
         creationDate: String = "2026-05-14T10:00:00Z",
         isRead: Boolean = false,
         tags: List<String> = emptyList(),
@@ -655,12 +715,26 @@ class UpdatesViewModelTest {
             id = id,
             title = title,
             content = content,
-            link = "https://example.com/$id",
+            link = link,
             tags = tags,
             isRead = isRead,
             updateOwner = source,
             creationDate = creationDate,
         )
+    }
+
+    private class FakeSubscriptionsRepository(
+        private var result: SubscriptionsResult,
+    ) : SubscriptionsRepository {
+        override suspend fun getSubscriptions(forceRefresh: Boolean): SubscriptionsResult = result
+
+        override suspend fun addSubscription(
+            link: String,
+            tags: List<String>,
+            filters: List<String>,
+        ): SubscriptionsResult = result
+
+        override suspend fun removeSubscription(link: String): SubscriptionsResult = result
     }
 
     private class FakeNotificationsRepository(

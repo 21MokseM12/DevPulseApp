@@ -258,6 +258,17 @@ class SubscriptionsViewModel
                 return
             }
 
+            val invalidFilters = filters.filterNot(::isValidSubscriptionFilter)
+            if (invalidFilters.isNotEmpty()) {
+                updateUiState { state ->
+                    state.copy(
+                        addErrorMessage =
+                            "Некорректный формат фильтров. Используйте type:value (например, contains:kotlin).",
+                    )
+                }
+                return
+            }
+
             updateUiState { state ->
                 state.copy(
                     isAdding = true,
@@ -535,6 +546,15 @@ class SubscriptionsViewModel
         }
 
         private fun normalizeQuery(value: String): String = value.trim().lowercase()
+
+        private fun isValidSubscriptionFilter(value: String): Boolean {
+            val parts = value.split(":", limit = 2)
+            if (parts.size != 2) return false
+            val type = parts[0].trim()
+            val filterValue = parts[1].trim()
+            if (type.isEmpty() || filterValue.isEmpty()) return false
+            return type.matches(Regex("^[a-zA-Z][a-zA-Z0-9_-]*$"))
+        }
 
         private companion object {
             const val SEARCH_DEBOUNCE_MS = 250L

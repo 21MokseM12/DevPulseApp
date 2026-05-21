@@ -10,4 +10,5 @@ data class UpdateEvent(
     val isRead: Boolean,
     val source: String = "",
     val tags: List<String> = emptyList(),
+    val linkFilters: List<String> = emptyList(),
 )

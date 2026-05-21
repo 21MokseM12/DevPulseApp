@@ -321,7 +321,7 @@ private fun AddSubscriptionForm(
             OutlinedTextField(
                 value = uiState.addFiltersInput,
                 onValueChange = onAddFiltersInputChange,
-                label = { Text(text = "Filters (через запятую)") },
+                label = { Text(text = "Filters type:value (через запятую)") },
                 singleLine = true,
                 modifier =
                     Modifier

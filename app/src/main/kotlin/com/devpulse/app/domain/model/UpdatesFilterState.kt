@@ -20,6 +20,7 @@ data class UpdatesFilterState(
     val periodStartEpochMs: Long? = null,
     val periodEndEpochMs: Long? = null,
     val selectedTags: Set<String> = emptySet(),
+    val selectedLinkFilters: Set<String> = emptySet(),
     val tagMatchMode: TagMatchMode = TagMatchMode.ANY,
 ) {
     val hasActiveFilters: Boolean
@@ -30,11 +31,6 @@ data class UpdatesFilterState(
                 period != UpdatesPeriodFilter.ALL ||
                 periodStartEpochMs != null ||
                 periodEndEpochMs != null ||
-                selectedTags.isNotEmpty()
-}
-
-enum class UpdatesQuickFilter {
-    UNREAD,
-    TODAY,
-    GITHUB_ONLY,
+                selectedTags.isNotEmpty() ||
+                selectedLinkFilters.isNotEmpty()
 }

@@ -411,6 +411,51 @@ class SubscriptionsViewModelTest {
     }
 
     @Test
+    fun addSubscription_withInvalidFilterFormat_showsValidationError() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://github.com/example/repo")
+            viewModel.onAddFiltersInputChanged("contains")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(
+                "Некорректный формат фильтров. Используйте type:value (например, contains:kotlin).",
+                viewModel.uiState.value.addErrorMessage,
+            )
+            assertEquals(0, repository.addCalls)
+        }
+    }
+
+    @Test
+    fun addSubscription_withValidTypeValueFilters_callsRepository() {
+        runTest {
+            val repository =
+                FakeSubscriptionsRepository(
+                    results = ArrayDeque(listOf(SubscriptionsResult.Success(emptyList()))),
+                    addResult = SubscriptionsResult.Success(emptyList()),
+                )
+            val viewModel = SubscriptionsViewModel(repository)
+            advanceUntilIdle()
+
+            viewModel.onAddLinkInputChanged("https://github.com/example/repo")
+            viewModel.onAddFiltersInputChanged("contains:kotlin,author:team")
+            viewModel.addSubscription()
+            advanceUntilIdle()
+
+            assertEquals(1, repository.addCalls)
+            assertEquals(listOf("contains:kotlin", "author:team"), repository.lastAddedFilters)
+            assertEquals(null, viewModel.uiState.value.addErrorMessage)
+        }
+    }
+
+    @Test
     fun addSubscription_successfullyAddsItemWithoutManualReload() {
         runTest {
             val repository =
@@ -846,6 +891,8 @@ class SubscriptionsViewModelTest {
             private set
         var removeCalls: Int = 0
             private set
+        var lastAddedFilters: List<String> = emptyList()
+            private set
 
         var forceRefreshCalls: Int = 0
             private set
@@ -865,6 +912,7 @@ class SubscriptionsViewModelTest {
             filters: List<String>,
         ): SubscriptionsResult {
             addCalls += 1
+            lastAddedFilters = filters
             return addResult
         }
 

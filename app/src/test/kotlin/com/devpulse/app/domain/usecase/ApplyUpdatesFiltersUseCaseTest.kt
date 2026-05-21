@@ -83,6 +83,20 @@ class ApplyUpdatesFiltersUseCaseTest {
                     expectedIds = listOf(1L),
                 ),
                 FilterCase(
+                    name = "link filter only",
+                    state = UpdatesFilterState(selectedLinkFilters = setOf("contains:kotlin")),
+                    expectedIds = listOf(1L, 3L),
+                ),
+                FilterCase(
+                    name = "link filter + source conflict",
+                    state =
+                        UpdatesFilterState(
+                            source = "jira",
+                            selectedLinkFilters = setOf("contains:kotlin"),
+                        ),
+                    expectedIds = emptyList(),
+                ),
+                FilterCase(
                     name = "source + period",
                     state =
                         UpdatesFilterState(
@@ -241,6 +255,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                 isRead = false,
                 source = "github",
                 tags = listOf("backend", "release"),
+                linkFilters = listOf("contains:kotlin", "author:team"),
             ),
             UpdateEvent(
                 id = 2L,
@@ -253,6 +268,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                 isRead = true,
                 source = "jira",
                 tags = listOf("incident"),
+                linkFilters = listOf("contains:incident"),
             ),
             UpdateEvent(
                 id = 3L,
@@ -265,6 +281,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                 isRead = false,
                 source = "bot",
                 tags = listOf("summary"),
+                linkFilters = listOf("contains:kotlin"),
             ),
             UpdateEvent(
                 id = 4L,

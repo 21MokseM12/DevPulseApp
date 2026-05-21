@@ -36,6 +36,7 @@ class ApplyUpdatesFiltersUseCase
             val effectivePeriodStartEpochMs = max(periodStartEpochMs, state.periodStartEpochMs ?: Long.MIN_VALUE)
             val effectivePeriodEndEpochMs = state.periodEndEpochMs ?: Long.MAX_VALUE
             val selectedTags = state.selectedTags.mapNotNull(::normalizeTag).toSet()
+            val selectedLinkFilters = state.selectedLinkFilters.mapNotNull(::normalizeLinkFilter).toSet()
             val normalizedSource = state.source?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 
             return events.filter { event ->
@@ -78,6 +79,10 @@ class ApplyUpdatesFiltersUseCase
                         }
                     if (!tagMatches) return@filter false
                 }
+                if (selectedLinkFilters.isNotEmpty()) {
+                    val eventLinkFilters = event.linkFilters.mapNotNull(::normalizeLinkFilter).toSet()
+                    if (!eventLinkFilters.any { it in selectedLinkFilters }) return@filter false
+                }
 
                 true
             }
@@ -89,4 +94,8 @@ class ApplyUpdatesFiltersUseCase
         }
 
         private fun normalizeTag(rawTag: String): String? = rawTag.trim().lowercase().takeIf { it.isNotEmpty() }
+
+        private fun normalizeLinkFilter(rawFilter: String): String? {
+            return rawFilter.trim().lowercase().takeIf { it.isNotEmpty() }
+        }
     }

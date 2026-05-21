@@ -36,7 +36,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.devpulse.app.OpenUpdatesDigestContextRequest
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
-import com.devpulse.app.domain.model.UpdatesQuickFilter
 import com.devpulse.app.ui.testing.SmokeTestTags
 import com.devpulse.app.ui.theme.Spacing
 import java.text.DateFormat
@@ -72,8 +71,8 @@ fun UpdatesRoute(
         onUnreadOnlyToggled = viewModel::onUnreadOnlyToggled,
         onSourceChanged = viewModel::onSourceChanged,
         onPeriodChanged = viewModel::onPeriodChanged,
+        onLinkFilterToggled = viewModel::onLinkFilterToggled,
         onTagToggled = viewModel::onTagToggled,
-        onQuickFilterSelected = viewModel::applyQuickFilter,
         onResetFilters = viewModel::resetFilters,
         onOpenLink = openLinkAction,
     )
@@ -89,8 +88,8 @@ private fun UpdatesScreen(
     onUnreadOnlyToggled: () -> Unit,
     onSourceChanged: (String?) -> Unit,
     onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
+    onLinkFilterToggled: (String) -> Unit,
     onTagToggled: (String) -> Unit,
-    onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
     onResetFilters: () -> Unit,
     onOpenLink: (String) -> Unit,
 ) {
@@ -113,8 +112,8 @@ private fun UpdatesScreen(
             onUnreadOnlyToggled = onUnreadOnlyToggled,
             onSourceChanged = onSourceChanged,
             onPeriodChanged = onPeriodChanged,
+            onLinkFilterToggled = onLinkFilterToggled,
             onTagToggled = onTagToggled,
-            onQuickFilterSelected = onQuickFilterSelected,
             onResetFilters = onResetFilters,
         )
 
@@ -157,8 +156,8 @@ private fun FiltersSection(
     onUnreadOnlyToggled: () -> Unit,
     onSourceChanged: (String?) -> Unit,
     onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
+    onLinkFilterToggled: (String) -> Unit,
     onTagToggled: (String) -> Unit,
-    onQuickFilterSelected: (UpdatesQuickFilter) -> Unit,
     onResetFilters: () -> Unit,
 ) {
     val filterState = uiState.filterState
@@ -182,27 +181,16 @@ private fun FiltersSection(
         )
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            item {
+            items(uiState.availableLinkFilters) { filter ->
                 FilterChip(
-                    selected = false,
-                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.UNREAD) },
-                    label = { Text("Быстро: непрочитанные") },
+                    selected = normalizeLinkFilter(filter) in filterState.selectedLinkFilters,
+                    onClick = { onLinkFilterToggled(filter) },
+                    label = { Text("Фильтр: $filter") },
                 )
             }
-            item {
-                FilterChip(
-                    selected = false,
-                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.TODAY) },
-                    label = { Text("Быстро: сегодня") },
-                )
-            }
-            item {
-                FilterChip(
-                    selected = false,
-                    onClick = { onQuickFilterSelected(UpdatesQuickFilter.GITHUB_ONLY) },
-                    label = { Text("Быстро: только GitHub") },
-                )
-            }
+        }
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = filterState.unreadOnly,
@@ -210,9 +198,6 @@ private fun FiltersSection(
                     label = { Text("Непрочитанные") },
                 )
             }
-        }
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = filterState.source == null,
@@ -431,6 +416,8 @@ private fun formatTimestamp(epochMs: Long): String {
 }
 
 private fun normalizeTag(rawTag: String): String = rawTag.trim().lowercase()
+
+private fun normalizeLinkFilter(rawFilter: String): String = rawFilter.trim().lowercase()
 
 @Composable
 private fun LoadingState() {
