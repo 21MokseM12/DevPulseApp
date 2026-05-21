@@ -1,5 +1,6 @@
 package com.devpulse.app.domain.usecase
 
+import com.devpulse.app.domain.model.TagMatchMode
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesFilterState
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
@@ -34,7 +35,7 @@ class ApplyUpdatesFiltersUseCase
                 }
             val effectivePeriodStartEpochMs = max(periodStartEpochMs, state.periodStartEpochMs ?: Long.MIN_VALUE)
             val effectivePeriodEndEpochMs = state.periodEndEpochMs ?: Long.MAX_VALUE
-            val selectedTags = state.selectedTags.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet()
+            val selectedTags = state.selectedTags.mapNotNull(::normalizeTag).toSet()
             val normalizedSource = state.source?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }
 
             return events.filter { event ->
@@ -69,8 +70,13 @@ class ApplyUpdatesFiltersUseCase
                 }
 
                 if (selectedTags.isNotEmpty()) {
-                    val eventTags = event.tags.map { it.trim().lowercase() }.toSet()
-                    if (!selectedTags.all { it in eventTags }) return@filter false
+                    val eventTags = event.tags.mapNotNull(::normalizeTag).toSet()
+                    val tagMatches =
+                        when (state.tagMatchMode) {
+                            TagMatchMode.ANY -> eventTags.any { it in selectedTags }
+                            TagMatchMode.ALL -> selectedTags.all { it in eventTags }
+                        }
+                    if (!tagMatches) return@filter false
                 }
 
                 true
@@ -81,4 +87,6 @@ class ApplyUpdatesFiltersUseCase
             const val DAYS_7_MS = 7L * 24L * 60L * 60L * 1000L
             const val DAYS_30_MS = 30L * 24L * 60L * 60L * 1000L
         }
+
+        private fun normalizeTag(rawTag: String): String? = rawTag.trim().lowercase().takeIf { it.isNotEmpty() }
     }

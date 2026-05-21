@@ -1,5 +1,6 @@
 package com.devpulse.app.domain.usecase
 
+import com.devpulse.app.domain.model.TagMatchMode
 import com.devpulse.app.domain.model.UpdateEvent
 import com.devpulse.app.domain.model.UpdatesFilterState
 import com.devpulse.app.domain.model.UpdatesPeriodFilter
@@ -46,12 +47,20 @@ class ApplyUpdatesFiltersUseCaseTest {
                 ),
                 FilterCase(
                     name = "single tag",
-                    state = UpdatesFilterState(selectedTags = setOf("backend")),
+                    state =
+                        UpdatesFilterState(
+                            selectedTags = setOf("backend"),
+                            tagMatchMode = TagMatchMode.ANY,
+                        ),
                     expectedIds = listOf(1L),
                 ),
                 FilterCase(
                     name = "multiple tags intersection",
-                    state = UpdatesFilterState(selectedTags = setOf("backend", "release")),
+                    state =
+                        UpdatesFilterState(
+                            selectedTags = setOf("backend", "release"),
+                            tagMatchMode = TagMatchMode.ALL,
+                        ),
                     expectedIds = listOf(1L),
                 ),
                 FilterCase(
@@ -69,6 +78,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                         UpdatesFilterState(
                             source = "github",
                             selectedTags = setOf("backend", "release"),
+                            tagMatchMode = TagMatchMode.ALL,
                         ),
                     expectedIds = listOf(1L),
                 ),
@@ -92,7 +102,11 @@ class ApplyUpdatesFiltersUseCaseTest {
                 ),
                 FilterCase(
                     name = "tags conflict",
-                    state = UpdatesFilterState(selectedTags = setOf("backend", "summary")),
+                    state =
+                        UpdatesFilterState(
+                            selectedTags = setOf("backend", "summary"),
+                            tagMatchMode = TagMatchMode.ALL,
+                        ),
                     expectedIds = emptyList(),
                 ),
                 FilterCase(
@@ -113,6 +127,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                             source = "bot",
                             period = UpdatesPeriodFilter.TODAY,
                             selectedTags = setOf("summary"),
+                            tagMatchMode = TagMatchMode.ANY,
                         ),
                     expectedIds = listOf(3L),
                 ),
@@ -125,6 +140,7 @@ class ApplyUpdatesFiltersUseCaseTest {
                             source = "jira",
                             period = UpdatesPeriodFilter.TODAY,
                             selectedTags = setOf("incident"),
+                            tagMatchMode = TagMatchMode.ANY,
                         ),
                     expectedIds = emptyList(),
                 ),
@@ -163,6 +179,53 @@ class ApplyUpdatesFiltersUseCaseTest {
             )
 
         assertEquals(listOf(1L, 2L, 3L, 4L), result.map { it.id })
+    }
+
+    @Test
+    fun invoke_multipleTags_respectsAnyAndAllMatchModes() {
+        val events = testEvents()
+
+        val anyResult =
+            useCase(
+                events = events,
+                state =
+                    UpdatesFilterState(
+                        selectedTags = setOf("backend", "incident"),
+                        tagMatchMode = TagMatchMode.ANY,
+                    ),
+                nowEpochMs = NOW_EPOCH_MS,
+            )
+        val allResult =
+            useCase(
+                events = events,
+                state =
+                    UpdatesFilterState(
+                        selectedTags = setOf("backend", "incident"),
+                        tagMatchMode = TagMatchMode.ALL,
+                    ),
+                nowEpochMs = NOW_EPOCH_MS,
+            )
+
+        assertEquals(listOf(1L, 2L), anyResult.map { it.id })
+        assertEquals(emptyList<Long>(), allResult.map { it.id })
+    }
+
+    @Test
+    fun invoke_tagsAreMixedCaseOrDirty_normalizesBeforeMatching() {
+        val events = testEvents() + dirtyTagsEvent()
+
+        val result =
+            useCase(
+                events = events,
+                state =
+                    UpdatesFilterState(
+                        selectedTags = setOf(" BACKEND ", " "),
+                        tagMatchMode = TagMatchMode.ANY,
+                    ),
+                nowEpochMs = NOW_EPOCH_MS,
+            )
+
+        assertEquals(listOf(1L, 5L), result.map { it.id })
     }
 
     private fun testEvents(): List<UpdateEvent> {
@@ -215,6 +278,20 @@ class ApplyUpdatesFiltersUseCaseTest {
                 source = "bot",
                 tags = listOf("archive"),
             ),
+        )
+    }
+
+    private fun dirtyTagsEvent(): UpdateEvent {
+        return UpdateEvent(
+            id = 5L,
+            remoteEventId = "5",
+            linkUrl = "https://example.com/dirty/5",
+            title = "Dirty tags",
+            content = "Has noisy tags",
+            receivedAtEpochMs = 1778712000000L,
+            isRead = false,
+            source = "github",
+            tags = listOf("  BACKEND  ", "", "   "),
         )
     }
 

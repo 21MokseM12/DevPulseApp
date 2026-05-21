@@ -264,7 +264,7 @@ private fun FiltersSection(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 items(uiState.availableTags) { tag ->
                     FilterChip(
-                        selected = tag in filterState.selectedTags,
+                        selected = normalizeTag(tag) in filterState.selectedTags,
                         onClick = { onTagToggled(tag) },
                         label = { Text("#$tag") },
                     )
@@ -429,6 +429,8 @@ private fun formatTimestamp(epochMs: Long): String {
         .getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
         .format(Date(epochMs))
 }
+
+private fun normalizeTag(rawTag: String): String = rawTag.trim().lowercase()
 
 @Composable
 private fun LoadingState() {

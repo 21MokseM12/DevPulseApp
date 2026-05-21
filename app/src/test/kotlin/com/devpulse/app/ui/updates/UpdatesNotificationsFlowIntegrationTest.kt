@@ -126,7 +126,7 @@ class UpdatesNotificationsFlowIntegrationTest {
                 )
             advanceUntilIdle()
 
-            viewModel.onTagToggled("backend")
+            viewModel.onTagToggled("  BackEnd ")
             advanceUntilIdle()
             viewModel.refresh()
             advanceUntilIdle()
@@ -135,6 +135,59 @@ class UpdatesNotificationsFlowIntegrationTest {
             assertEquals(listOf("backend"), lastRequest.tags)
             assertEquals(100, lastRequest.limit)
             assertEquals(0, lastRequest.offset)
+        }
+
+    @Test
+    fun updatesViewModel_refresh_prunesMissingSelectedTagsAfterServerReload() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 41L,
+                        title = "Backend event",
+                        description = "Body",
+                        updateUrl = "https://github.com/devpulse/mobile-app/pull/41",
+                        unread = true,
+                        updateOwner = "octocat",
+                        receivedAt = "2026-05-14T12:00:00Z",
+                        tags = listOf("Backend", "infra"),
+                    ),
+                ),
+            )
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            viewModel.onTagToggled("backend")
+            viewModel.onTagToggled("infra")
+            advanceUntilIdle()
+            assertEquals(setOf("backend", "infra"), viewModel.uiState.value.filterState.selectedTags)
+
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 42L,
+                        title = "Only backend left",
+                        description = "Body",
+                        updateUrl = "https://github.com/devpulse/mobile-app/pull/42",
+                        unread = true,
+                        updateOwner = "octocat",
+                        receivedAt = "2026-05-14T13:00:00Z",
+                        tags = listOf("backend"),
+                    ),
+                ),
+            )
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(setOf("backend"), viewModel.uiState.value.filterState.selectedTags)
+            assertEquals(listOf("backend", "infra"), remote.requestHistory.last().tags)
+            assertEquals(listOf("backend"), viewModel.uiState.value.availableTags)
         }
 
     @Test

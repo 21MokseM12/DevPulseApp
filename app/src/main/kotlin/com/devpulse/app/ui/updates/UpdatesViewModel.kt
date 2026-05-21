@@ -103,12 +103,13 @@ class UpdatesViewModel
         }
 
         fun onTagToggled(tag: String) {
+            val normalizedTag = normalizeTag(tag) ?: return
             _uiState.update { state ->
                 val nextTags =
-                    if (tag in state.filterState.selectedTags) {
-                        state.filterState.selectedTags - tag
+                    if (normalizedTag in state.filterState.selectedTags) {
+                        state.filterState.selectedTags - normalizedTag
                     } else {
-                        state.filterState.selectedTags + tag
+                        state.filterState.selectedTags + normalizedTag
                     }
                 state.copy(filterState = state.filterState.copy(selectedTags = nextTags))
             }
@@ -177,7 +178,12 @@ class UpdatesViewModel
                         isRefreshing = hasExistingContent,
                     )
                 }
-                val requestTags = _uiState.value.filterState.selectedTags.toList().sorted()
+                val requestTags =
+                    _uiState.value.filterState.selectedTags
+                        .mapNotNull(::normalizeTag)
+                        .toSet()
+                        .toList()
+                        .sorted()
                 val notificationsResult =
                     notificationsRepository.getNotifications(
                         limit = FEED_LIMIT,
@@ -198,13 +204,21 @@ class UpdatesViewModel
                             is UnreadCountResult.Success -> unreadResult.unreadCount
                             is UnreadCountResult.Failure -> state.unreadCount
                         }
+                    val availableTags = collectAvailableTags(allEvents)
+                    val availableTagKeys = availableTags.mapNotNull(::normalizeTag).toSet()
+                    val selectedTags =
+                        state.filterState.selectedTags
+                            .mapNotNull(::normalizeTag)
+                            .filter { it in availableTagKeys }
+                            .toSet()
                     state.copy(
                         isLoading = false,
                         isRefreshing = false,
                         allEvents = allEvents,
                         unreadCount = unreadCount,
                         availableSources = allEvents.map { it.source }.filter { it.isNotBlank() }.distinct().sorted(),
-                        availableTags = allEvents.flatMap { it.tags }.distinct().sorted(),
+                        availableTags = availableTags,
+                        filterState = state.filterState.copy(selectedTags = selectedTags),
                         actionErrorMessage = resolveError(notificationsResult, unreadResult),
                     )
                 }
@@ -307,4 +321,17 @@ class UpdatesViewModel
             const val SEARCH_DEBOUNCE_MS = 300L
             const val SOURCE_GITHUB = "github"
         }
+
+        private fun collectAvailableTags(events: List<UpdateEvent>): List<String> {
+            val tagsByNormalized = linkedMapOf<String, String>()
+            events.forEach { event ->
+                event.tags.forEach { rawTag ->
+                    val normalizedTag = normalizeTag(rawTag) ?: return@forEach
+                    tagsByNormalized.putIfAbsent(normalizedTag, rawTag.trim())
+                }
+            }
+            return tagsByNormalized.entries.sortedBy { it.key }.map { it.value }
+        }
+
+        private fun normalizeTag(rawTag: String): String? = rawTag.trim().lowercase().takeIf { it.isNotEmpty() }
     }

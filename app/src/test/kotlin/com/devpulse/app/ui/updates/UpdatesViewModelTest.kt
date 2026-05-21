@@ -369,6 +369,7 @@ class UpdatesViewModelTest {
             advanceUntilIdle()
             assertEquals(listOf(31L, 32L, 33L), viewModel.uiState.value.events.map { it.id })
             assertFalse(viewModel.uiState.value.filterState.hasActiveFilters)
+            assertTrue(viewModel.uiState.value.filterState.selectedTags.isEmpty())
         }
     }
 
@@ -440,7 +441,7 @@ class UpdatesViewModelTest {
             advanceUntilIdle()
             assertEquals(emptyList<String>(), repository.notificationRequests.last().tags)
 
-            viewModel.onTagToggled("backend")
+            viewModel.onTagToggled("  BackEnd  ")
             advanceUntilIdle()
             viewModel.refresh()
             advanceUntilIdle()
@@ -448,6 +449,81 @@ class UpdatesViewModelTest {
             assertEquals(listOf("backend"), repository.notificationRequests.last().tags)
             assertEquals(100, repository.notificationRequests.last().limit)
             assertEquals(0, repository.notificationRequests.last().offset)
+        }
+    }
+
+    @Test
+    fun onTagToggled_normalizesAndIgnoresBlankValues() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 81L,
+                                        tags = listOf("backend"),
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 1),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.onTagToggled("  BackEnd ")
+            advanceUntilIdle()
+            assertEquals(setOf("backend"), viewModel.uiState.value.filterState.selectedTags)
+
+            viewModel.onTagToggled("   ")
+            advanceUntilIdle()
+            assertEquals(setOf("backend"), viewModel.uiState.value.filterState.selectedTags)
+
+            viewModel.onTagToggled("backend")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.filterState.selectedTags.isEmpty())
+        }
+    }
+
+    @Test
+    fun refresh_prunesSelectedTagsAndBuildsCaseInsensitiveAvailableTags() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(id = 82L, tags = listOf("Bug", "backend")),
+                                    remoteNotification(id = 83L, tags = listOf("bug", "frontend")),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            viewModel.onTagToggled("bug")
+            viewModel.onTagToggled("frontend")
+            advanceUntilIdle()
+            assertEquals(setOf("bug", "frontend"), viewModel.uiState.value.filterState.selectedTags)
+            assertEquals(listOf("backend", "Bug", "frontend"), viewModel.uiState.value.availableTags)
+
+            repository.setNotificationsResult(
+                NotificationsResult.Success(
+                    notifications =
+                        listOf(
+                            remoteNotification(id = 84L, tags = listOf("Bug")),
+                        ),
+                ),
+            )
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(setOf("bug"), viewModel.uiState.value.filterState.selectedTags)
+            assertEquals(listOf("Bug"), viewModel.uiState.value.availableTags)
+            assertEquals(listOf("bug", "frontend"), repository.notificationRequests.last().tags)
         }
     }
 
@@ -588,7 +664,7 @@ class UpdatesViewModelTest {
     }
 
     private class FakeNotificationsRepository(
-        private val notificationsResult: NotificationsResult,
+        private var notificationsResult: NotificationsResult,
         private val unreadResult: UnreadCountResult,
         private val markReadResult: MarkReadResult = MarkReadResult.Success(updatedCount = 1),
         private val markGate: CompletableDeferred<Unit>? = null,
@@ -601,6 +677,10 @@ class UpdatesViewModelTest {
         var notificationsCalls: Int = 0
             private set
         val notificationRequests = mutableListOf<NotificationRequest>()
+
+        fun setNotificationsResult(result: NotificationsResult) {
+            notificationsResult = result
+        }
 
         override suspend fun getNotifications(
             limit: Int,

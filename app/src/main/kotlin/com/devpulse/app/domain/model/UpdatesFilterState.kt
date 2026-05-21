@@ -7,6 +7,11 @@ enum class UpdatesPeriodFilter {
     LAST_30_DAYS,
 }
 
+enum class TagMatchMode {
+    ANY,
+    ALL,
+}
+
 data class UpdatesFilterState(
     val query: String = "",
     val unreadOnly: Boolean = false,
@@ -15,6 +20,7 @@ data class UpdatesFilterState(
     val periodStartEpochMs: Long? = null,
     val periodEndEpochMs: Long? = null,
     val selectedTags: Set<String> = emptySet(),
+    val tagMatchMode: TagMatchMode = TagMatchMode.ANY,
 ) {
     val hasActiveFilters: Boolean
         get() =
