@@ -283,6 +283,49 @@ class UpdatesNotificationsFlowIntegrationTest {
             )
         }
 
+    @Test
+    fun updatesViewModel_loadsNextPageWhenFirstPageIsFull() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            val firstPage =
+                (1L..100L).map { id ->
+                    NotificationDto(
+                        id = id,
+                        title = "Page1-$id",
+                        description = "Body-$id",
+                        url = "https://example.com/$id",
+                        unread = true,
+                        linkId = id,
+                        receivedAt = "2026-05-14T10:00:00Z",
+                    )
+                }
+            val secondPageItem =
+                NotificationDto(
+                    id = 1001L,
+                    title = "GitHub event from second page",
+                    description = "Body-1001",
+                    url = "https://github.com/devpulse/mobile-app/pull/1001",
+                    unread = true,
+                    linkId = 1001L,
+                    receivedAt = "2026-05-14T11:00:00Z",
+                    source = "github",
+                )
+            remote.replaceNotifications(firstPage + secondPageItem)
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+
+            val ids = viewModel.uiState.value.events.map { it.id }
+            assertTrue(1001L in ids)
+            assertEquals(2, remote.requestHistory.size)
+            assertEquals(0, remote.requestHistory[0].offset)
+            assertEquals(100, remote.requestHistory[1].offset)
+        }
+
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
         private val notifications =
             mutableListOf(
@@ -355,10 +398,14 @@ class UpdatesNotificationsFlowIntegrationTest {
                 refreshGate = null
             }
             requestHistory += NotificationsRequest(limit = limit, offset = offset, tags = tags)
+            val pagedNotifications =
+                notifications
+                    .drop(offset)
+                    .take(limit)
             return RemoteCallResult.Success(
                 data =
                     NotificationListResponseDto(
-                        notifications = notifications.toList(),
+                        notifications = pagedNotifications,
                         limit = limit,
                         offset = offset,
                     ),

@@ -196,12 +196,7 @@ class UpdatesViewModel
                         .toSet()
                         .toList()
                         .sorted()
-                val notificationsResult =
-                    notificationsRepository.getNotifications(
-                        limit = FEED_LIMIT,
-                        offset = FEED_OFFSET,
-                        tags = requestTags,
-                    )
+                val notificationsResult = loadAllNotifications(requestTags = requestTags)
                 val unreadResult = notificationsRepository.getUnreadCount()
                 val subscriptionsResult = subscriptionsRepository.getSubscriptions(forceRefresh = false)
 
@@ -264,6 +259,42 @@ class UpdatesViewModel
                 }
                 applyFilters()
             }
+        }
+
+        private suspend fun loadAllNotifications(requestTags: List<String>): NotificationsResult {
+            val collected = mutableListOf<RemoteNotification>()
+            var offset = FEED_OFFSET
+            var page = 0
+            while (page < MAX_FEED_PAGES) {
+                when (
+                    val pageResult =
+                        notificationsRepository.getNotifications(
+                            limit = FEED_LIMIT,
+                            offset = offset,
+                            tags = requestTags,
+                        )
+                ) {
+                    is NotificationsResult.Failure -> {
+                        return if (collected.isEmpty()) {
+                            pageResult
+                        } else {
+                            NotificationsResult.Success(
+                                notifications = collected.toList(),
+                            )
+                        }
+                    }
+
+                    is NotificationsResult.Success -> {
+                        val pageNotifications = pageResult.notifications
+                        if (pageNotifications.isEmpty()) break
+                        collected += pageNotifications
+                        if (pageNotifications.size < FEED_LIMIT) break
+                        offset += pageNotifications.size
+                        page += 1
+                    }
+                }
+            }
+            return NotificationsResult.Success(notifications = collected.toList())
         }
 
         fun markAsRead(updateId: Long) {
@@ -359,6 +390,7 @@ class UpdatesViewModel
         private companion object {
             const val FEED_LIMIT = 100
             const val FEED_OFFSET = 0
+            const val MAX_FEED_PAGES = 10
             const val SEARCH_DEBOUNCE_MS = 300L
         }
 

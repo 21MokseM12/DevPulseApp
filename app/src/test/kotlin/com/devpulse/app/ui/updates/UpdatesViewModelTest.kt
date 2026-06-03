@@ -690,6 +690,51 @@ class UpdatesViewModelTest {
     }
 
     @Test
+    fun init_withMoreThanOnePage_loadsNotificationsFromNextPage() {
+        runTest {
+            val pageOne =
+                (1L..100L).map { id ->
+                    remoteNotification(
+                        id = id,
+                        title = "Page1-$id",
+                        creationDate = "2026-05-14T10:00:00Z",
+                    )
+                }
+            val pageTwo =
+                listOf(
+                    remoteNotification(
+                        id = 1001L,
+                        title = "GitHub update from backend",
+                        source = "github",
+                        creationDate = "2026-05-14T12:00:00Z",
+                    ),
+                )
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult = NotificationsResult.Success(pageOne),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 101),
+                    notificationsProvider = { request ->
+                        when (request.offset) {
+                            0 -> NotificationsResult.Success(pageOne)
+                            100 -> NotificationsResult.Success(pageTwo)
+                            else -> NotificationsResult.Success(emptyList())
+                        }
+                    },
+                )
+
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+
+            val ids = viewModel.uiState.value.events.map { it.id }
+            assertTrue(1001L in ids)
+            assertEquals(2, repository.notificationRequests.size)
+            assertEquals(0, repository.notificationRequests[0].offset)
+            assertEquals(100, repository.notificationRequests[1].offset)
+            assertEquals(101, ids.size)
+        }
+    }
+
+    @Test
     fun loadAndToggleLinkFilters_filtersBySubscriptionFilters() {
         runTest {
             val notificationsRepository =
@@ -784,6 +829,7 @@ class UpdatesViewModelTest {
     private class FakeNotificationsRepository(
         private var notificationsResult: NotificationsResult,
         private val unreadResult: UnreadCountResult,
+        private val notificationsProvider: ((NotificationRequest) -> NotificationsResult)? = null,
         private val markReadResult: MarkReadResult = MarkReadResult.Success(updatedCount = 1),
         private val markGate: CompletableDeferred<Unit>? = null,
         private val refreshGate: CompletableDeferred<Unit>? = null,
@@ -809,8 +855,9 @@ class UpdatesViewModelTest {
             if (notificationsCalls > 1) {
                 refreshGate?.await()
             }
-            notificationRequests += NotificationRequest(limit = limit, offset = offset, tags = tags)
-            return notificationsResult
+            val request = NotificationRequest(limit = limit, offset = offset, tags = tags)
+            notificationRequests += request
+            return notificationsProvider?.invoke(request) ?: notificationsResult
         }
 
         override suspend fun getUnreadCount(): UnreadCountResult = unreadResult
