@@ -690,6 +690,83 @@ class UpdatesViewModelTest {
     }
 
     @Test
+    fun onScreenVisible_afterInitialEmptyLoad_refetchesNotifications() {
+        runTest {
+            val githubNotification =
+                remoteNotification(
+                    id = 901L,
+                    title = "GitHub PR merged",
+                    source = "github",
+                    link = "https://github.com/devpulse/mobile-app/pull/901",
+                )
+            var requestCount = 0
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult = NotificationsResult.Success(emptyList()),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 0),
+                    notificationsProvider = {
+                        requestCount += 1
+                        if (requestCount == 1) {
+                            NotificationsResult.Success(emptyList())
+                        } else {
+                            NotificationsResult.Success(listOf(githubNotification))
+                        }
+                    },
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+
+            viewModel.onScreenVisible()
+            advanceUntilIdle()
+
+            assertEquals(listOf(901L), viewModel.uiState.value.events.map { it.id })
+            assertEquals(2, repository.notificationRequests.size)
+        }
+    }
+
+    @Test
+    fun onPeriodAll_afterInitialEmptyLoad_refetchesNotifications() {
+        runTest {
+            var requestCount = 0
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult = NotificationsResult.Success(emptyList()),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 0),
+                    notificationsProvider = {
+                        requestCount += 1
+                        if (requestCount == 1) {
+                            NotificationsResult.Success(emptyList())
+                        } else {
+                            NotificationsResult.Success(
+                                listOf(
+                                    remoteNotification(
+                                        id = 902L,
+                                        title = "GitHub commit",
+                                        source = "github",
+                                    ),
+                                ),
+                            )
+                        }
+                    },
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+
+            viewModel.onPeriodChanged(UpdatesPeriodFilter.TODAY)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+
+            viewModel.onPeriodChanged(UpdatesPeriodFilter.ALL)
+            advanceUntilIdle()
+
+            assertEquals(listOf(902L), viewModel.uiState.value.events.map { it.id })
+            assertTrue(repository.notificationRequests.size >= 2)
+        }
+    }
+
+    @Test
     fun init_withMoreThanOnePage_loadsNotificationsFromNextPage() {
         runTest {
             val pageOne =

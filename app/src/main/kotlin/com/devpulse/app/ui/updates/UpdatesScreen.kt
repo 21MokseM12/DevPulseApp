@@ -53,6 +53,9 @@ fun UpdatesRoute(
 ) {
     val uriHandler = LocalUriHandler.current
     val openLinkAction: (String) -> Unit = onOpenLink ?: { link -> uriHandler.openUri(link) }
+    LaunchedEffect(Unit) {
+        viewModel.onScreenVisible()
+    }
     LaunchedEffect(digestContextRequest) {
         val request = digestContextRequest ?: return@LaunchedEffect
         viewModel.applyDigestContext(

@@ -284,6 +284,40 @@ class UpdatesNotificationsFlowIntegrationTest {
         }
 
     @Test
+    fun updatesViewModel_onScreenVisible_refetchesNotificationsAfterInitialEmptyLoad() =
+        runTest {
+            val remote = RecordingRemoteDataSource()
+            remote.replaceNotifications(emptyList())
+            val repository = DefaultNotificationsRepository(remoteDataSource = remote)
+            val viewModel =
+                UpdatesViewModel(
+                    notificationsRepository = repository,
+                    applyUpdatesFiltersUseCase = ApplyUpdatesFiltersUseCase(),
+                )
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+
+            remote.replaceNotifications(
+                listOf(
+                    NotificationDto(
+                        id = 51L,
+                        title = "GitHub update after subscription",
+                        description = "New commit in repo",
+                        updateUrl = "https://github.com/devpulse/mobile-app/commit/abc",
+                        unread = true,
+                        source = "github",
+                        receivedAt = "2026-05-14T12:00:00Z",
+                    ),
+                ),
+            )
+            viewModel.onScreenVisible()
+            advanceUntilIdle()
+
+            assertEquals(listOf(51L), viewModel.uiState.value.events.map { it.id })
+            assertEquals(2, remote.requestHistory.size)
+        }
+
+    @Test
     fun updatesViewModel_loadsNextPageWhenFirstPageIsFull() =
         runTest {
             val remote = RecordingRemoteDataSource()

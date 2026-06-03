@@ -61,8 +61,13 @@ class UpdatesViewModel
         private val _uiState = MutableStateFlow(UpdatesUiState())
         val uiState: StateFlow<UpdatesUiState> = _uiState.asStateFlow()
         private var searchDebounceJob: Job? = null
+        private var loadUpdatesJob: Job? = null
 
         init {
+            loadUpdates()
+        }
+
+        fun onScreenVisible() {
             loadUpdates()
         }
 
@@ -120,7 +125,11 @@ class UpdatesViewModel
                         ),
                 )
             }
-            applyFilters()
+            if (period == UpdatesPeriodFilter.ALL) {
+                loadUpdates()
+            } else {
+                applyFilters()
+            }
         }
 
         fun onTagToggled(tag: String) {
@@ -156,7 +165,7 @@ class UpdatesViewModel
             _uiState.update { state ->
                 state.copy(filterState = UpdatesFilterState())
             }
-            applyFilters()
+            loadUpdates()
         }
 
         fun applyDigestContext(
@@ -178,87 +187,103 @@ class UpdatesViewModel
         }
 
         private fun loadUpdates() {
-            val currentState = _uiState.value
-            if (currentState.isRefreshing || (currentState.isLoading && currentState.allEvents.isNotEmpty())) {
+            if (loadUpdatesJob?.isActive == true) {
                 return
             }
-            val hasExistingContent = currentState.allEvents.isNotEmpty()
-            viewModelScope.launch {
-                _uiState.update {
-                    it.copy(
-                        isLoading = !hasExistingContent,
-                        isRefreshing = hasExistingContent,
-                    )
-                }
-                val requestTags =
-                    _uiState.value.filterState.selectedTags
-                        .mapNotNull(::normalizeTag)
-                        .toSet()
-                        .toList()
-                        .sorted()
-                val notificationsResult = loadAllNotifications(requestTags = requestTags)
-                val unreadResult = notificationsRepository.getUnreadCount()
-                val subscriptionsResult = subscriptionsRepository.getSubscriptions(forceRefresh = false)
+            val hasExistingContent = _uiState.value.allEvents.isNotEmpty()
+            loadUpdatesJob =
+                viewModelScope.launch {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = !hasExistingContent,
+                            isRefreshing = hasExistingContent,
+                        )
+                    }
+                    try {
+                        val requestTags =
+                            _uiState.value.filterState.selectedTags
+                                .mapNotNull(::normalizeTag)
+                                .toSet()
+                                .toList()
+                                .sorted()
+                        val notificationsResult = loadAllNotifications(requestTags = requestTags)
+                        val unreadResult = notificationsRepository.getUnreadCount()
+                        val subscriptionsResult = subscriptionsRepository.getSubscriptions(forceRefresh = false)
 
-                _uiState.update { state ->
-                    val links =
-                        when (subscriptionsResult) {
-                            is SubscriptionsResult.Success -> subscriptionsResult.links
-                            is SubscriptionsResult.Failure -> emptyList()
-                        }
-                    val linkFiltersByNormalizedUrl =
-                        links
-                            .mapNotNull { link ->
-                                val normalizedUrl = normalizeUrl(link.url) ?: return@mapNotNull null
-                                normalizedUrl to collectDistinctLinkFilters(link.filters)
-                            }.filter { it.second.isNotEmpty() }
-                            .sortedByDescending { it.first.length }
-                    val allEvents =
-                        when (notificationsResult) {
-                            is NotificationsResult.Success ->
-                                notificationsResult.notifications.map { notification ->
-                                    notification.toUpdateEvent(
-                                        linkFilters = resolveLinkFilters(notification.link, linkFiltersByNormalizedUrl),
-                                    )
+                        _uiState.update { state ->
+                            val links =
+                                when (subscriptionsResult) {
+                                    is SubscriptionsResult.Success -> subscriptionsResult.links
+                                    is SubscriptionsResult.Failure -> emptyList()
                                 }
-                            is NotificationsResult.Failure -> emptyList()
+                            val linkFiltersByNormalizedUrl =
+                                links
+                                    .mapNotNull { link ->
+                                        val normalizedUrl = normalizeUrl(link.url) ?: return@mapNotNull null
+                                        normalizedUrl to collectDistinctLinkFilters(link.filters)
+                                    }.filter { it.second.isNotEmpty() }
+                                    .sortedByDescending { it.first.length }
+                            val allEvents =
+                                when (notificationsResult) {
+                                    is NotificationsResult.Success ->
+                                        notificationsResult.notifications.map { notification ->
+                                            notification.toUpdateEvent(
+                                                linkFilters =
+                                                    resolveLinkFilters(
+                                                        notification.link,
+                                                        linkFiltersByNormalizedUrl,
+                                                    ),
+                                            )
+                                        }
+                                    is NotificationsResult.Failure -> emptyList()
+                                }
+                            val unreadCount =
+                                when (unreadResult) {
+                                    is UnreadCountResult.Success -> unreadResult.unreadCount
+                                    is UnreadCountResult.Failure -> state.unreadCount
+                                }
+                            val availableTags = collectAvailableTags(allEvents)
+                            val availableTagKeys = availableTags.mapNotNull(::normalizeTag).toSet()
+                            val selectedTags =
+                                state.filterState.selectedTags
+                                    .mapNotNull(::normalizeTag)
+                                    .filter { it in availableTagKeys }
+                                    .toSet()
+                            val availableLinkFilters = collectAvailableLinkFilters(links)
+                            val selectedLinkFilters =
+                                state.filterState.selectedLinkFilters
+                                    .mapNotNull(::normalizeLinkFilter)
+                                    .filter { it in availableLinkFilters.mapNotNull(::normalizeLinkFilter).toSet() }
+                                    .toSet()
+                            state.copy(
+                                allEvents = allEvents,
+                                unreadCount = unreadCount,
+                                availableSources =
+                                    allEvents
+                                        .map { it.source }
+                                        .filter { it.isNotBlank() }
+                                        .distinct()
+                                        .sorted(),
+                                availableLinkFilters = availableLinkFilters,
+                                availableTags = availableTags,
+                                filterState =
+                                    state.filterState.copy(
+                                        selectedTags = selectedTags,
+                                        selectedLinkFilters = selectedLinkFilters,
+                                    ),
+                                actionErrorMessage = resolveError(notificationsResult, unreadResult),
+                            )
                         }
-                    val unreadCount =
-                        when (unreadResult) {
-                            is UnreadCountResult.Success -> unreadResult.unreadCount
-                            is UnreadCountResult.Failure -> state.unreadCount
+                        applyFilters()
+                    } finally {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isRefreshing = false,
+                            )
                         }
-                    val availableTags = collectAvailableTags(allEvents)
-                    val availableTagKeys = availableTags.mapNotNull(::normalizeTag).toSet()
-                    val selectedTags =
-                        state.filterState.selectedTags
-                            .mapNotNull(::normalizeTag)
-                            .filter { it in availableTagKeys }
-                            .toSet()
-                    val availableLinkFilters = collectAvailableLinkFilters(links)
-                    val selectedLinkFilters =
-                        state.filterState.selectedLinkFilters
-                            .mapNotNull(::normalizeLinkFilter)
-                            .filter { it in availableLinkFilters.mapNotNull(::normalizeLinkFilter).toSet() }
-                            .toSet()
-                    state.copy(
-                        isLoading = false,
-                        isRefreshing = false,
-                        allEvents = allEvents,
-                        unreadCount = unreadCount,
-                        availableSources = allEvents.map { it.source }.filter { it.isNotBlank() }.distinct().sorted(),
-                        availableLinkFilters = availableLinkFilters,
-                        availableTags = availableTags,
-                        filterState =
-                            state.filterState.copy(
-                                selectedTags = selectedTags,
-                                selectedLinkFilters = selectedLinkFilters,
-                            ),
-                        actionErrorMessage = resolveError(notificationsResult, unreadResult),
-                    )
+                    }
                 }
-                applyFilters()
-            }
         }
 
         private suspend fun loadAllNotifications(requestTags: List<String>): NotificationsResult {
