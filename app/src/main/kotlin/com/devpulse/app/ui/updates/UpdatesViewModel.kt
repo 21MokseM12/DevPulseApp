@@ -103,12 +103,20 @@ class UpdatesViewModel
 
         fun onPeriodChanged(period: UpdatesPeriodFilter) {
             _uiState.update { state ->
+                val shouldDropLegacyFilters = period == UpdatesPeriodFilter.ALL
                 state.copy(
                     filterState =
                         state.filterState.copy(
+                            source = if (shouldDropLegacyFilters) null else state.filterState.source,
                             period = period,
                             periodStartEpochMs = null,
                             periodEndEpochMs = null,
+                            selectedLinkFilters =
+                                if (shouldDropLegacyFilters) {
+                                    emptySet()
+                                } else {
+                                    state.filterState.selectedLinkFilters
+                                },
                         ),
                 )
             }

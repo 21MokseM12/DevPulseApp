@@ -377,6 +377,50 @@ class UpdatesViewModelTest {
     }
 
     @Test
+    fun onPeriodAll_clearsLegacySourceAndLinkFilters_andRestoresFeed() {
+        runTest {
+            val repository =
+                FakeNotificationsRepository(
+                    notificationsResult =
+                        NotificationsResult.Success(
+                            notifications =
+                                listOf(
+                                    remoteNotification(
+                                        id = 34L,
+                                        source = "github",
+                                        link = "https://example.com/github",
+                                    ),
+                                    remoteNotification(
+                                        id = 35L,
+                                        source = "jira",
+                                        link = "https://example.com/jira",
+                                    ),
+                                ),
+                        ),
+                    unreadResult = UnreadCountResult.Success(unreadCount = 2),
+                )
+            val viewModel = UpdatesViewModel(repository, ApplyUpdatesFiltersUseCase())
+            advanceUntilIdle()
+            assertEquals(listOf(34L, 35L), viewModel.uiState.value.events.map { it.id })
+
+            viewModel.onSourceChanged("github")
+            advanceUntilIdle()
+            assertEquals(listOf(34L), viewModel.uiState.value.events.map { it.id })
+
+            viewModel.onLinkFilterToggled("contains:kotlin")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.events.isEmpty())
+
+            viewModel.onPeriodChanged(UpdatesPeriodFilter.ALL)
+            advanceUntilIdle()
+
+            assertEquals(listOf(34L, 35L), viewModel.uiState.value.events.map { it.id })
+            assertEquals(null, viewModel.uiState.value.filterState.source)
+            assertTrue(viewModel.uiState.value.filterState.selectedLinkFilters.isEmpty())
+        }
+    }
+
+    @Test
     fun emptyResultAfterFilter_thenReset_clearsNoResultsState() {
         runTest {
             val repository =

@@ -529,6 +529,46 @@ class DevPulseAppTest {
     }
 
     @Test
+    fun updatesPeriodAll_restoresFeedAfterNarrowPeriodFilter() {
+        smokeDataSource.setNotificationsForTesting(
+            listOf(
+                NotificationDto(
+                    id = 2101L,
+                    title = "Legacy backend notification",
+                    description = "Stored in backend",
+                    url = "https://devpulse.app/legacy-backend",
+                    unread = true,
+                    linkId = 401L,
+                    receivedAt = "2024-01-10T10:00:00Z",
+                    readAt = null,
+                ),
+                NotificationDto(
+                    id = 2102L,
+                    title = "Legacy frontend notification",
+                    description = "Stored in backend",
+                    url = "https://devpulse.app/legacy-frontend",
+                    unread = true,
+                    linkId = 402L,
+                    receivedAt = "2024-01-11T11:00:00Z",
+                    readAt = null,
+                ),
+            ),
+        )
+
+        login()
+        openUpdates()
+        composeRule.waitUntilNodeWithTextExists("Legacy backend notification")
+        composeRule.waitUntilNodeWithTextExists("Legacy frontend notification")
+
+        composeRule.onNodeWithText("7 дней").performClick()
+        composeRule.waitUntilNodeWithTextExists("Ничего не найдено")
+
+        composeRule.onNodeWithText("Период: все").performClick()
+        composeRule.waitUntilNodeWithTextExists("Legacy backend notification")
+        composeRule.waitUntilNodeWithTextExists("Legacy frontend notification")
+    }
+
+    @Test
     fun updatesControls_haveMinimumTapTarget() {
         login()
         openUpdates()
