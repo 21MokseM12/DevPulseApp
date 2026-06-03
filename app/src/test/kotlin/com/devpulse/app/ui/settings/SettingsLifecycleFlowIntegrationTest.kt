@@ -106,7 +106,6 @@ class SettingsLifecycleFlowIntegrationTest {
                     "remote.unregister",
                     "session.clear",
                     "updates.clear",
-                    "push.clear",
                     "permission.clear",
                 ),
                 steps,
@@ -145,7 +144,6 @@ class SettingsLifecycleFlowIntegrationTest {
                 listOf(
                     "session.clear",
                     "updates.clear",
-                    "push.clear",
                     "permission.clear",
                 ),
                 steps,

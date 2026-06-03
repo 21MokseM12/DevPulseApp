@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PushTokenSyncSessionIntegrationTest {
@@ -58,6 +59,46 @@ class PushTokenSyncSessionIntegrationTest {
 
             assertEquals(1, remoteDataSource.registerCalls)
             assertEquals("fcm-1", remoteDataSource.lastRegisterRequest?.token)
+            assertNull(stateStore.pending)
+        }
+
+    @Test
+    fun logoutThenRelogin_registersTokenAgainWithSessionRestoredReason() =
+        runTest {
+            val stateStore = InMemoryPushTokenSyncStateStore()
+            val sessionStore = InMemorySessionStore(initialLogin = "moksem")
+            val remoteDataSource = RecordingRemoteDataSource()
+            val orchestrator =
+                PushTokenSyncOrchestrator(
+                    remoteDataSource = remoteDataSource,
+                    stateStore = stateStore,
+                    sessionStore = sessionStore,
+                    metadataProvider = StaticPushTokenMetadataProvider(),
+                    analyticsLogger = RecordingPushAnalyticsLogger(),
+                )
+
+            orchestrator.queueRegister(token = "fcm-1", reason = "app_start")
+            assertEquals(1, remoteDataSource.registerCalls)
+
+            sessionStore.clearSession()
+            orchestrator.queueUnregister(token = "fcm-1", reason = "logout")
+            assertEquals(1, remoteDataSource.unregisterCalls)
+
+            sessionStore.saveSession(login = "moksem", isRegistered = true)
+            val action =
+                resolvePushTokenRegistrationAction(
+                    token = "fcm-1",
+                    login = "moksem",
+                    previousLogin = null,
+                )
+            assertTrue(action is PushTokenRegistrationAction.Register)
+            assertEquals("session_restored", (action as PushTokenRegistrationAction.Register).reason)
+            orchestrator.queueRegister(
+                token = action.token,
+                reason = action.reason,
+            )
+
+            assertEquals(2, remoteDataSource.registerCalls)
             assertNull(stateStore.pending)
         }
 
@@ -106,6 +147,7 @@ class PushTokenSyncSessionIntegrationTest {
 
     private class RecordingRemoteDataSource : DevPulseRemoteDataSource {
         var registerCalls: Int = 0
+        var unregisterCalls: Int = 0
         var lastRegisterRequest: DeviceTokenRequestDto? = null
 
         override suspend fun registerDeviceToken(request: DeviceTokenRequestDto): RemoteCallResult<Unit> {
@@ -115,6 +157,7 @@ class PushTokenSyncSessionIntegrationTest {
         }
 
         override suspend fun unregisterDeviceToken(request: PushTokenDeactivateRequestDto): RemoteCallResult<Unit> {
+            unregisterCalls += 1
             return RemoteCallResult.Success(Unit, 200)
         }
 

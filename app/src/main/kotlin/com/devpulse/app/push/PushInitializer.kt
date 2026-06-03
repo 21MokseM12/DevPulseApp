@@ -15,7 +15,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -89,17 +88,28 @@ class PushInitializer
 
         private fun observeTokenAndSession() {
             scope.launch {
+                var previousLogin: String? = null
                 combine(
                     pushTokenStore.observeToken(),
                     sessionStore.observeClientLogin(),
                 ) { token, login -> token to login }
-                    .distinctUntilChanged()
                     .collect { (token, login) ->
-                        if (!shouldQueueTokenRegistration(token = token, login = login)) return@collect
-                        pushTokenSyncOrchestrator.queueRegister(
-                            token = token.orEmpty(),
-                            reason = "session_or_token_changed",
-                        )
+                        val decision =
+                            resolvePushTokenRegistrationAction(
+                                token = token,
+                                login = login,
+                                previousLogin = previousLogin,
+                            )
+                        previousLogin = decision.nextPreviousLogin
+                        when (decision) {
+                            is PushTokenRegistrationAction.Skip -> Unit
+                            is PushTokenRegistrationAction.RequestToken -> requestAndStoreToken()
+                            is PushTokenRegistrationAction.Register ->
+                                pushTokenSyncOrchestrator.queueRegister(
+                                    token = decision.token,
+                                    reason = decision.reason,
+                                )
+                        }
                     }
             }
         }
@@ -139,6 +149,57 @@ internal fun shouldQueueTokenRegistration(
     login: String?,
 ): Boolean {
     return !token.isNullOrBlank() && !login.isNullOrBlank()
+}
+
+internal sealed interface PushTokenRegistrationAction {
+    val nextPreviousLogin: String?
+
+    data class Skip(
+        override val nextPreviousLogin: String?,
+    ) : PushTokenRegistrationAction
+
+    data class RequestToken(
+        override val nextPreviousLogin: String?,
+    ) : PushTokenRegistrationAction
+
+    data class Register(
+        val token: String,
+        val reason: String,
+        override val nextPreviousLogin: String?,
+    ) : PushTokenRegistrationAction
+}
+
+internal fun resolvePushTokenRegistrationAction(
+    token: String?,
+    login: String?,
+    previousLogin: String?,
+): PushTokenRegistrationAction {
+    val normalizedLogin = login?.trim()?.takeIf { it.isNotEmpty() }
+    if (normalizedLogin == null) {
+        return PushTokenRegistrationAction.Skip(nextPreviousLogin = null)
+    }
+
+    val normalizedToken = token?.trim()?.takeIf { it.isNotEmpty() }
+    if (normalizedToken == null) {
+        return PushTokenRegistrationAction.RequestToken(nextPreviousLogin = normalizedLogin)
+    }
+
+    val sessionRestored = previousLogin == null
+    if (!sessionRestored && !shouldQueueTokenRegistration(normalizedToken, normalizedLogin)) {
+        return PushTokenRegistrationAction.Skip(nextPreviousLogin = normalizedLogin)
+    }
+
+    val reason =
+        if (sessionRestored) {
+            "session_restored"
+        } else {
+            "session_or_token_changed"
+        }
+    return PushTokenRegistrationAction.Register(
+        token = normalizedToken,
+        reason = reason,
+        nextPreviousLogin = normalizedLogin,
+    )
 }
 
 internal data class NotificationChannelConfig(

@@ -90,7 +90,6 @@ open class AccountLifecycleUseCase
             }
             sessionStore.clearSession()
             updatesRepository.clearUpdates()
-            pushTokenStore.clearToken()
             notificationPermissionStore.clearRequestedFlag()
         }
     }

@@ -134,7 +134,6 @@ class MainLogoutLifecycleIntegrationTest {
                 listOf(
                     "session.clear",
                     "updates.clear",
-                    "push.clear",
                     "permission.clear",
                 ),
                 steps,

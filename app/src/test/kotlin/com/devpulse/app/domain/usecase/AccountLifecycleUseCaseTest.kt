@@ -63,7 +63,7 @@ class AccountLifecycleUseCaseTest {
             )
             assertFalse(sessionStore.hasSession())
             assertTrue(updatesRepository.isCleared)
-            assertTrue(pushTokenStore.isCleared)
+            assertFalse(pushTokenStore.isCleared)
             assertFalse(permissionStore.hasRequested())
         }
 
@@ -97,7 +97,7 @@ class AccountLifecycleUseCaseTest {
             assertEquals(1, remote.unregisterCalls)
             assertFalse(sessionStore.hasSession())
             assertTrue(updatesRepository.isCleared)
-            assertTrue(pushTokenStore.isCleared)
+            assertFalse(pushTokenStore.isCleared)
         }
 
     @Test

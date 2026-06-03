@@ -48,6 +48,60 @@ class PushInitializerLogicTest {
     }
 
     @Test
+    fun resolvePushTokenRegistrationAction_skipsWhenLoggedOut() {
+        val action =
+            resolvePushTokenRegistrationAction(
+                token = "fcm-token",
+                login = null,
+                previousLogin = "moksem",
+            )
+
+        assertTrue(action is PushTokenRegistrationAction.Skip)
+        assertEquals(null, action.nextPreviousLogin)
+    }
+
+    @Test
+    fun resolvePushTokenRegistrationAction_requestsTokenWhenSessionExistsWithoutToken() {
+        val action =
+            resolvePushTokenRegistrationAction(
+                token = null,
+                login = "moksem",
+                previousLogin = null,
+            )
+
+        assertTrue(action is PushTokenRegistrationAction.RequestToken)
+        assertEquals("moksem", action.nextPreviousLogin)
+    }
+
+    @Test
+    fun resolvePushTokenRegistrationAction_registersWhenSessionRestoredAfterLogout() {
+        val action =
+            resolvePushTokenRegistrationAction(
+                token = "fcm-token",
+                login = "moksem",
+                previousLogin = null,
+            )
+
+        assertTrue(action is PushTokenRegistrationAction.Register)
+        assertEquals("fcm-token", (action as PushTokenRegistrationAction.Register).token)
+        assertEquals("session_restored", action.reason)
+        assertEquals("moksem", action.nextPreviousLogin)
+    }
+
+    @Test
+    fun resolvePushTokenRegistrationAction_registersWhenTokenChangesForActiveSession() {
+        val action =
+            resolvePushTokenRegistrationAction(
+                token = "fcm-token-2",
+                login = "moksem",
+                previousLogin = "moksem",
+            )
+
+        assertTrue(action is PushTokenRegistrationAction.Register)
+        assertEquals("session_or_token_changed", (action as PushTokenRegistrationAction.Register).reason)
+    }
+
+    @Test
     fun updatesNotificationChannelConfig_returnsStableUpdatesChannelContract() {
         val channelConfig = updatesNotificationChannelConfig()
 
