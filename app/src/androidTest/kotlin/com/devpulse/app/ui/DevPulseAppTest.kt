@@ -533,14 +533,9 @@ class DevPulseAppTest {
         login()
         openUpdates()
 
-        composeRule.onNodeWithText("Quick: unread").performClick()
+        composeRule.onNodeWithText("Непрочитанные").performClick()
         composeRule.waitUntilNodeWithTagExists(SmokeTestTags.UPDATES_RESET_FILTERS_BUTTON)
 
-        composeRule
-            .onNodeWithText("Quick: unread")
-            .assertHasClickAction()
-            .assertWidthIsAtLeast(48.dp)
-            .assertHeightIsAtLeast(48.dp)
         composeRule
             .onNodeWithText("Непрочитанные")
             .assertHasClickAction()

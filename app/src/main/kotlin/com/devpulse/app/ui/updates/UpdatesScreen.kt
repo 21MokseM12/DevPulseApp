@@ -69,9 +69,7 @@ fun UpdatesRoute(
         onMarkAsRead = viewModel::markAsRead,
         onQueryChanged = viewModel::onQueryChanged,
         onUnreadOnlyToggled = viewModel::onUnreadOnlyToggled,
-        onSourceChanged = viewModel::onSourceChanged,
         onPeriodChanged = viewModel::onPeriodChanged,
-        onLinkFilterToggled = viewModel::onLinkFilterToggled,
         onTagToggled = viewModel::onTagToggled,
         onResetFilters = viewModel::resetFilters,
         onOpenLink = openLinkAction,
@@ -86,9 +84,7 @@ private fun UpdatesScreen(
     onMarkAsRead: (Long) -> Unit,
     onQueryChanged: (String) -> Unit,
     onUnreadOnlyToggled: () -> Unit,
-    onSourceChanged: (String?) -> Unit,
     onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
-    onLinkFilterToggled: (String) -> Unit,
     onTagToggled: (String) -> Unit,
     onResetFilters: () -> Unit,
     onOpenLink: (String) -> Unit,
@@ -110,9 +106,7 @@ private fun UpdatesScreen(
             uiState = uiState,
             onQueryChanged = onQueryChanged,
             onUnreadOnlyToggled = onUnreadOnlyToggled,
-            onSourceChanged = onSourceChanged,
             onPeriodChanged = onPeriodChanged,
-            onLinkFilterToggled = onLinkFilterToggled,
             onTagToggled = onTagToggled,
             onResetFilters = onResetFilters,
         )
@@ -154,9 +148,7 @@ private fun FiltersSection(
     uiState: UpdatesUiState,
     onQueryChanged: (String) -> Unit,
     onUnreadOnlyToggled: () -> Unit,
-    onSourceChanged: (String?) -> Unit,
     onPeriodChanged: (UpdatesPeriodFilter) -> Unit,
-    onLinkFilterToggled: (String) -> Unit,
     onTagToggled: (String) -> Unit,
     onResetFilters: () -> Unit,
 ) {
@@ -181,35 +173,11 @@ private fun FiltersSection(
         )
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            items(uiState.availableLinkFilters) { filter ->
-                FilterChip(
-                    selected = normalizeLinkFilter(filter) in filterState.selectedLinkFilters,
-                    onClick = { onLinkFilterToggled(filter) },
-                    label = { Text("Фильтр: $filter") },
-                )
-            }
-        }
-
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             item {
                 FilterChip(
                     selected = filterState.unreadOnly,
                     onClick = onUnreadOnlyToggled,
                     label = { Text("Непрочитанные") },
-                )
-            }
-            item {
-                FilterChip(
-                    selected = filterState.source == null,
-                    onClick = { onSourceChanged(null) },
-                    label = { Text("Источник: все") },
-                )
-            }
-            items(uiState.availableSources) { source ->
-                FilterChip(
-                    selected = filterState.source == source,
-                    onClick = { onSourceChanged(source) },
-                    label = { Text("Источник: $source") },
                 )
             }
         }
@@ -416,8 +384,6 @@ private fun formatTimestamp(epochMs: Long): String {
 }
 
 private fun normalizeTag(rawTag: String): String = rawTag.trim().lowercase()
-
-private fun normalizeLinkFilter(rawFilter: String): String = rawFilter.trim().lowercase()
 
 @Composable
 private fun LoadingState() {

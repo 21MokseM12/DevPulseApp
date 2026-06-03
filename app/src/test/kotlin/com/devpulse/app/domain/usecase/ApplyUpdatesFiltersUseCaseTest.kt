@@ -26,6 +26,11 @@ class ApplyUpdatesFiltersUseCaseTest {
                     expectedIds = listOf(1L, 2L),
                 ),
                 FilterCase(
+                    name = "query matches source",
+                    state = UpdatesFilterState(query = "bot"),
+                    expectedIds = listOf(3L, 4L),
+                ),
+                FilterCase(
                     name = "unread only",
                     state = UpdatesFilterState(unreadOnly = true),
                     expectedIds = listOf(1L, 3L, 4L),
